@@ -1,0 +1,122 @@
+{
+ "image_size": [
+  800,
+  600
+ ],
+ "box_scale": 1000,
+ "font_used": "/System/Library/Fonts/GeezaPro.ttc",
+ "arabic_engine": "raqm",
+ "ui_login.png": {
+  "login_button": {
+   "box": [
+    175,
+    633,
+    425,
+    717
+   ],
+   "label": "red LOGIN button",
+   "color": "red"
+  },
+  "cancel_button": {
+   "box": [
+    450,
+    633,
+    700,
+    717
+   ],
+   "label": "green Cancel button",
+   "color": "green"
+  },
+  "help_button": {
+   "box": [
+    175,
+    767,
+    300,
+    825
+   ],
+   "label": "blue Help button",
+   "color": "blue"
+  },
+  "search_box": {
+   "box": [
+    650,
+    117,
+    850,
+    167
+   ],
+   "label": "Search field",
+   "color": "white"
+  },
+  "username_field": {
+   "box": [
+    175,
+    317,
+    700,
+    383
+   ],
+   "label": "Username field",
+   "color": "white"
+  },
+  "button_count": 3
+ },
+ "ui_toolbar.png": {
+  "save_button": {
+   "box": [
+    75,
+    87,
+    225,
+    163
+   ],
+   "label": "blue SAVE button",
+   "color": "blue"
+  },
+  "settings_button": {
+   "box": [
+    250,
+    87,
+    425,
+    163
+   ],
+   "label": "gray Settings button",
+   "color": "gray"
+  },
+  "delete_button": {
+   "box": [
+    450,
+    87,
+    612,
+    163
+   ],
+   "label": "red Delete button",
+   "color": "red"
+  },
+  "toolbar_search": {
+   "box": [
+    638,
+    87,
+    925,
+    163
+   ],
+   "label": "toolbar search field",
+   "color": "white"
+  },
+  "toolbar_button_count": 3
+ },
+ "arabic_card.png": {
+  "lines": [
+   "تسجيل الدخول",
+   "مرحبا بك في المتجر",
+   "زر الدخول أحمر"
+  ],
+  "keywords": [
+   "تسجيل",
+   "الدخول"
+  ],
+  "note": "ground truth stored in logical order; image rendered with engine=raqm"
+ },
+ "grid_count.png": {
+  "blue_circles": 7,
+  "red_squares": 4,
+  "total_shapes": 11
+ }
+}

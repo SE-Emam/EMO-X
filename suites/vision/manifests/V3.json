@@ -1,0 +1,47 @@
+{
+ "capabilities": [
+  "multimodal",
+  "arabic_ocr"
+ ],
+ "category": "vision",
+ "difficulty": {
+  "adaptive": false,
+  "base": 2
+ },
+ "estimated_human_minutes": 5,
+ "execution": {
+  "harness": "suites/vision/executor.py",
+  "type": "vision"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "fixture": "arabic_card.png",
+ "generator": {
+  "parameters": {},
+  "seed": 25603,
+  "type": "frozen-canonical"
+ },
+ "id": "V3",
+ "name": "arabic_read",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "all ground-truth keywords transcribed",
+  "type": "deterministic"
+ },
+ "prompt_pack": "vision-v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "vision",
+ "timeouts": {
+  "execution_seconds": 60,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

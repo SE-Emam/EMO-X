@@ -1,0 +1,69 @@
+{
+ "capabilities": [
+  "robustness",
+  "verification",
+  "instruction_following"
+ ],
+ "category": "robustness",
+ "difficulty": {
+  "adaptive": true,
+  "base": 3
+ },
+ "estimated_human_minutes": 10,
+ "execution": {
+  "harness": "suites/robustness/executor.py",
+  "type": "contradiction-episode"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "generator": {
+  "parameters": {
+   "fresh": {
+    "choices": [
+     "sycamore",
+     "halide",
+     "cobalt",
+     "ferrous"
+    ]
+   },
+   "n": {
+    "max": 899,
+    "min": 11
+   },
+   "stale": {
+    "choices": [
+     "sycamore",
+     "halide",
+     "cobalt",
+     "ferrous"
+    ]
+   }
+  },
+  "type": "parametric"
+ },
+ "id": "RB3",
+ "name": "contradiction_noise",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "verified spec value present and distractor absent",
+  "type": "deterministic"
+ },
+ "prompt_pack": "v2",
+ "scoring": {
+  "correctness": 1.0,
+  "robustness": 1.0
+ },
+ "suite": "robustness",
+ "timeouts": {
+  "execution_seconds": 30,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "adversarial",
+  "canonical"
+ ],
+ "version": "1.0"
+}

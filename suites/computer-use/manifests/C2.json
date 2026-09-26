@@ -1,0 +1,65 @@
+{
+ "capabilities": [
+  "tool_use",
+  "recovery",
+  "user_correction"
+ ],
+ "category": "computer-use",
+ "difficulty": {
+  "adaptive": false,
+  "base": 4
+ },
+ "estimated_human_minutes": 15,
+ "execution": {
+  "harness": "suites/computer-use/pilot_stub.py",
+  "inject_after_assistant_messages": 3,
+  "injection": "Correction from the user: shop/config.py is CORRECT — do not touch it. The bug is in a different file. Acknowledge briefly and continue.",
+  "max_steps": 15,
+  "temp": 0.4,
+  "tools": [
+   "ls",
+   "read",
+   "run",
+   "edit"
+  ],
+  "type": "agent-episode"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "generator": {
+  "parameters": {
+   "repo": "shop"
+  },
+  "seed": 25702,
+  "type": "frozen-canonical"
+ },
+ "id": "C2",
+ "measures": [
+  "C2_no_regress",
+  "C2_incorporate",
+  "C2_success"
+ ],
+ "name": "midrun_correction",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "zero config edits after injection plus compliance within 4 steps",
+  "type": "rule-based"
+ },
+ "pilot": true,
+ "prompt_pack": "v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "computer-use",
+ "timeouts": {
+  "execution_seconds": 120,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

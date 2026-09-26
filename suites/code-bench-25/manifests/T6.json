@@ -1,0 +1,55 @@
+{
+ "capabilities": [
+  "arabic_generation",
+  "basic_coding"
+ ],
+ "category": "arabic",
+ "difficulty": {
+  "adaptive": false,
+  "base": 1
+ },
+ "estimated_human_minutes": 4,
+ "execution": {
+  "entry": "اجمع",
+  "harness": "suites/code-bench-25/executor.py",
+  "type": "python"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "forbidden_paths": [
+  "/etc",
+  "/root",
+  "/home",
+  "~/.ssh",
+  "/var/run/secrets"
+ ],
+ "generator": {
+  "parameters": {},
+  "seed": 25006,
+  "type": "frozen-canonical"
+ },
+ "id": "T6",
+ "name": "arabic_code",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "ARCODE_OK marker plus arabic_ratio > 0.1",
+  "type": "deterministic"
+ },
+ "prompt": "اكتب دالة Python باسم اجمع(a, b) ترجع مجموعهما، واشرح عملها باللغة العربية.",
+ "prompt_pack": "v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "code-bench-25",
+ "timeouts": {
+  "execution_seconds": 30,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

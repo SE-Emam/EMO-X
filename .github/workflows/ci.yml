@@ -1,0 +1,19 @@
+name: ci
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  harness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Harness self-test (SPEC 35, fail-closed)
+        run: python3 shared/run.py --self-test
+      - name: Full test suites
+        run: python3 tests/run_all.py

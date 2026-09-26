@@ -1,0 +1,55 @@
+{
+ "capabilities": [
+  "basic_coding",
+  "bugfix"
+ ],
+ "category": "basic-coding",
+ "difficulty": {
+  "adaptive": false,
+  "base": 1
+ },
+ "estimated_human_minutes": 3,
+ "execution": {
+  "entry": "is_even",
+  "harness": "suites/code-bench-25/executor.py",
+  "type": "python"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "forbidden_paths": [
+  "/etc",
+  "/root",
+  "/home",
+  "~/.ssh",
+  "/var/run/secrets"
+ ],
+ "generator": {
+  "parameters": {},
+  "seed": 25003,
+  "type": "frozen-canonical"
+ },
+ "id": "T3",
+ "name": "bugfix",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "FIX_OK marker via sandboxed python",
+  "type": "deterministic"
+ },
+ "prompt": "This Python function is buggy:\ndef is_even(n):\n    return n / 2 == 0\nReturn ONLY the fixed function code, no explanation.",
+ "prompt_pack": "v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "code-bench-25",
+ "timeouts": {
+  "execution_seconds": 30,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

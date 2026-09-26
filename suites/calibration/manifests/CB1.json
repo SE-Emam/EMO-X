@@ -1,0 +1,56 @@
+{
+ "capabilities": [
+  "calibration",
+  "mathematical_reasoning",
+  "verification"
+ ],
+ "category": "calibration",
+ "difficulty": {
+  "adaptive": true,
+  "base": 1
+ },
+ "estimated_human_minutes": 5,
+ "execution": {
+  "harness": "suites/calibration/executor.py",
+  "type": "text"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "generator": {
+  "parameters": {
+   "a": {
+    "max": 199,
+    "min": 11
+   },
+   "b": {
+    "max": 199,
+    "min": 11
+   }
+  },
+  "type": "parametric"
+ },
+ "id": "CB1",
+ "name": "solvable_execute",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "exact integer a+b plus CONF value",
+  "type": "deterministic"
+ },
+ "prompt_pack": "v2",
+ "scoring": {
+  "calibration": 1.0,
+  "correctness": 1.0
+ },
+ "suite": "calibration",
+ "timeouts": {
+  "execution_seconds": 30,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

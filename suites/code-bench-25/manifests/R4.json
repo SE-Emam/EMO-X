@@ -1,0 +1,54 @@
+{
+ "capabilities": [
+  "real_world_coding",
+  "frontend_config"
+ ],
+ "category": "real-world-coding",
+ "difficulty": {
+  "adaptive": false,
+  "base": 2
+ },
+ "estimated_human_minutes": 5,
+ "execution": {
+  "harness": "suites/code-bench-25/executor.py",
+  "type": "text"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "forbidden_paths": [
+  "/etc",
+  "/root",
+  "/home",
+  "~/.ssh",
+  "/var/run/secrets"
+ ],
+ "generator": {
+  "parameters": {},
+  "seed": 25104,
+  "type": "frozen-canonical"
+ },
+ "id": "R4",
+ "name": "vercel",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "rewrites entry targets /index.html",
+  "type": "deterministic"
+ },
+ "prompt": "Return ONLY vercel.json (no markdown, no explanation) for a Vite SPA that rewrites all routes to /index.html.",
+ "prompt_pack": "v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "code-bench-25",
+ "timeouts": {
+  "execution_seconds": 30,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

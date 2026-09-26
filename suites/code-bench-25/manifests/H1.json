@@ -1,0 +1,58 @@
+{
+ "capabilities": [
+  "mathematical_reasoning",
+  "combinatorics"
+ ],
+ "category": "reasoning",
+ "difficulty": {
+  "adaptive": false,
+  "base": 3
+ },
+ "estimated_human_minutes": 10,
+ "execution": {
+  "harness": "suites/code-bench-25/executor.py",
+  "native": {
+   "num_predict": 600,
+   "think": false
+  },
+  "type": "text"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "forbidden_paths": [
+  "/etc",
+  "/root",
+  "/home",
+  "~/.ssh",
+  "/var/run/secrets"
+ ],
+ "generator": {
+  "parameters": {},
+  "seed": 25201,
+  "type": "frozen-canonical"
+ },
+ "id": "H1",
+ "name": "increasing_digits",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "reply contains 126",
+  "type": "deterministic"
+ },
+ "prompt": "How many 5-digit numbers have strictly increasing digits (left to right)? Be concise and give the final integer answer clearly.",
+ "prompt_pack": "v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "code-bench-25",
+ "timeouts": {
+  "execution_seconds": 30,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

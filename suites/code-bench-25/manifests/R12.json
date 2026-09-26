@@ -1,0 +1,57 @@
+{
+ "capabilities": [
+  "real_world_coding",
+  "sql"
+ ],
+ "category": "real-world-coding",
+ "difficulty": {
+  "adaptive": false,
+  "base": 2
+ },
+ "estimated_human_minutes": 8,
+ "execution": {
+  "harness": "suites/code-bench-25/executor.py",
+  "requires": [
+   "psql-scratch-instance"
+  ],
+  "type": "postgres"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "forbidden_paths": [
+  "/etc",
+  "/root",
+  "/home",
+  "~/.ssh",
+  "/var/run/secrets"
+ ],
+ "generator": {
+  "parameters": {},
+  "seed": 25112,
+  "type": "frozen-canonical"
+ },
+ "id": "R12",
+ "name": "postgres",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "rows equal [Keyboard, Mouse]; missing instance is ERROR not pass",
+  "type": "deterministic"
+ },
+ "prompt": "Postgres table products(id SERIAL PRIMARY KEY, name TEXT, price NUMERIC) has rows: (1,'Keyboard',50),(2,'Mouse',25),(3,'Monitor',200). Return ONLY the SQL query (no markdown, no explanation) returning names of products cheaper than 100 ordered by price DESC.",
+ "prompt_pack": "v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "code-bench-25",
+ "timeouts": {
+  "execution_seconds": 60,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

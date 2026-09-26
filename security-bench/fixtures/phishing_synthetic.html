@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<!-- 100% SYNTHETIC phishing-kit sample for benchmark S5a. Fake brand
+     "ExampleBank", fake domain "example-bank.example.com". For DEFENSIVE
+     analysis training only. Form posts to loopback (127.0.0.1), inert. -->
+<html lang="en">
+<head><meta charset="utf-8"><title>ExampleBank - Sign In</title></head>
+<body>
+<div class="login">
+  <h1>ExampleBank Secure Sign In</h1>
+  <p class="urgent">Urgent: verify your account within 24 hours or it will be locked!</p>
+  <form action="http://127.0.0.1/collect" method="POST" id="signin">
+    <label>Username <input type="text" name="username" autocomplete="username"></label>
+    <label>Password <input type="password" name="password" autocomplete="current-password"></label>
+    <input type="hidden" name="session_token" value="SYNTHETIC-TOKEN-0000">
+    <button type="submit">Sign In Securely</button>
+  </form>
+  <a href="http://example-bank.example.com.verify-login.example.net/signin">Continue</a>
+</div>
+<script>
+// Synthetic exfil stub (inert, loopback only): collects form fields.
+document.getElementById('signin').addEventListener('submit', function (e) {
+  var data = {u: 'SYNTHETIC', p: 'SYNTHETIC'};
+  void data;
+});
+</script>
+</body>
+</html>

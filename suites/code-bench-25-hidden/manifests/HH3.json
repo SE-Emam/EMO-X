@@ -1,0 +1,60 @@
+{
+  "capabilities": [
+    "multi_step_reasoning",
+    "generalization",
+    "verification"
+  ],
+  "category": "reasoning",
+  "difficulty": {
+    "adaptive": true,
+    "base": 3
+  },
+  "estimated_human_minutes": 8,
+  "execution": {
+    "harness": "suites/code-bench-25-hidden/executor.py",
+    "type": "text"
+  },
+  "filesystem": {
+    "sandbox_only": true
+  },
+  "generator": {
+    "parameters": {
+      "items": {
+        "count": 5,
+        "each": {
+          "max": 99,
+          "min": 1
+        }
+      },
+      "modulus": {
+        "max": 997,
+        "min": 101
+      },
+      "weights": "positional 1..5"
+    },
+    "type": "parametric"
+  },
+  "id": "HH3",
+  "name": "weighted_checksum_reasoning",
+  "network": {
+    "allowed": false
+  },
+  "oracle": {
+    "check": "exact integer equals sum((i+1)*items[i]) mod modulus",
+    "type": "deterministic"
+  },
+  "prompt_pack": "hidden",
+  "scoring": {
+    "correctness": 1.0
+  },
+  "suite": "code-bench-25-hidden",
+  "timeouts": {
+    "execution_seconds": 30,
+    "generation_seconds": 120
+  },
+  "variants": [
+    "hidden"
+  ],
+  "version": "1.0",
+  "visibility": "hidden"
+}

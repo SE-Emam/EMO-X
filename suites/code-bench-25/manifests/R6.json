@@ -1,0 +1,57 @@
+{
+ "capabilities": [
+  "real_world_coding",
+  "patch_engineering"
+ ],
+ "category": "real-world-coding",
+ "difficulty": {
+  "adaptive": false,
+  "base": 2
+ },
+ "estimated_human_minutes": 6,
+ "execution": {
+  "harness": "suites/code-bench-25/executor.py",
+  "requires": [
+   "patch"
+  ],
+  "type": "diff"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "forbidden_paths": [
+  "/etc",
+  "/root",
+  "/home",
+  "~/.ssh",
+  "/var/run/secrets"
+ ],
+ "generator": {
+  "parameters": {},
+  "seed": 25106,
+  "type": "frozen-canonical"
+ },
+ "id": "R6",
+ "name": "diff",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "patch applies and file contains sum_all plus body",
+  "type": "deterministic"
+ },
+ "prompt": "File calc.py contains:\ndef total(items):\n    s = 0\n    for i in items:\n        s += i\n    return s\n\nChange: rename function total to sum_all (update definition only, keep body). Return ONLY a unified diff (diff -u format), no explanation.",
+ "prompt_pack": "v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "code-bench-25",
+ "timeouts": {
+  "execution_seconds": 30,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

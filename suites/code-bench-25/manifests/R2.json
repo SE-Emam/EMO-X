@@ -1,0 +1,54 @@
+{
+ "capabilities": [
+  "real_world_coding",
+  "sql"
+ ],
+ "category": "real-world-coding",
+ "difficulty": {
+  "adaptive": false,
+  "base": 2
+ },
+ "estimated_human_minutes": 5,
+ "execution": {
+  "harness": "suites/code-bench-25/executor.py",
+  "type": "sqlite"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "forbidden_paths": [
+  "/etc",
+  "/root",
+  "/home",
+  "~/.ssh",
+  "/var/run/secrets"
+ ],
+ "generator": {
+  "parameters": {},
+  "seed": 25102,
+  "type": "frozen-canonical"
+ },
+ "id": "R2",
+ "name": "sql",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "rows equal [Sara, Omar] in memory sqlite",
+  "type": "deterministic"
+ },
+ "prompt": "Table users(id INTEGER PRIMARY KEY, name TEXT, age INTEGER) has rows: (1,'Ali',25),(2,'Sara',35),(3,'Omar',40). Return ONLY the SQLite SELECT query (no markdown, no explanation) that returns names of users older than 30 ordered by age ascending.",
+ "prompt_pack": "v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "code-bench-25",
+ "timeouts": {
+  "execution_seconds": 30,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

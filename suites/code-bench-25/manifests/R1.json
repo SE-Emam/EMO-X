@@ -1,0 +1,57 @@
+{
+ "capabilities": [
+  "real_world_coding",
+  "systems_programming"
+ ],
+ "category": "real-world-coding",
+ "difficulty": {
+  "adaptive": false,
+  "base": 2
+ },
+ "estimated_human_minutes": 10,
+ "execution": {
+  "harness": "suites/code-bench-25/executor.py",
+  "requires": [
+   "rustc"
+  ],
+  "type": "rust"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "forbidden_paths": [
+  "/etc",
+  "/root",
+  "/home",
+  "~/.ssh",
+  "/var/run/secrets"
+ ],
+ "generator": {
+  "parameters": {},
+  "seed": 25101,
+  "type": "frozen-canonical"
+ },
+ "id": "R1",
+ "name": "rust",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "PRIME_OK marker via sandboxed rustc",
+  "type": "deterministic"
+ },
+ "prompt": "Write a COMPLETE Rust program with fn is_prime(n: u64) -> bool and fn main that asserts is_prime(7) and !is_prime(8) then prints PRIME_OK. Return ONLY code, no explanation.",
+ "prompt_pack": "v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "code-bench-25",
+ "timeouts": {
+  "execution_seconds": 120,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

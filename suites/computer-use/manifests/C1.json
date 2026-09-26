@@ -1,0 +1,68 @@
+{
+ "capabilities": [
+  "tool_use",
+  "multi_bug_repair",
+  "partial_credit"
+ ],
+ "category": "computer-use",
+ "difficulty": {
+  "adaptive": false,
+  "base": 4
+ },
+ "estimated_human_minutes": 15,
+ "execution": {
+  "harness": "suites/computer-use/pilot_stub.py",
+  "max_steps": 15,
+  "temp": 0.4,
+  "tools": [
+   "ls",
+   "read",
+   "run",
+   "edit"
+  ],
+  "type": "agent-episode"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "generator": {
+  "parameters": {
+   "bugs": [
+    "taxes_vat",
+    "shipping_flat"
+   ],
+   "repo": "multishop"
+  },
+  "seed": 25701,
+  "type": "frozen-canonical"
+ },
+ "id": "C1",
+ "measures": [
+  "C1a_taxes",
+  "C1b_shipping",
+  "C1_full",
+  "C1_clean"
+ ],
+ "name": "multishop_multi_bug",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "per-file pytest green plus clean diff subset",
+  "type": "deterministic"
+ },
+ "pilot": true,
+ "prompt_pack": "v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "computer-use",
+ "timeouts": {
+  "execution_seconds": 120,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

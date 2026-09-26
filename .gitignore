@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.pyo
+results/*.json
+results/raw/*.json
+results/raw/RUN-*/
+results/derived/*
+!results/.gitkeep
+!results/raw/.gitkeep
+!results/derived/.gitkeep
+reports/*.md
+!reports/.gitkeep
+.DS_Store
+.env
+.venv/
+venv/

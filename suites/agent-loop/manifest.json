@@ -1,0 +1,87 @@
+{
+ "capabilities": [
+  "tool_use",
+  "diagnosis",
+  "repair",
+  "verification",
+  "termination",
+  "recovery"
+ ],
+ "category": "agent-loop",
+ "difficulty": {
+  "adaptive": false,
+  "base": 4
+ },
+ "estimated_human_minutes": 25,
+ "execution": {
+  "harness": "suites/agent-loop/episode.py",
+  "max_steps": 15,
+  "temp": 0.4,
+  "tools": [
+   "ls",
+   "read",
+   "run",
+   "edit"
+  ],
+  "type": "agent-episode"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "generator": {
+  "parameters": {
+   "repo": "shop",
+   "seed": 25401
+  },
+  "type": "frozen-canonical"
+ },
+ "id": "AG",
+ "measures": [
+  "A1",
+  "A2",
+  "A3",
+  "A4",
+  "A5",
+  "A6",
+  "A7",
+  "A8",
+  "A9",
+  "A10",
+  "A11",
+  "A12",
+  "A13",
+  "A14",
+  "A15"
+ ],
+ "name": "shop_episode",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "pytest green on fresh verification plus FINAL stop",
+  "type": "deterministic"
+ },
+ "prompt_pack": "v1",
+ "scenario": "Batch-4 shop/ single-bug VAT repo with distractor vendor_dump",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "agent-loop",
+ "timeouts": {
+  "execution_seconds": 120,
+  "generation_seconds": 120
+ },
+ "trajectory": [
+  "plan",
+  "observations",
+  "tool_calls",
+  "failures",
+  "recoveries",
+  "verification",
+  "termination"
+ ],
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

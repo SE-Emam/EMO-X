@@ -1,0 +1,56 @@
+{
+ "capabilities": [
+  "algorithms",
+  "bugfix",
+  "binary_search"
+ ],
+ "category": "reasoning",
+ "difficulty": {
+  "adaptive": false,
+  "base": 3
+ },
+ "estimated_human_minutes": 15,
+ "execution": {
+  "entry": "first_occurrence",
+  "harness": "suites/code-bench-25/executor.py",
+  "type": "python"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "forbidden_paths": [
+  "/etc",
+  "/root",
+  "/home",
+  "~/.ssh",
+  "/var/run/secrets"
+ ],
+ "generator": {
+  "parameters": {},
+  "seed": 25206,
+  "type": "frozen-canonical"
+ },
+ "id": "H6",
+ "name": "first_occurrence",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "BS_OK marker via sandboxed python",
+  "type": "deterministic"
+ },
+ "prompt": "This binary search returns ANY occurrence, but we need the FIRST occurrence of x in sorted list a (with duplicates). Fix it. Test: first_occurrence([1,2,2,2,3],2) must be 1, first_occurrence([1,2,2,2,3],4) must be -1. Return ONLY the fixed function code, no explanation.\ndef first_occurrence(a, x):\n    lo, hi = 0, len(a) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if a[mid] == x:\n            return mid\n        elif a[mid] < x:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return -1",
+ "prompt_pack": "v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "code-bench-25",
+ "timeouts": {
+  "execution_seconds": 60,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

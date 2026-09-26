@@ -1,0 +1,58 @@
+{
+ "capabilities": [
+  "mathematical_reasoning",
+  "number_theory"
+ ],
+ "category": "reasoning",
+ "difficulty": {
+  "adaptive": false,
+  "base": 3
+ },
+ "estimated_human_minutes": 20,
+ "execution": {
+  "harness": "suites/code-bench-25/executor.py",
+  "native": {
+   "num_predict": 1400,
+   "think": false
+  },
+  "type": "text"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "forbidden_paths": [
+  "/etc",
+  "/root",
+  "/home",
+  "~/.ssh",
+  "/var/run/secrets"
+ ],
+ "generator": {
+  "parameters": {},
+  "seed": 25202,
+  "type": "frozen-canonical"
+ },
+ "id": "H2",
+ "name": "diophantine",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "reply contains 27, 36, 45 and 0",
+  "type": "deterministic"
+ },
+ "prompt": "Find all integer pairs (x, y) with x >= 0, y >= 0 satisfying x^2 + y^2 = 2025. Be concise and list every solution.",
+ "prompt_pack": "v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "code-bench-25",
+ "timeouts": {
+  "execution_seconds": 30,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

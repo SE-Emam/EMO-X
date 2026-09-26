@@ -43,6 +43,7 @@ RUNNER_VERSION = "2.0.0-rc1"
 #: Suites executable through this runner (code25 reuses X-4's executor).
 SUITE_DIRS = {
     "code25": "code-bench-25",
+    "agent-loop": "agent-loop",
     "code25-hidden": "code-bench-25-hidden",
     "security": "security",
     "dynamic-code": "dynamic-code",

@@ -33,6 +33,18 @@ correctness of one snippet.
 
 Intended fix: one file (`shop/taxes.py`); `shop/pricing.py` is optional hardening.
 
+## Second scenario (`ledger/`, family AG2)
+
+Same A1–A15 contract, different repository and bug class (boundary):
+
+- `ledger/paginate.py` slices pages off-by-one (skips the first item, overruns the bound).
+- `ledger/settings.py` holds `PAGE_SIZE` and is **correct and must not be touched** (A10).
+- `ledger/totals.py` walks pages (optional hardening alongside `paginate.py`).
+- `ledger/tests/test_paginate.py` pins exact page contents + grand total.
+- `ledger/legacy_dump.py` is the distractor (A11 trap) — never use it.
+
+Intended fix: one file (`ledger/paginate.py`). Runner: `runner.run_suite("agent-loop", ..., families=["AG", "AG2"])`.
+
 ## Tool spec (parameter names are strict)
 
 - Only four tools: `ls`, `read`, `run`, `edit` — one call per message.

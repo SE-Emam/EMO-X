@@ -71,6 +71,12 @@ def _entry(manifest, events, responses):
         "suite": manifest.get("suite"),
         "backend": manifest.get("backend"),
         "claim_tier": manifest.get("claim_tier"),
+        "comparison_key": {
+            "prompt_sha256": manifest.get("prompt_sha256"),
+            "harness_sha256": manifest.get("harness_sha256"),
+            "manifest_sha256": manifest.get("manifest_sha256"),
+        },
+        "backend_capabilities": manifest.get("backend_capabilities") or {},
         "pass_rate": scoring.pass_rate(events),
         "ci_low": unc.get("low"),
         "ci_high": unc.get("high"),
@@ -81,16 +87,37 @@ def _entry(manifest, events, responses):
     }
 
 
-def rank_band(entries):
-    """Assign rank bands: overlapping CIs share a band (no false ranks).
+#: Material backend fields for the comparability class (SPEC 36).
+_CLASS_CAPS_FIELDS = ("tool_calls", "reasoning_tokens", "seed",
+                      "token_usage", "vision", "stop_behavior",
+                      "max_tokens")
 
-    Sort by pass-rate point estimate desc; a new band starts only when
-    an entry's CI is fully below the band leader's CI.
+
+def _comparability_class(entry):
+    """Strict leaderboard-eligibility class (review P1-9).
+
+    Entries share a class only on EXACT B58 hash match plus identical
+    material backend capabilities: that is the COMPARABLE verdict. Any
+    CONDITIONAL/NON_COMPARABLE pair (hash mismatch, unknown/differing
+    caps) lands in different classes and is never banded together.
+    Returns None for entries without a B58 key (legacy/test data).
     """
+    key = entry.get("comparison_key") or {}
+    parts = (key.get("prompt_sha256"), key.get("harness_sha256"),
+             key.get("manifest_sha256"))
+    if not all(parts):
+        return None
+    caps = entry.get("backend_capabilities") or {}
+    material = tuple(caps.get(f, "unknown") for f in _CLASS_CAPS_FIELDS)
+    return (parts, material)
+
+
+def _assign_bands(pool):
+    """Band one mutually-comparable pool (existing CI-overlap rule)."""
     ordered = sorted(
-        entries, key=lambda e: (-(e["pass_rate"] if e["pass_rate"]
-                                  is not None else -1),
-                                e["model"] or ""))
+        pool, key=lambda e: (-(e["pass_rate"] if e["pass_rate"]
+                               is not None else -1),
+                             e["model"] or ""))
     band = 0
     leader_lo = leader_hi = None
     for e in ordered:
@@ -110,6 +137,48 @@ def rank_band(entries):
             leader_hi = max(x for x in (leader_hi, hi)
                             if x is not None)
     return ordered
+
+
+def rank_band(entries):
+    """Assign rank bands: overlapping CIs share a band (no false ranks).
+
+    P1-9 gate: bands are assigned ONLY within a strict comparability
+    class (exact B58 + material caps). A keyed entry with no COMPARABLE
+    peer is report-only (band None, ranked False) — conditional
+    comparisons never produce an order. Keyless legacy/test entries keep
+    the historical single-pool behavior, flagged via rank_note.
+    """
+    by_class = {}
+    keyless = []
+    for e in entries:
+        cls = _comparability_class(e)
+        if cls is None:
+            keyless.append(e)
+        else:
+            by_class.setdefault(cls, []).append(e)
+    out = []
+    for pool in by_class.values():
+        if len(pool) < 2:
+            e = pool[0]
+            e["band"] = None
+            e["ranked"] = False
+            e["rank_note"] = ("report-only: no COMPARABLE peer on this "
+                              "board (conditional comparisons are never "
+                              "ranked)")
+            out.extend(pool)
+        else:
+            for e in _assign_bands(pool):
+                e["ranked"] = True
+                e["rank_note"] = None
+            out.extend(pool)
+    keyless_banded = _assign_bands(keyless)
+    for e in keyless_banded:
+        e["ranked"] = True
+        e["rank_note"] = "legacy pool: entry carries no B58 key"
+    out.extend(keyless_banded)
+    return sorted(out, key=lambda e: (e.get("band") is None,
+                                      e.get("band") or 0,
+                                      e.get("model") or ""))
 
 
 def pairwise(entries, bundles):
@@ -158,9 +227,11 @@ def _chart(entries):
                 '<line x1="%.1f" y1="%d" x2="%.1f" y2="%d" '
                 'stroke="#111" stroke-width="2"/>' % (
                     x1, y + bar_h / 2, x2, y + bar_h / 2))
+        band = e.get("band")
         parts.append(
-            '<text x="%d" y="%d" font-size="11">%.1f%% band %d</text>' % (
-                160 + w, y + 14, 100 * rate, e.get("band", 0)))
+            '<text x="%d" y="%d" font-size="11">%.1f%% %s</text>' % (
+                160 + w, y + 14, 100 * rate,
+                ("band %d" % band) if band is not None else "report-only"))
     parts.append("</svg>")
     return "\n".join(parts)
 

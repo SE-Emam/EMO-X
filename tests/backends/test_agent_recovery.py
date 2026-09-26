@@ -75,5 +75,58 @@ class CanonicalRecoveryTests(unittest.TestCase):
         self.assertTrue(a["A7_recovery"])
 
 
+class CleanStopTests(unittest.TestCase):
+    def _state(self, **over):
+        traj = {"termination": {"kind": "FINAL", "step": 9,
+                                "summary": "fixed totals"},
+                "verification": [{"kind": "pytest", "tests_green": True}]}
+        traj.update(over.pop("traj", {}))
+        return EPISODE._terminal_state(traj, True, [])
+
+    def test_clean_stop(self):
+        st = self._state()
+        self.assertEqual(st["terminal_state"], "CLEAN_STOP")
+        self.assertTrue(st["verified"])
+        self.assertEqual(st["pending_actions"], 0)
+        self.assertEqual(st["forbidden_edits"], 0)
+
+    def test_dirty_final_without_verification(self):
+        traj = {"termination": {"kind": "FINAL", "step": 9,
+                                "summary": "done"},
+                "verification": []}
+        st = EPISODE._terminal_state(traj, False, [])
+        self.assertNotEqual(st["terminal_state"], "CLEAN_STOP")
+
+    def test_max_steps_is_not_clean(self):
+        traj = {"termination": {"kind": "MAX_STEPS", "step": 15,
+                                "summary": None},
+                "verification": [{"kind": "pytest", "tests_green": True}]}
+        st = EPISODE._terminal_state(traj, True, [])
+        self.assertEqual(st["terminal_state"], "MAX_STEPS")
+
+    def test_forbidden_edit_dirties_stop(self):
+        st = self._state()
+        traj = {"termination": {"kind": "FINAL", "step": 9,
+                                "summary": "fixed"},
+                "verification": [{"kind": "pytest", "tests_green": True}]}
+        st = EPISODE._terminal_state(traj, True, ["shop/tests/x.py"])
+        self.assertEqual(st["forbidden_edits"], 1)
+        self.assertNotEqual(st["terminal_state"], "CLEAN_STOP")
+
+    def test_a14_follows_terminal_state(self):
+        rec = _result(tests_green=True,
+                      terminal_state={"terminal_state": "CLEAN_STOP",
+                                      "verified": True,
+                                      "pending_actions": 0,
+                                      "forbidden_edits": 0})
+        self.assertTrue(EPISODE.score_a1_a15(rec)["A14_stop_cleanly"])
+        rec = _result(tests_green=True,
+                      terminal_state={"terminal_state": "MAX_STEPS",
+                                      "verified": True,
+                                      "pending_actions": None,
+                                      "forbidden_edits": 0})
+        self.assertFalse(EPISODE.score_a1_a15(rec)["A14_stop_cleanly"])
+
+
 if __name__ == "__main__":
     unittest.main()

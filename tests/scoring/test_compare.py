@@ -206,5 +206,53 @@ class TestCompareModels(unittest.TestCase):
         _assert_ranking_free(self, text)
 
 
+def _inst_attempt(family, inst, passed):
+    rec = _attempt(family, passed)
+    rec["instance_id"] = inst
+    rec["trial_id"] = 1
+    return rec
+
+
+class InstancePairingTests(unittest.TestCase):
+    def test_shared_instances_pair_at_instance_level(self):
+        att_a = [_inst_attempt("t1", "t1-0", True),
+                 _inst_attempt("t1", "t1-1", False),
+                 _inst_attempt("t2", "t2-0", True)]
+        att_b = [_inst_attempt("t1", "t1-0", False),
+                 _inst_attempt("t1", "t1-1", False),
+                 _inst_attempt("t2", "t2-0", True)]
+        out = scoring.instance_paired_bootstrap(att_a, att_b, B=500,
+                                                seed=0)
+        self.assertEqual(out["level"], "instance")
+        self.assertEqual(out["n_paired"], 3)
+        # diffs: +1, 0, 0 -> mean 1/3
+        self.assertAlmostEqual(out["mean"], 1 / 3, places=2)
+
+    def test_no_shared_instances_falls_back_with_flag(self):
+        att_a = [_inst_attempt("t1", "a-0", True)]
+        att_b = [_inst_attempt("t1", "b-0", False)]
+        out = scoring.instance_paired_bootstrap(att_a, att_b, B=500,
+                                                seed=0)
+        self.assertEqual(out["level"], "family-fallback")
+        self.assertIsNotNone(out["mean"])
+
+    def test_canonical_group_builders(self):
+        events = [_inst_attempt("t1", "t1-0", True),
+                  _inst_attempt("t1", "t1-1", False)]
+        strict = scoring.family_strict_lists(events)
+        self.assertEqual(sorted(strict["t1"]), [0, 1])
+        means = scoring.instance_mean_scores(events)
+        self.assertEqual(means[("t1", "t1-0")], 1.0)
+
+    def test_compare_reports_pairing_level(self):
+        man_a, man_b = _matching_manifests()
+        att_a = [_inst_attempt("t1", "t1-0", True)]
+        att_b = [_inst_attempt("t1", "t1-0", True)]
+        comp = report_v2.compare_models(
+            att_a, att_b, "model-a", "model-b",
+            manifest_a=man_a, manifest_b=man_b, B=500, seed=0)
+        self.assertEqual(comp.get("pairing_level"), "instance")
+
+
 if __name__ == "__main__":
     unittest.main()

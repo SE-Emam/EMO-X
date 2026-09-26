@@ -106,6 +106,8 @@ class TestManifestValidity(unittest.TestCase):
         for f in sorted(os.listdir(os.path.join(CB25, "manifests"))):
             paths.append(os.path.join(CB25, "manifests", f))
         paths.append(os.path.join(AGENT, "manifest.json"))
+        for f in sorted(os.listdir(os.path.join(AGENT, "manifests"))):
+            paths.append(os.path.join(AGENT, "manifests", f))
         for f in sorted(os.listdir(os.path.join(SEC, "manifests"))):
             paths.append(os.path.join(SEC, "manifests", f))
         for f in sorted(os.listdir(os.path.join(VIS, "manifests"))):
@@ -116,7 +118,7 @@ class TestManifestValidity(unittest.TestCase):
 
     def test_all_manifests_validate(self):
         paths = self._all_manifest_paths()
-        self.assertEqual(len(paths), 25 + 1 + 5 + 5 + 3, paths)
+        self.assertEqual(len(paths), 25 + 1 + 2 + 5 + 5 + 3, paths)
         for p in paths:
             with self.subTest(manifest=p):
                 m = manifest_lib.load_task_manifest(p)

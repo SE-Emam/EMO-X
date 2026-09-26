@@ -40,14 +40,6 @@ REQUIRED_RESULT_FIELDS = (
 )
 
 
-def _family_groups(events, key="score"):
-    """Group per-family values for cluster bootstrap (B54/C65)."""
-    groups = {}
-    for e in eligible_attempts(list(events)):
-        groups.setdefault(e.get("task_family_id"), []).append(
-            float(e.get(key, 0) or 0))
-    return [v for v in groups.values() if v]
-
 
 #: Attempt fields probed (in order) for Tier-B latency. SPEC B28.
 LATENCY_KEYS = ("latency", "latency_s", "total_latency_s", "secs")
@@ -451,7 +443,10 @@ def build_v2_report(attempts, responses=None, model_id=None, csv_rate=None,
             dimensions[key] = value
 
     # Uncertainty: cluster bootstrap CI over task families (B54/C65).
-    groups = _family_groups(attempts)
+    # Uncertainty: canonical cluster bootstrap over per-family strict
+    # outcomes (B7/B54/C65): the CI estimates the family-balanced pass
+    # rate. Single implementation lives in scoring (P1-12).
+    groups = list(scoring.family_strict_lists(attempts).values())
     ci = scoring.bootstrap_ci(groups, B=scoring.BOOTSTRAP_RESAMPLES, seed=0) if groups else {
         "mean": None, "se": None, "ci_low": None, "ci_high": None,
         "B": 0, "low_sample": True, "note": "LOW-SAMPLE UNCERTAINTY"}
@@ -596,14 +591,6 @@ def scaffold_comparability(tier_tools_a, tier_tools_b=None, **kwargs):
 DIRECTIONAL_SIGN_FRAC = 0.90
 
 
-def _pass_rate(events):
-    scored = eligible_attempts(list(events))
-    if not scored:
-        return None
-    strict = sum(1 for e in scored if e.get("primary_status") == "PASS")
-    return strict / len(scored)
-
-
 def compare_models(attempts_a, attempts_b, model_a="A", model_b="B",
                    manifest_a=None, manifest_b=None, B=None, seed=0):
     """Compare two models on interval calls only (no fixed gap rule).
@@ -639,17 +626,21 @@ def compare_models(attempts_a, attempts_b, model_a="A", model_b="B",
     if verdict == "NON_COMPARABLE":
         out["status"] = "non-comparable"
         return out
-    ga = _scored_groups(attempts_a)
-    gb = _scored_groups(attempts_b)
-    ra, rb = _pass_rate(attempts_a), _pass_rate(attempts_b)
+    ra, rb = scoring.pass_rate(attempts_a), scoring.pass_rate(attempts_b)
     out["pass_rate_a"] = ra
     out["pass_rate_b"] = rb
     out["ci_a"] = scoring.bootstrap_ci(
-        _family_groups(attempts_a), B=B, seed=seed)
+        list(scoring.family_strict_lists(attempts_a).values()),
+        B=B, seed=seed)
     out["ci_b"] = scoring.bootstrap_ci(
-        _family_groups(attempts_b), B=B, seed=seed + 1)
-    diff = scoring.paired_bootstrap_diff(ga, gb, B=B, seed=seed,
-                                         return_reps=True)
+        list(scoring.family_strict_lists(attempts_b).values()),
+        B=B, seed=seed + 1)
+    # Instance-level pairing first (P1-8); family fallback when runs
+    # share no instance (ad-hoc/dynamic), flagged in pairing_level.
+    diff = scoring.instance_paired_bootstrap(
+        attempts_a, attempts_b, B=B, seed=seed, return_reps=True)
+    out["pairing_level"] = diff.get("level")
+    out["n_paired"] = diff.get("n_paired")
     out["paired_difference"] = diff.get("mean")
     out["difference_ci"] = (diff.get("ci_low"), diff.get("ci_high"))
     if diff.get("mean") is None:
@@ -669,16 +660,6 @@ def compare_models(attempts_a, attempts_b, model_a="A", model_b="B",
             return out
     out["status"] = "inconclusive"
     return out
-
-
-def _scored_groups(attempts):
-    """{family: [scores]} over scored attempts for paired diffs."""
-    groups = {}
-    for e in eligible_attempts(list(attempts)):
-        v = e.get("score")
-        groups.setdefault(e.get("task_family_id"), []).append(
-            None if v is None else float(v))
-    return groups
 
 
 def render_comparison(comp):

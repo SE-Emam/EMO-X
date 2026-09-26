@@ -31,6 +31,25 @@ prompt/harness changes + mandatory re-baseline).
   `progress_token`; progress never touches scored events (bundles
   byte-identical on/off).
 
+### Added (P1 conformance — external review)
+- Canonical bootstrap inputs (`scoring.family_value_lists`,
+  `family_strict_lists`, `instance_mean_scores`): one implementation
+  behind every CI; report CIs estimate the family-balanced pass rate.
+- Instance-level pairing (`scoring.instance_paired_bootstrap` with
+  family fallback flagged in `pairing_level`/`n_paired`); compare output
+  carries both fields.
+- Leaderboard comparability gate: bands only within strict B58 +
+  material-caps classes; lone/conditional entries are report-only
+  (`ranked: false`, SVG shows "report-only").
+- Formal `terminal_state` (`CLEAN_STOP` iff FINAL + verified green +
+  zero pending + zero forbidden) driving A14.
+- Second agent-loop family AG2 (`ledger/` pagination-boundary repo)
+  behind a scenario registry (`SCENARIOS`, `scenario_for`); shop/
+  prompts and IDs byte-frozen. New runner executor
+  (`suites/agent-loop/executor.py`, families AG/AG2) registered in
+  `SUITE_DIRS`; manifests `AG.json` + `AG2.json`.
+- `runner.run_suite` forwards `force=` to supporting executors.
+
 ### Fixed (Scoring/Reporting Conformance Pass — external review P0)
 - Version synchronized to `2.0.0-rc1` (single source
   `shared/runner.py`; pyproject, emox, MCP server, SKILL frontmatter,
@@ -138,8 +157,8 @@ prompt/harness changes + mandatory re-baseline).
   calibration, long-horizon, gauntlet, vision (real executor over
   vision-bench fixtures), realworld (RW1–RW3 mini-real repos),
   computer-use (PILOT).
-- `tests/`: 547 tests (harness 202, generators 51, scoring 153,
-  golden 30, backends 111) + `tests/run_all.py` unified runner.
+- `tests/`: 567 tests (harness 206, generators 51, scoring 157,
+  golden 30, backends 123) + `tests/run_all.py` unified runner.
 - CLI: `--suite dynamic-code|recovery|gauntlet|profile`,
   `--instances`, `--seed`, `--fault-rate`, `--self-test`, `--health`.
 - `docs/`: architecture, task-dsl, metrics, backend-contract,

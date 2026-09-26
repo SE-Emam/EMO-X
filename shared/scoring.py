@@ -1151,9 +1151,109 @@ def bootstrap_ci(family_groups, stat=None, B=BOOTSTRAP_RESAMPLES, seed=0):
             else None}
 
 
+def family_value_lists(events, key="score"):
+    """Canonical {family: [values]} builder (DEN C9/C83 eligibility).
+
+    Single implementation behind every bootstrap input: raw attempts
+    -> per-family value lists -> whole families move together (C65).
+    Replaces all report-local group-by-family approximations.
+    """
+    groups = {}
+    for e in eligible_attempts(list(events)):
+        v = e.get(key)
+        groups.setdefault(e.get("task_family_id"), []).append(
+            None if v is None else float(v))
+    return groups
+
+
+def family_strict_lists(events):
+    """Canonical {family: [strict y]} bootstrap input (B7/B54/C65).
+
+    Strict outcomes (1 iff PASS) per family: the CI estimates the
+    family-balanced pass rate, matching the reported Correctness point
+    up to family weighting (documented, never silently mixed).
+    """
+    groups = {}
+    for e in eligible_attempts(list(events), "pass_rate"):
+        groups.setdefault(e.get("task_family_id"), []).append(
+            1 if strict_pass_from_status(e.get("primary_status")) else 0)
+    return groups
+
+
+def instance_mean_scores(events):
+    """Canonical {(family, instance): mean score} (C19 trial means)."""
+    by_instance = {}
+    for e in eligible_attempts(list(events)):
+        by_instance.setdefault(
+            (e.get("task_family_id"), e.get("instance_id")),
+            []).append(float(e.get("score", 0) or 0))
+    return {k: sum(v) / len(v) for k, v in by_instance.items()
+            if v}
+
+
+def _bootstrap_diffs(diffs, B, seed, return_reps=False):
+    """Shared engine: bootstrap a list of per-unit diffs (B54)."""
+    fam = [[d] for d in diffs]
+    out = bootstrap_ci(fam, B=B, seed=seed)
+    if return_reps:
+        rng = random.Random(seed)
+        reps = []
+        m = len(fam)
+        for _ in range(B):
+            sample = [fam[rng.randrange(m)] for _ in range(m)]
+            vals = [g[0] for g in sample]
+            if vals:
+                reps.append(sum(vals) / len(vals))
+        out["reps"] = reps
+    return out
+
+
+def instance_paired_bootstrap(events_a, events_b, B=BOOTSTRAP_RESAMPLES,
+                              seed=0, return_reps=False):
+    """Instance-level paired comparison (P1: family + instance keys).
+
+    Diffs over SHARED (family, instance) canonical means: both runs saw
+    the same instance (official same-seed baselines). When no instance
+    is shared (ad-hoc/dynamic runs), falls back to family-level pairing
+    and says so in "level" ("instance" | "family-fallback").
+    Returns {"level":.., "n_paired":.., "mean":.., ...bootstrap...}.
+    """
+    ma, mb = instance_mean_scores(events_a), instance_mean_scores(events_b)
+    shared = [k for k in ma if k in mb]
+    if shared:
+        diffs = [ma[k] - mb[k] for k in shared]
+        out = _bootstrap_diffs(diffs, B, seed, return_reps)
+        out["level"] = "instance"
+        out["n_paired"] = len(shared)
+        return out
+    fa, fb = family_value_lists(events_a), family_value_lists(events_b)
+    keys = [k for k in fa if k in fb]
+    diffs = []
+    for k in keys:
+        ga = [v for v in fa[k] if v is not None]
+        gb = [v for v in fb[k] if v is not None]
+        if ga and gb:
+            diffs.append((sum(ga) / len(ga)) - (sum(gb) / len(gb)))
+    if not diffs:
+        out = {"mean": None, "se": None, "ci_low": None,
+               "ci_high": None, "B": B, "level": "family-fallback",
+               "n_paired": 0}
+        if return_reps:
+            out["reps"] = []
+        return out
+    out = _bootstrap_diffs(diffs, B, seed, return_reps)
+    out["level"] = "family-fallback"
+    out["n_paired"] = len(diffs)
+    return out
+
+
 def paired_bootstrap_diff(groups_a, groups_b, B=BOOTSTRAP_RESAMPLES, seed=0,
                           return_reps=False):
-    """Paired task-family bootstrap on the A-B difference. B54."""
+    """Paired task-family bootstrap on the A-B difference. B54.
+
+    Kept for callers holding precomputed {family: [values]} dicts; new
+    code prefers instance_paired_bootstrap over raw events.
+    """
     keys = [k for k in groups_a if k in groups_b]
     diffs = []
     for k in keys:
@@ -1168,22 +1268,7 @@ def paired_bootstrap_diff(groups_a, groups_b, B=BOOTSTRAP_RESAMPLES, seed=0,
         if return_reps:
             out["reps"] = []
         return out
-    fam = [[d] for d in diffs]
-    out = bootstrap_ci(fam, B=B, seed=seed)
-    if return_reps:
-        # Recompute replicates for sign-consistency (directional calls).
-        # bootstrap_ci hides reps; re-derive deterministically: same seed,
-        # same resampling scheme over per-family diff lists.
-        rng = random.Random(seed)
-        reps = []
-        m = len(fam)
-        for _ in range(B):
-            sample = [fam[rng.randrange(m)] for _ in range(m)]
-            vals = [g[0] for g in sample]
-            if vals:
-                reps.append(sum(vals) / len(vals))
-        out["reps"] = reps
-    return out
+    return _bootstrap_diffs(diffs, B, seed, return_reps)
 
 
 # ---------------------------------------------------------------------------

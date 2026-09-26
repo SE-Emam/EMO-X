@@ -16,6 +16,50 @@ from render_leaderboard import rank_band, render_board  # noqa: E402
 from runner import run_suite, stub_chat_factory  # noqa: E402
 
 
+def _keyed(model, key, caps=None, rate=0.9):
+    return {"model": model, "pass_rate": rate, "ci_low": 0.7,
+            "ci_high": 1.0,
+            "comparison_key": {"prompt_sha256": key[0],
+                               "harness_sha256": key[1],
+                               "manifest_sha256": key[2]},
+            "backend_capabilities": caps or {}}
+
+
+class ComparabilityGateTests(unittest.TestCase):
+    CAPS = {"tool_calls": "supported", "reasoning_tokens": "supported",
+            "seed": "supported", "token_usage": "exact",
+            "vision": "unsupported", "stop_behavior": "supported",
+            "max_tokens": "enforced"}
+
+    def test_comparable_peers_share_band(self):
+        key = ("p", "h", "m")
+        out = rank_band([_keyed("a", key, self.CAPS),
+                         _keyed("b", key, self.CAPS, rate=0.85)])
+        self.assertTrue(all(e["ranked"] for e in out))
+        self.assertEqual({e["band"] for e in out}, {0})
+
+    def test_different_hashes_never_share_band(self):
+        out = rank_band([_keyed("a", ("p", "h", "m1"), self.CAPS),
+                         _keyed("b", ("p", "h", "m2"), self.CAPS)])
+        for e in out:
+            self.assertFalse(e["ranked"])
+            self.assertIsNone(e["band"])
+            self.assertIn("report-only", e["rank_note"])
+
+    def test_unknown_caps_are_not_comparable(self):
+        key = ("p", "h", "m")
+        out = rank_band([_keyed("a", key, self.CAPS),
+                         _keyed("b", key, {})])
+        for e in out:
+            self.assertFalse(e["ranked"])
+            self.assertIsNone(e["band"])
+
+    def test_lone_keyed_entry_is_report_only(self):
+        out = rank_band([_keyed("solo", ("p", "h", "m"), self.CAPS)])
+        self.assertFalse(out[0]["ranked"])
+        self.assertIsNone(out[0]["band"])
+
+
 def _stub_run(root, families, seed=1):
     rundir, _ = run_suite(
         "dynamic-code", stub_chat_factory("board-test"), "m", "stub",

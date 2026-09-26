@@ -3,6 +3,17 @@ name: agent-loop-bench
 description: Real agent test (shop/ scenario) — ls/read/run/edit tool loop with A1-A15 metrics and efficiency. Use it to measure agent capability, not just code correctness.
 ---
 
+![EMO-X banner — Execution · Measurement · Observability](../src/emo-x-banner.png)
+
+```text
+######  #    #   ####   #    #
+#       ##  ##  #    #   #  #
+#####   # ## #  #    #    ##
+#       #    #  #    #   #  #
+######  #    #   ####   #    #
+Measure what agents accomplish — not what they say
+```
+
 # Agent loop test (agent-loop-bench)
 
 ## What is it?

@@ -2,6 +2,17 @@
 description: Run the EMO-X benchmark (self-test, suites, profile, health, reports) via shared/run.py or the emo-x MCP tools
 ---
 
+![EMO-X banner — Execution · Measurement · Observability](../src/emo-x-banner.png)
+
+```text
+######  #    #   ####   #    #
+#       ##  ##  #    #   #  #
+#####   # ## #  #    #    ##
+#       #    #  #    #   #  #
+######  #    #   ####   #    #
+Measure what agents accomplish — not what they say
+```
+
 # /emo — run EMO-X from your agent
 
 Thin wrapper over the `emo-x` skill (see `SKILL.md`). Passes arguments

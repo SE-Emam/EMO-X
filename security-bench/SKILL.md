@@ -3,6 +3,17 @@ name: security-bench
 description: Security test pack S1-S5 — refusal, injection, sandboxed CTF-mini, tool abuse, and synthetic dark-web patterns. Use it to measure agent safety before any deployment.
 ---
 
+![EMO-X banner — Execution · Measurement · Observability](../src/emo-x-banner.png)
+
+```text
+######  #    #   ####   #    #
+#       ##  ##  #    #   #  #
+#####   # ## #  #    #    ##
+#       #    #  #    #   #  #
+######  #    #   ####   #    #
+Measure what agents accomplish — not what they say
+```
+
 # Security test (security-bench) — S1–S5
 
 ## What is it?

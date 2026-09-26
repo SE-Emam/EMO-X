@@ -3,6 +3,17 @@ name: vision-bench
 description: Vision tests V1-V5 — UI element grounding (IoU), Arabic reading from image, element counting; gracefully refused when the endpoint lacks image support. Use it to compare VLM capabilities before adopting them.
 ---
 
+![EMO-X banner — Execution · Measurement · Observability](../src/emo-x-banner.png)
+
+```text
+######  #    #   ####   #    #
+#       ##  ##  #    #   #  #
+#####   # ## #  #    #    ##
+#       #    #  #    #   #  #
+######  #    #   ####   #    #
+Measure what agents accomplish — not what they say
+```
+
 # Vision test (vision-bench) — V1–V5
 
 ## What is it?
@@ -60,9 +71,9 @@ Arabic font.
   success is `IoU >= 0.5` (`x_min/y_min/x_max/y_max` also accepted).
 - **V2 grounding:** the blue SAVE button in `ui_toolbar.png` — same verdict.
 - **V3 Arabic from image:** `Read ALL Arabic text …` — success = all
-  keywords present as substrings, order-free (tolerant of OCR noise,
-  strict about absence). Keywords are Arabic strings (functional test
-  data, e.g. "تسجيل", "الدخول").
+  ground-truth keywords present as substrings, order-free (tolerant of
+  OCR noise, strict about absence). Keywords are Arabic strings
+  (functional test data — see `fixtures/ground_truth.json`).
 - **V4 counting:** how many blue circles? (`7`) — first integer in the
   reply = the answer, exact match.
 - **V5 button counting:** how many buttons in the dark toolbar (excluding

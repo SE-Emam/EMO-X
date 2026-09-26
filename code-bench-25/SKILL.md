@@ -3,6 +3,17 @@ name: code-bench-25
 description: The 25-test code pack (T/R/H) — real execution of every answer with documented strict gates. Use it to compare any model before adopting it.
 ---
 
+![EMO-X banner — Execution · Measurement · Observability](../src/emo-x-banner.png)
+
+```text
+######  #    #   ####   #    #
+#       ##  ##  #    #   #  #
+#####   # ## #  #    #    ##
+#       #    #  #    #   #  #
+######  #    #   ####   #    #
+Measure what agents accomplish — not what they say
+```
+
 # Code test 25 (code-bench-25)
 
 ## What is it?

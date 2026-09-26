@@ -5,6 +5,17 @@ version: 2.0.0
 category: qa
 ---
 
+![EMO-X banner — Execution · Measurement · Observability](../../../src/emo-x-banner.png)
+
+```text
+######  #    #   ####   #    #
+#       ##  ##  #    #   #  #
+#####   # ## #  #    #    ##
+#       #    #  #    #   #  #
+######  #    #   ####   #    #
+Measure what agents accomplish — not what they say
+```
+
 # EMO-X Skill (Model B: skill inside the agent)
 
 ## What is this skill?

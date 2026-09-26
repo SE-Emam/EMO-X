@@ -1,0 +1,54 @@
+{
+ "capabilities": [
+  "arabic_generation",
+  "explanation"
+ ],
+ "category": "arabic",
+ "difficulty": {
+  "adaptive": false,
+  "base": 1
+ },
+ "estimated_human_minutes": 2,
+ "execution": {
+  "harness": "suites/code-bench-25/executor.py",
+  "type": "text"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "forbidden_paths": [
+  "/etc",
+  "/root",
+  "/home",
+  "~/.ssh",
+  "/var/run/secrets"
+ ],
+ "generator": {
+  "parameters": {},
+  "seed": 25005,
+  "type": "frozen-canonical"
+ },
+ "id": "T5",
+ "name": "arabic_explain",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "arabic_ratio > 0.3",
+  "type": "deterministic"
+ },
+ "prompt": "اشرح باللغة العربية: ما هو الـ closure في JavaScript؟",
+ "prompt_pack": "v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "code-bench-25",
+ "timeouts": {
+  "execution_seconds": 30,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

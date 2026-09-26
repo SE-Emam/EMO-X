@@ -1,0 +1,54 @@
+{
+ "capabilities": [
+  "real_world_coding",
+  "backend_integration"
+ ],
+ "category": "real-world-coding",
+ "difficulty": {
+  "adaptive": false,
+  "base": 2
+ },
+ "estimated_human_minutes": 8,
+ "execution": {
+  "harness": "suites/code-bench-25/executor.py",
+  "type": "text"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "forbidden_paths": [
+  "/etc",
+  "/root",
+  "/home",
+  "~/.ssh",
+  "/var/run/secrets"
+ ],
+ "generator": {
+  "parameters": {},
+  "seed": 25105,
+  "type": "frozen-canonical"
+ },
+ "id": "R5",
+ "name": "supabase",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "all six supabase-js signal checks match",
+  "type": "deterministic"
+ },
+ "prompt": "Write a JavaScript async function getActiveUsers using supabase-js that selects id and name from table 'users' where active is true, with error handling. Return ONLY code, no explanation.",
+ "prompt_pack": "v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "code-bench-25",
+ "timeouts": {
+  "execution_seconds": 30,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

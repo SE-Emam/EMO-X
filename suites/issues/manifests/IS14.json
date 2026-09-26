@@ -1,0 +1,44 @@
+{
+ "capabilities": [
+  "debugging",
+  "verification"
+ ],
+ "category": "debugging",
+ "difficulty": {
+  "adaptive": false,
+  "base": 2
+ },
+ "estimated_human_minutes": 8,
+ "execution": {
+  "harness": "suites/issues/executor.py",
+  "type": "agent-loop"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "generator": {
+  "parameters": {},
+  "seed": "fixed",
+  "type": "fixture-repo"
+ },
+ "id": "IS14",
+ "name": "env_int_cast",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "Raw strings returned; fix envcfg/get.py casting with default fallback.",
+  "type": "pytest-suite+held-out"
+ },
+ "scoring": {
+  "correctness": 1.0
+ },
+ "timeouts": {
+  "execution_seconds": 300,
+  "generation_seconds": 60
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

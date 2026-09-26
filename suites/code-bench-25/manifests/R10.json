@@ -1,0 +1,54 @@
+{
+ "capabilities": [
+  "real_world_coding",
+  "frontend_components"
+ ],
+ "category": "real-world-coding",
+ "difficulty": {
+  "adaptive": false,
+  "base": 2
+ },
+ "estimated_human_minutes": 8,
+ "execution": {
+  "harness": "suites/code-bench-25/executor.py",
+  "type": "text"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "forbidden_paths": [
+  "/etc",
+  "/root",
+  "/home",
+  "~/.ssh",
+  "/var/run/secrets"
+ ],
+ "generator": {
+  "parameters": {},
+  "seed": 25110,
+  "type": "frozen-canonical"
+ },
+ "id": "R10",
+ "name": "react",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "useState(0) plus onClick plus setCount plus export",
+  "type": "deterministic"
+ },
+ "prompt": "Return ONLY a React functional component named Counter using useState starting at 0, with a button that increments the count. No explanation.",
+ "prompt_pack": "v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "code-bench-25",
+ "timeouts": {
+  "execution_seconds": 30,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

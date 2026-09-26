@@ -1,0 +1,62 @@
+{
+ "capabilities": [
+  "mathematical_reasoning",
+  "generalization",
+  "verification"
+ ],
+ "category": "reasoning",
+ "difficulty": {
+  "adaptive": true,
+  "base": 2
+ },
+ "estimated_human_minutes": 8,
+ "execution": {
+  "harness": "suites/dynamic-code/executor.py",
+  "type": "text"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "generator": {
+  "parameters": {
+   "a": {
+    "max": 997,
+    "min": 11
+   },
+   "b": {
+    "max": 997,
+    "min": 11
+   },
+   "m": {
+    "max": 997,
+    "min": 11
+   }
+  },
+  "type": "parametric"
+ },
+ "id": "DC1",
+ "name": "modular_sum",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "exact integer equals (a+b)%m",
+  "type": "deterministic"
+ },
+ "prompt_pack": "v2",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "dynamic-code",
+ "timeouts": {
+  "execution_seconds": 30,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical",
+  "paraphrase",
+  "structural",
+  "novel"
+ ],
+ "version": "1.0"
+}

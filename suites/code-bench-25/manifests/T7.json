@@ -1,0 +1,54 @@
+{
+ "capabilities": [
+  "structured_output",
+  "json"
+ ],
+ "category": "basic-coding",
+ "difficulty": {
+  "adaptive": false,
+  "base": 1
+ },
+ "estimated_human_minutes": 2,
+ "execution": {
+  "harness": "suites/code-bench-25/executor.py",
+  "type": "text"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "forbidden_paths": [
+  "/etc",
+  "/root",
+  "/home",
+  "~/.ssh",
+  "/var/run/secrets"
+ ],
+ "generator": {
+  "parameters": {},
+  "seed": 25007,
+  "type": "frozen-canonical"
+ },
+ "id": "T7",
+ "name": "json_struct",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "exact key set plus 3 languages plus int years",
+  "type": "deterministic"
+ },
+ "prompt": "Return ONLY valid JSON, no markdown, no explanation: {\"name\": a programmer name, \"languages\": exactly 3 programming languages, \"years\": an integer}.",
+ "prompt_pack": "v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "code-bench-25",
+ "timeouts": {
+  "execution_seconds": 30,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

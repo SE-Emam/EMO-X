@@ -1,0 +1,54 @@
+{
+ "capabilities": [
+  "real_world_coding",
+  "skill_following"
+ ],
+ "category": "real-world-coding",
+ "difficulty": {
+  "adaptive": false,
+  "base": 2
+ },
+ "estimated_human_minutes": 3,
+ "execution": {
+  "harness": "suites/code-bench-25/executor.py",
+  "type": "text"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "forbidden_paths": [
+  "/etc",
+  "/root",
+  "/home",
+  "~/.ssh",
+  "/var/run/secrets"
+ ],
+ "generator": {
+  "parameters": {},
+  "seed": 25108,
+  "type": "frozen-canonical"
+ },
+ "id": "R8",
+ "name": "skill",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "conventional-commit format plus auth keyword",
+  "type": "deterministic"
+ },
+ "prompt": "SKILL conventional-commit: messages must match 'type(scope): subject' where type is one of feat/fix/docs/refactor/test, subject is lowercase, no trailing period, max 72 chars total. Write ONLY the commit message for: add login rate limiting to the auth module.",
+ "prompt_pack": "v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "code-bench-25",
+ "timeouts": {
+  "execution_seconds": 30,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

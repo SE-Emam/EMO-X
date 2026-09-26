@@ -1,0 +1,54 @@
+{
+ "capabilities": [
+  "real_world_coding",
+  "devops_basics"
+ ],
+ "category": "real-world-coding",
+ "difficulty": {
+  "adaptive": false,
+  "base": 2
+ },
+ "estimated_human_minutes": 5,
+ "execution": {
+  "harness": "suites/code-bench-25/executor.py",
+  "type": "text"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "forbidden_paths": [
+  "/etc",
+  "/root",
+  "/home",
+  "~/.ssh",
+  "/var/run/secrets"
+ ],
+ "generator": {
+  "parameters": {},
+  "seed": 25103,
+  "type": "frozen-canonical"
+ },
+ "id": "R3",
+ "name": "git",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "all five git command checks match",
+  "type": "deterministic"
+ },
+ "prompt": "List the exact git commands, one per line, no explanation, to: clone https://github.com/x/y.git, create branch feat-z, stage all, commit with message 'feat: z', push the branch to origin.",
+ "prompt_pack": "v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "code-bench-25",
+ "timeouts": {
+  "execution_seconds": 30,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

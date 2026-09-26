@@ -1,0 +1,38 @@
+name: ci
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  harness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Static syntax check (compileall)
+        run: python3 -m compileall -q shared suites generators judges health mcp-server tests
+      - name: Secrets scan (fail on real credentials)
+        # Synthetic markers (FAKE-, EMO{SYNTH_) are expected fixtures.
+        # Exclude: fixtures, security-bench fixtures, PROMPT_PACK (Arabic
+        # test prompts), generated security-board reports.
+        run: |
+          ! rg -n --pcre2 "(sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|(?i:api[_-]?key\s*[:=]\s*['\"][^'\"]{8,}|password\s*[:=]\s*['\"][^'\"]{6,}|bearer\s+[A-Za-z0-9\-_.]{16,}))" \
+            --glob '!suites/security/fixtures/*' \
+            --glob '!security-bench/fixtures/*' \
+            --glob '!shared/PROMPT_PACK_v1.md' \
+            --glob '!reports/*' \
+            shared suites generators judges health mcp-server adapters tests prompts || exit 1
+          echo "secrets scan clean"
+      - name: Dangerous-pattern guard (no shell/eval/exec/pickle)
+        run: |
+          ! rg -n "shell\s*=\s*True|os\.system|import pickle|[^_.a-zA-Z]eval\(|[^_.a-zA-Z]exec\(" \
+            --glob '*.py' shared suites generators judges health mcp-server || exit 1
+          echo "dangerous-pattern scan clean"
+      - name: Harness self-test (SPEC 35, fail-closed)
+        run: python3 shared/run.py --self-test
+      - name: Full test suites
+        run: python3 tests/run_all.py

@@ -1,0 +1,44 @@
+{
+ "capabilities": [
+  "debugging",
+  "verification"
+ ],
+ "category": "debugging",
+ "difficulty": {
+  "adaptive": false,
+  "base": 1
+ },
+ "estimated_human_minutes": 6,
+ "execution": {
+  "harness": "suites/issues/executor.py",
+  "type": "agent-loop"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "generator": {
+  "parameters": {},
+  "seed": "fixed",
+  "type": "fixture-repo"
+ },
+ "id": "IS7",
+ "name": "dedup_order",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "set() loses first-occurrence order; fix seqtools/dedup.py preserving order.",
+  "type": "pytest-suite+held-out"
+ },
+ "scoring": {
+  "correctness": 1.0
+ },
+ "timeouts": {
+  "execution_seconds": 300,
+  "generation_seconds": 60
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

@@ -1,0 +1,45 @@
+{
+ "capabilities": [
+  "debugging",
+  "verification",
+  "generalization"
+ ],
+ "category": "debugging",
+ "difficulty": {
+  "adaptive": false,
+  "base": 3
+ },
+ "estimated_human_minutes": 12,
+ "execution": {
+  "harness": "suites/issues/executor.py",
+  "type": "agent-loop"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "generator": {
+  "parameters": {},
+  "seed": "fixed",
+  "type": "fixture-repo"
+ },
+ "id": "IS9",
+ "name": "ttl_expiry",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "Timestamps never stored so entries never expire; fix ttlcache/cache.py with injectable clock.",
+  "type": "pytest-suite+held-out"
+ },
+ "scoring": {
+  "correctness": 1.0
+ },
+ "timeouts": {
+  "execution_seconds": 300,
+  "generation_seconds": 60
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

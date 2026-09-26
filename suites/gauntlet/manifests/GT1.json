@@ -1,0 +1,73 @@
+{
+ "capabilities": [
+  "long_horizon",
+  "verification",
+  "recovery",
+  "robustness",
+  "calibration",
+  "tool_discipline",
+  "generalization"
+ ],
+ "category": "gauntlet",
+ "difficulty": {
+  "adaptive": true,
+  "base": 6
+ },
+ "dimensions": [
+  "ambiguous-requirement",
+  "stale-documentation",
+  "tool-failure",
+  "state-change",
+  "misleading-note",
+  "hidden-edge-case",
+  "test-failure",
+  "recovery-opportunity",
+  "final-verification"
+ ],
+ "estimated_human_minutes": 60,
+ "execution": {
+  "harness": "suites/gauntlet/executor.py",
+  "type": "compound-scenario"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "generator": {
+  "parameters": {
+   "base": {
+    "max": 200,
+    "min": 20
+   },
+   "delta": {
+    "max": 15,
+    "min": 2
+   }
+  },
+  "type": "parametric"
+ },
+ "id": "GT1",
+ "name": "compound_flagship",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "all 9 stage markers present with correct total",
+  "type": "deterministic"
+ },
+ "prompt_pack": "v2",
+ "scoring": {
+  "correctness": 1.0,
+  "recovery": 0.5,
+  "robustness": 0.5
+ },
+ "suite": "gauntlet",
+ "timeouts": {
+  "execution_seconds": 120,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "novel",
+  "canonical"
+ ],
+ "version": "1.0"
+}

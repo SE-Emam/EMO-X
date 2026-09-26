@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "emo-x"
+version = "2.0.0"
+description = "Adaptive, execution-based evaluation of AI coding models and agents"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+dependencies = []
+keywords = ["benchmark", "llm-evaluation", "ai-agents", "reproducibility"]
+
+[project.scripts]
+emo = "emox.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/SE-Emam/EMO-X-Adaptive-Agent-Evaluation"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+emox = ["py.typed"]

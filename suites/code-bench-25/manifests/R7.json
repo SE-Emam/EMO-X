@@ -1,0 +1,54 @@
+{
+ "capabilities": [
+  "real_world_coding",
+  "tool_discipline"
+ ],
+ "category": "real-world-coding",
+ "difficulty": {
+  "adaptive": false,
+  "base": 2
+ },
+ "estimated_human_minutes": 3,
+ "execution": {
+  "harness": "suites/code-bench-25/executor.py",
+  "type": "text"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "forbidden_paths": [
+  "/etc",
+  "/root",
+  "/home",
+  "~/.ssh",
+  "/var/run/secrets"
+ ],
+ "generator": {
+  "parameters": {},
+  "seed": 25107,
+  "type": "frozen-canonical"
+ },
+ "id": "R7",
+ "name": "toolcall",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "byte-exact tool_call block with a=17 b=25",
+  "type": "deterministic"
+ },
+ "prompt": "You have a function calculator.add(a, b). To call it for a=17, b=25 reply ONLY in this exact format with no extra text:\n<tool_call>\n<function=calculator.add>\n<parameter=a>\n17\n</parameter>\n<parameter=b>\n25\n</parameter>\n</function>\n</tool_call>",
+ "prompt_pack": "v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "code-bench-25",
+ "timeouts": {
+  "execution_seconds": 30,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

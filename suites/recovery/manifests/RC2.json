@@ -1,0 +1,61 @@
+{
+ "capabilities": [
+  "recovery",
+  "diagnosis",
+  "verification",
+  "instruction_following"
+ ],
+ "category": "recovery",
+ "difficulty": {
+  "adaptive": true,
+  "base": 5
+ },
+ "estimated_human_minutes": 15,
+ "execution": {
+  "faults": [
+   "TOOL_MALFORMED_OUTPUT"
+  ],
+  "harness": "suites/recovery/executor.py",
+  "type": "fault-injection-episode"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "generator": {
+  "parameters": {
+   "x": {
+    "max": 499,
+    "min": 11
+   },
+   "y": {
+    "max": 499,
+    "min": 11
+   }
+  },
+  "type": "parametric"
+ },
+ "id": "RC2",
+ "name": "malformed_output_recovery",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "RETRY marker plus valid JSON with correct sum",
+  "type": "deterministic"
+ },
+ "prompt_pack": "v2",
+ "scoring": {
+  "correctness": 1.0,
+  "recovery": 1.0
+ },
+ "suite": "recovery",
+ "timeouts": {
+  "execution_seconds": 60,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "recovery",
+  "canonical"
+ ],
+ "version": "1.0"
+}

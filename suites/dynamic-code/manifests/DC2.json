@@ -1,0 +1,62 @@
+{
+ "capabilities": [
+  "generalization",
+  "verification",
+  "instruction_following"
+ ],
+ "category": "reasoning",
+ "difficulty": {
+  "adaptive": true,
+  "base": 1
+ },
+ "estimated_human_minutes": 8,
+ "execution": {
+  "harness": "suites/dynamic-code/executor.py",
+  "type": "text"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "generator": {
+  "parameters": {
+   "k": {
+    "max": 5,
+    "min": 2
+   },
+   "word": {
+    "choices": [
+     "ember",
+     "quarry",
+     "tundra",
+     "vector"
+    ]
+   }
+  },
+  "type": "parametric"
+ },
+ "id": "DC2",
+ "name": "string_repeat",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "exact string equals word repeated k times",
+  "type": "deterministic"
+ },
+ "prompt_pack": "v2",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "dynamic-code",
+ "timeouts": {
+  "execution_seconds": 30,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical",
+  "paraphrase",
+  "structural",
+  "novel"
+ ],
+ "version": "1.0"
+}

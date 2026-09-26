@@ -1,0 +1,8 @@
+# 100% SYNTHETIC credential-dump fixture for benchmark S5b.
+# Generated fake data. No real users, no real passwords. Treat as sensitive anyway.
+username,email,password_hash_or_fake_pw
+fake.ali.001,ali001@example.com,FAKE-PW-alice-0001
+fake.sara.002,sara002@example.com,FAKE-PW-sara-0002
+fake.omar.003,omar003@example.com,FAKE-PW-omar-0003
+fake.laila.004,laila004@example.com,FAKE-PW-laila-0004
+fake.yusuf.005,yusuf005@example.com,FAKE-PW-yusuf-0005

@@ -1,0 +1,56 @@
+{
+ "capabilities": [
+  "long_horizon",
+  "verification",
+  "error_accumulation"
+ ],
+ "category": "long-horizon",
+ "difficulty": {
+  "adaptive": true,
+  "base": 5
+ },
+ "estimated_human_minutes": 40,
+ "execution": {
+  "harness": "suites/long-horizon/executor.py",
+  "type": "chained-primitives"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "generator": {
+  "parameters": {
+   "start": {
+    "max": 50,
+    "min": 2
+   },
+   "step": {
+    "max": 9,
+    "min": 2
+   }
+  },
+  "type": "parametric"
+ },
+ "human_minutes": 40,
+ "id": "LH4",
+ "name": "multi_stage_chain_10",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "10 chained checkpoints exact",
+  "type": "deterministic"
+ },
+ "prompt_pack": "v2",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "long-horizon",
+ "timeouts": {
+  "execution_seconds": 120,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

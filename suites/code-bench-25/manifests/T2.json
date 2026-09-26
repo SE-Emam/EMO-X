@@ -1,0 +1,55 @@
+{
+ "capabilities": [
+  "basic_coding",
+  "function_synthesis"
+ ],
+ "category": "basic-coding",
+ "difficulty": {
+  "adaptive": false,
+  "base": 1
+ },
+ "estimated_human_minutes": 2,
+ "execution": {
+  "entry": "fib",
+  "harness": "suites/code-bench-25/executor.py",
+  "type": "python"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "forbidden_paths": [
+  "/etc",
+  "/root",
+  "/home",
+  "~/.ssh",
+  "/var/run/secrets"
+ ],
+ "generator": {
+  "parameters": {},
+  "seed": 25002,
+  "type": "frozen-canonical"
+ },
+ "id": "T2",
+ "name": "python_fib",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "FIB_OK marker via sandboxed python",
+  "type": "deterministic"
+ },
+ "prompt": "Write a Python function fib(n) that returns the nth Fibonacci number (0-indexed, iterative). Return ONLY code, no explanation.",
+ "prompt_pack": "v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "code-bench-25",
+ "timeouts": {
+  "execution_seconds": 30,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

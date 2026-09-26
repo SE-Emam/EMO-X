@@ -1,0 +1,97 @@
+{
+ "capabilities": [
+  "mathematical_reasoning",
+  "verification",
+  "generalization"
+ ],
+ "category": "reasoning",
+ "difficulty": {
+  "adaptive": true,
+  "base": 3
+ },
+ "estimated_human_minutes": 12,
+ "execution": {
+  "harness": "suites/code-bench-25/executor.py",
+  "native": {
+   "num_predict": 600,
+   "think": false
+  },
+  "type": "text"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "forbidden_paths": [
+  "/etc",
+  "/root",
+  "/home",
+  "~/.ssh",
+  "/var/run/secrets"
+ ],
+ "generator": {
+  "parameters": {
+   "coefficient": {
+    "constraint": "gcd(coefficient, modulus) == 1",
+    "min": 2
+   },
+   "context": {
+    "choices": [
+     false,
+     true
+    ]
+   },
+   "form": {
+    "choices": [
+     "congruence",
+     "remainder",
+     "code"
+    ]
+   },
+   "modulus": {
+    "max": 99,
+    "min": 11
+   },
+   "target": {
+    "max": 199,
+    "min": 1
+   },
+   "variable": {
+    "choices": [
+     "x",
+     "n",
+     "k",
+     "t"
+    ]
+   }
+  },
+  "seed": "random",
+  "type": "parametric"
+ },
+ "id": "H3",
+ "name": "modular_arithmetic",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "unique solution of a*v=target mod modulus (canonical: remainder 4)",
+  "type": "deterministic"
+ },
+ "prompt": "What is the remainder when 3^100 is divided by 7? Be concise and state the final remainder clearly.",
+ "prompt_pack": "v1",
+ "scoring": {
+  "correctness": 1.0,
+  "explanation": 0.25,
+  "verification": 0.25
+ },
+ "suite": "code-bench-25",
+ "timeouts": {
+  "execution_seconds": 30,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical",
+  "perturbed",
+  "novel"
+ ],
+ "version": "1.1"
+}

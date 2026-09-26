@@ -1,0 +1,55 @@
+{
+ "capabilities": [
+  "algorithms",
+  "concurrency_primitives"
+ ],
+ "category": "reasoning",
+ "difficulty": {
+  "adaptive": false,
+  "base": 3
+ },
+ "estimated_human_minutes": 20,
+ "execution": {
+  "entry": "TokenBucket",
+  "harness": "suites/code-bench-25/executor.py",
+  "type": "python"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "forbidden_paths": [
+  "/etc",
+  "/root",
+  "/home",
+  "~/.ssh",
+  "/var/run/secrets"
+ ],
+ "generator": {
+  "parameters": {},
+  "seed": 25205,
+  "type": "frozen-canonical"
+ },
+ "id": "H5",
+ "name": "token_bucket",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "TB_OK marker via sandboxed python",
+  "type": "deterministic"
+ },
+ "prompt": "Write a Python class TokenBucket(rate, capacity) with methods allow() -> bool and wait_time() -> float implementing the token bucket algorithm using time.monotonic. Return ONLY code, no explanation.",
+ "prompt_pack": "v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "code-bench-25",
+ "timeouts": {
+  "execution_seconds": 60,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

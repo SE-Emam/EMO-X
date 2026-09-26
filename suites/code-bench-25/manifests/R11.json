@@ -1,0 +1,57 @@
+{
+ "capabilities": [
+  "real_world_coding",
+  "typed_programming"
+ ],
+ "category": "real-world-coding",
+ "difficulty": {
+  "adaptive": false,
+  "base": 2
+ },
+ "estimated_human_minutes": 6,
+ "execution": {
+  "harness": "suites/code-bench-25/executor.py",
+  "requires": [
+   "tsc-optional"
+  ],
+  "type": "typescript"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "forbidden_paths": [
+  "/etc",
+  "/root",
+  "/home",
+  "~/.ssh",
+  "/var/run/secrets"
+ ],
+ "generator": {
+  "parameters": {},
+  "seed": 25111,
+  "type": "frozen-canonical"
+ },
+ "id": "R11",
+ "name": "typescript",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "tsc strict clean or static fallback",
+  "type": "deterministic"
+ },
+ "prompt": "Write a TypeScript interface User {name: string; age: number} and a function greet(u: User): string returning 'Hello, NAME'. Return ONLY code, no explanation.",
+ "prompt_pack": "v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "code-bench-25",
+ "timeouts": {
+  "execution_seconds": 120,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

@@ -5,7 +5,7 @@ Versioning rules: `SPEC.md` §45 (PATCH = semantics-preserving fixes;
 MINOR = new optional suites/metrics; MAJOR = task/oracle/scoring/
 prompt/harness changes + mandatory re-baseline).
 
-## [Unreleased] — v2.0-alpha (Adaptive Agent Evaluation)
+## [Unreleased] — v2.0.0-rc1 (Adaptive Agent Evaluation)
 
 ### Added
 - `pip install emo-x` (Track 1): `pyproject.toml` + `src/emox/`
@@ -30,6 +30,33 @@ prompt/harness changes + mandatory re-baseline).
   (`--no-progress` disables); MCP `notifications/progress` via
   `progress_token`; progress never touches scored events (bundles
   byte-identical on/off).
+
+### Fixed (Scoring/Reporting Conformance Pass — external review P0)
+- Version synchronized to `2.0.0-rc1` (single source
+  `shared/runner.py`; pyproject, emox, MCP server, SKILL frontmatter,
+  CITATION.cff, README roadmap, CHANGELOG follow); splash frame now
+  widens to fit the version string (frame invariant preserved).
+- `BOOTSTRAP_RESAMPLES = 10_000` single source in `shared/scoring.py`;
+  all report paths consume it (no more hardcoded B=1000).
+- New `shared/invariants.py` (JSON Schema + Semantic Validator =
+  contract): PASS⇒1, non-pass⇒0, PARTIAL middle, FAIL⇒failure label,
+  unique C4 identity, trial/variant integrity; enforced at the
+  `build_v2_report` gate. The gate caught a real runner bug: the
+  variant loop never forwarded `variant=` so multi-variant suites
+  emitted duplicate C4 identities (fixed in `shared/runner.py`).
+- Tool Discipline wired into the report from canonical per-attempt
+  components (`scoring.tool_components_from_agent_attempt`); Robustness
+  rebuilt from canonical RB1/RB2 signals
+  (`scoring.robustness_from_drift`) with `robustness_signals` detail
+  block; both NA (never 0) when unobservable.
+- A7 recovery made genuine: fault + recorded post-fault recovery +
+  green verification (BACKEND_ERROR excluded); fault-free episodes no
+  longer earn recovery credit.
+- One runner contract: `security-bench/run_security.py` and
+  `vision-bench/run_vision.py` are thin wrappers over
+  `runner.run_suite` (standard sealed bundles); `runner.run_suite`
+  forwards `force=` to supporting executors; `emo`≡`run.py` pinned
+  by contract test.
 
 ### Fixed (from live-data audit)
 - Independent audit follow-up: removed one dead code line
@@ -111,8 +138,8 @@ prompt/harness changes + mandatory re-baseline).
   calibration, long-horizon, gauntlet, vision (real executor over
   vision-bench fixtures), realworld (RW1–RW3 mini-real repos),
   computer-use (PILOT).
-- `tests/`: 517 tests (harness 184, generators 51, scoring 147,
-  golden 30, backends 105) + `tests/run_all.py` unified runner.
+- `tests/`: 547 tests (harness 202, generators 51, scoring 153,
+  golden 30, backends 111) + `tests/run_all.py` unified runner.
 - CLI: `--suite dynamic-code|recovery|gauntlet|profile`,
   `--instances`, `--seed`, `--fault-rate`, `--self-test`, `--health`.
 - `docs/`: architecture, task-dsl, metrics, backend-contract,

@@ -32,7 +32,8 @@ def attempt(status, score, **kw):
     base = {"run_id": "RUN-HW", "model_id": "m", "task_family_id": "T",
             "instance_id": "i-%s" % kw.get("tag", "1"),
             "variant_class": "canonical", "trial_id": 1,
-            "primary_status": status, "score": score}
+            "primary_status": status, "score": score,
+            "primary_failure": None if status == "PASS" else "WRONG_RESULT"}
     base.update(kw)
     base.pop("tag", None)
     return schemas.validate_attempt(base)

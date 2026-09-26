@@ -15,7 +15,7 @@ side effects beyond path setup.
 import os
 import sys
 
-__version__ = "2.0.0"
+__version__ = "2.0.0-rc1"
 
 _TREE_DIRS = ("shared", "suites")
 

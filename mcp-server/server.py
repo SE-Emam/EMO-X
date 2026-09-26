@@ -49,7 +49,8 @@ import runner  # noqa: E402
 from backends import make_chat  # noqa: E402
 
 SERVER_NAME = "emo-x"
-SERVER_VERSION = "2.0.0"
+# Single source of truth: benchmark version lives in shared/runner.py.
+SERVER_VERSION = str(getattr(runner, "BENCHMARK_VERSION", "2.0.0-rc1"))
 
 
 def _chat_from_params(params):

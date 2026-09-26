@@ -24,9 +24,10 @@ if HERE not in sys.path:
 try:
     import scoring
     import metrics
+    import invariants
     from denominators import eligible_attempts
 except ImportError:  # package-style import (repo root on sys.path)
-    from shared import scoring, metrics
+    from shared import scoring, metrics, invariants
     from shared.denominators import eligible_attempts
 
 REPORT_VERSION = "EMO-Report-v2"
@@ -333,6 +334,10 @@ def build_v2_report(attempts, responses=None, model_id=None, csv_rate=None,
     responses = list(responses or [])
     weights = weights or scoring.DEFAULT_CAPABILITY_WEIGHTS
 
+    # Semantic gate (schemas + invariants = contract): malformed raw
+    # attempts are rejected loudly, never silently scored.
+    invariants.validate_run_semantics(attempts)
+
     coverage = scoring.coverage(attempts)
     fingerprint = scoring.failure_fingerprint(attempts)
     pass_rate = scoring.pass_rate(attempts)
@@ -392,20 +397,44 @@ def build_v2_report(attempts, responses=None, model_id=None, csv_rate=None,
         rate = scoring.human_minutes_rate(hm_tasks)
         long_horizon = rate
 
-    # Tool discipline: not observable from single-turn runs without tool
-    # logs -> NA (None), never 0. Robustness: drift/replan signal rate
-    # from robustness responses when present.
-    tool_discipline = None
-    robustness = None
-    drift_flags = [r for r in responses if "drift_injected" in r]
-    if drift_flags:
-        ok = 0
-        for r in drift_flags:
-            mate = [a for a in attempts
-                    if a.get("instance_id") == r.get("instance_id")]
-            if any(a.get("primary_status") == "PASS" for a in mate):
-                ok += 1
-        robustness = ok / len(drift_flags) if drift_flags else None
+    # Tool discipline: canonical per-attempt components from agent-loop
+    # observables (SPEC B15-B22). None (never 0) when no attempt carries
+    # them; the component means below expose the defined signals.
+    tool_discipline = scoring.tool_discipline_from_attempts(attempts)
+    tool_components = None
+    agent_attempts = [a for a in attempts
+                      if isinstance(a.get("A"), dict)]
+    if agent_attempts:
+        names = ("precision", "recall", "f1", "argument_accuracy",
+                 "sequence_validity", "action_discipline",
+                 "side_effect_safety")
+        tool_components = {}
+        for name in names:
+            vals = [scoring.tool_components_from_agent_attempt(a)[name]
+                    for a in agent_attempts]
+            vals = [v for v in vals if v is not None]
+            tool_components[name] = (sum(vals) / len(vals)) if vals else None
+    # Robustness: canonical multidimensional signals from drift/replan
+    # episodes (SPEC B40-B42), not the old drift/pass proxy. RB1 =
+    # drift detection (D_drift), RB2 = replanning (D_replan); only
+    # scored attempts enter denominators, ERROR/VOID never do.
+    replies = {(r.get("instance_id"), r.get("trial_id")): str(
+        r.get("reply", "")) for r in responses if isinstance(r, dict)}
+    rb1 = [a for a in attempts
+           if a.get("task_family_id") == "RB1"
+           and scoring.is_scored_status(a.get("primary_status"))]
+    rb2 = [a for a in attempts
+           if a.get("task_family_id") == "RB2"
+           and scoring.is_scored_status(a.get("primary_status"))]
+    detected = sum(1 for a in rb1 if a.get("primary_status") == "PASS")
+    correct = sum(1 for a in rb2 if a.get("primary_status") == "PASS")
+    replanned = sum(
+        1 for a in rb2
+        if "replan" in replies.get(
+            (a.get("instance_id"), a.get("trial_id")), "").lower())
+    robustness_signals = scoring.robustness_from_drift(
+        detected, len(rb1), replanned, correct, len(rb2))
+    robustness = robustness_signals["robustness"]
 
     dimensions = {
         "correctness": pass_rate,
@@ -423,7 +452,7 @@ def build_v2_report(attempts, responses=None, model_id=None, csv_rate=None,
 
     # Uncertainty: cluster bootstrap CI over task families (B54/C65).
     groups = _family_groups(attempts)
-    ci = scoring.bootstrap_ci(groups, B=1000, seed=0) if groups else {
+    ci = scoring.bootstrap_ci(groups, B=scoring.BOOTSTRAP_RESAMPLES, seed=0) if groups else {
         "mean": None, "se": None, "ci_low": None, "ci_high": None,
         "B": 0, "low_sample": True, "note": "LOW-SAMPLE UNCERTAINTY"}
 
@@ -486,6 +515,8 @@ def build_v2_report(attempts, responses=None, model_id=None, csv_rate=None,
         "n_scored": len(eligible_attempts(attempts)),
         "scaffold_gain": scaffold_gain_report(tier_scores),
         "gauntlet": gauntlet,
+        "tool_components": tool_components,
+        "robustness_signals": robustness_signals,
     }
 
 
@@ -574,7 +605,7 @@ def _pass_rate(events):
 
 
 def compare_models(attempts_a, attempts_b, model_a="A", model_b="B",
-                   manifest_a=None, manifest_b=None, B=10000, seed=0):
+                   manifest_a=None, manifest_b=None, B=None, seed=0):
     """Compare two models on interval calls only (no fixed gap rule).
 
     Returns a dict with pass_rate + 95% CI per model, paired difference
@@ -599,6 +630,10 @@ def compare_models(attempts_a, attempts_b, model_a="A", model_b="B",
         (manifest_a or {}).get("backend_capabilities", {}),
         (manifest_b or {}).get("backend_capabilities", {}))
     # comparison_key form: manifests store B58 hashes flat; accept both.
+    # B resolved at call time (never as a def-time cross-module default:
+    # test collectors may shadow the `scoring` name before import).
+    if B is None:
+        B = scoring.BOOTSTRAP_RESAMPLES
     out = {"model_a": model_a, "model_b": model_b,
            "comparability": verdict, "comparability_reason": reason}
     if verdict == "NON_COMPARABLE":

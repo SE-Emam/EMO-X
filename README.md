@@ -106,7 +106,7 @@ print(render_comparison(comp))"
 |---|---|---|
 | Test suites | 14 | `suites/*/` |
 | Task manifests | 75 | `suites/*/manifests/*.json` |
-| Harness + unit tests | 517 (184+51+147+30+105) | `tests/run_all.py`, all green |
+| Harness + unit tests | 547 (202+51+153+30+111) | `tests/run_all.py`, all green |
 | Self-test checks | 14 | `--self-test`, fail-closed |
 | Issue-style families | 15 (IS1–IS15) | vs SWE-bench Lite (300) = **5.0%** |
 
@@ -131,7 +131,8 @@ questions — use both.
 |---|---|---|
 | v2.0-alpha | Contracts, sandbox, scoring + goldens, DSL, Core-25, taxonomy | Done (this tree) |
 | v2.0-beta | Recovery, drift, tool discipline, calibration, health | Done (suites + `health/`) |
-| v2.0 | Gauntlet, long-horizon, adaptive difficulty, official baseline | Code done; **no published OFFICIAL baseline yet** |
+| **v2.0.0-rc1** (current) | Gauntlet, long-horizon, adaptive difficulty, scoring conformance | Code done; **no published OFFICIAL baseline yet** |
+| v2.0 | First sealed 3-trial OFFICIAL baseline (R3) | Pending baseline |
 | Next | 15→30 issue families; vision out of PILOT; first 3-trial public baseline with CI | Planned (`PLAN-X.md` WP12–WP15) |
 
 No model scores are published in this repo: any number without a sealed

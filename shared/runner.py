@@ -37,8 +37,8 @@ from manifests import sha256_bytes, verify_prompt_pack  # noqa: E402
 #: code25 prompts live frozen in shared/PROMPT_PACK_v1.md.
 SUITE_PROMPT_PACK = {"code25": "PROMPT_PACK_v1"}
 
-BENCHMARK_VERSION = "2.0.0"
-RUNNER_VERSION = "2.0.0"
+BENCHMARK_VERSION = "2.0.0-rc1"
+RUNNER_VERSION = "2.0.0-rc1"
 
 #: Suites executable through this runner (code25 reuses X-4's executor).
 SUITE_DIRS = {
@@ -565,7 +565,7 @@ def _family_variants(executor, family):
 def run_suite(suite, chat, model_id="stub-model", backend="stub", seed=0,
               instances=1, trials=1, fault_rate=0.25, out_root=None,
               families=None, run_id=None, provider_profile=None,
-              scope=None, sampling=None, progress=None):
+              scope=None, sampling=None, progress=None, force=False):
     """Run one suite end-to-end and write the raw bundle. SPEC 32-33, 42.
 
     instances: canonical instances per family (index 1..N).
@@ -626,6 +626,12 @@ def run_suite(suite, chat, model_id="stub-model", backend="stub", seed=0,
                     kwargs = dict(run_id=run_id, model_id=model_id,
                                   trial_id=trial, index=index, seed=seed,
                                   scope=scope)
+                    # Variant-aware executors must RECEIVE the loop
+                    # variant (DEN C4: distinct variants need distinct
+                    # instance_ids; without this every variant ran as
+                    # canonical and emitted duplicate C4 identities).
+                    if "variant" in _supported_params(executor.run_family):
+                        kwargs["variant"] = variant
                     try:
                         # code25-style executors take no variant kwarg:
                         # skip non-canonical variants (missing => NA, DEN).
@@ -640,6 +646,11 @@ def run_suite(suite, chat, model_id="stub-model", backend="stub", seed=0,
                                 and "fault_rate" in _supported_params(
                                     executor.run_family)):
                             call_kwargs["fault_rate"] = fault_rate
+                        # Vision executor honors force explicitly
+                        # (bypass capability gate; failures then ERROR).
+                        if "force" in _supported_params(
+                                executor.run_family):
+                            call_kwargs["force"] = force
                         attempt, response = executor.run_family(
                             family, chat, **call_kwargs)
                     except Exception as e:

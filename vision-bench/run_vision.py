@@ -19,7 +19,6 @@ Gating (PLAN 3.4: blocked until a VLM endpoint exists):
 
 import argparse
 import base64
-import datetime
 import json
 import os
 import re
@@ -269,6 +268,36 @@ def run_one(chat, kind, target, prompt, image):
     return rec
 
 
+def _run_via_runner(args):
+    """Thin compatibility wrapper over the unified runner (review P0-7).
+
+    Same CLI flags; execution flows through runner.run_suite, so runs
+    produce standard sealed raw bundles consumable by report_v2
+    (invariants-gated). Gate denial becomes VOID attempts inside the
+    bundle (executor-enforced), never a bespoke skip file.
+    """
+    import runner
+    if (args.backend or "").lower() == "stub":
+        chat = runner.stub_chat_factory("vision-compat")
+    else:
+        from backends import make_chat
+        chat = make_chat(args.backend, args.base_url, args.model,
+                         args.api_key)
+    only = [x.strip().upper() for x in args.only.split(",") if x.strip()]
+    order = ["V1", "V2", "V3", "V4", "V5"]
+    families = [v for v in order
+                if (not only) or v in only] or None
+    model_id = args.model or os.environ.get("MODEL", "model")
+    rundir, summary = runner.run_suite(
+        "vision", chat, model_id, args.backend, 0, 1,
+        max(args.trials, 1), 0.25, args.out, families=families,
+        force=bool(args.force))
+    print("vision: suite=%s attempts=%d pass=%d"
+          % (summary["suite"], summary["n_attempts"], summary["n_pass"]))
+    print("saved", rundir)
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="vision-bench runner (PROMPT_PACK vision-v1)")
     ap.add_argument("--backend", default=os.environ.get("BACKEND", "openai-generic"))
@@ -290,59 +319,8 @@ def main(argv=None):
             print("%s  %s" % (name, os.path.basename(img)))
         return 0
 
-    from backends import resolve_config  # noqa: E402
-    _, base, mod, key = resolve_config(args.backend, args.base_url,
-                                       args.model, args.api_key)
-    chat = make_chat(args.backend, args.base_url, args.model, args.api_key)
-
-    only = [x.strip().upper() for x in args.only.split(",") if x.strip()]
-    stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    slug = re.sub(r"[^A-Za-z0-9_.-]+", "_", mod or "model")
-    os.makedirs(args.out, exist_ok=True)
-
-    reason = gate_check(chat, base, args.force)
-    if reason is not None:
-        rec = {"status": "skipped", "prompt_pack": PROMPT_PACK,
-               "backend": args.backend, "model": mod, "reason": reason,
-               "forced": bool(args.force), "timestamp": stamp}
-        path = os.path.join(args.out, "%s_vision_%s.json" % (slug, stamp))
-        with open(path, "w") as f:
-            json.dump(rec, f, ensure_ascii=False, indent=1)
-        print("SKIP vision-bench: %s\nsaved %s" % (reason, path))
-        return 0
-
-    degraded = gt.get("font_used", "").endswith("DEGRADED")
-    out = {"status": "ran", "prompt_pack": PROMPT_PACK, "timestamp": stamp,
-           "backend": args.backend, "model": mod, "trials": args.trials,
-           "fixture_font": gt.get("font_used"),
-           "fixture_arabic_engine": gt.get("arabic_engine"),
-           "arabic_admissible": not degraded, "tests": {}}
-    for name, img, prompt, (kind, target) in tests:
-        if only and name.split("_")[0] not in only and name not in only:
-            continue
-        print("== %s ..." % name, flush=True)
-        passes, rec = [], {}
-        for _ in range(max(args.trials, 1)):
-            rec = run_one(chat, kind, target, prompt, img)
-            passes.append(bool(rec.get("pass")))
-        if args.trials > 1:
-            rec["pass_rate"] = round(sum(passes) / len(passes), 3)
-            rec["passes"] = passes
-            rec["pass"] = bool(sum(passes) * 2 >= len(passes))
-        if name == "V3_arabic_read" and degraded:
-            rec["admissible"] = False
-        out["tests"][name] = rec
-        print("   pass=%s log=%s err=%s"
-              % (rec.get("pass"), rec.get("log"), rec.get("error")), flush=True)
-
-    got = out["tests"]
-    print("vision: %d/%d pass" % (sum(1 for v in got.values() if v.get("pass")),
-                                  len(got)))
-    path = os.path.join(args.out, "%s_vision_%s.json" % (slug, stamp))
-    with open(path, "w") as f:
-        json.dump(out, f, ensure_ascii=False, indent=1)
-    print("saved", path)
-    return 0
+    # P0-7: all execution flows through the unified runner.
+    return _run_via_runner(args)
 
 
 if __name__ == "__main__":

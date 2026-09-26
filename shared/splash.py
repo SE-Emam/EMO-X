@@ -121,7 +121,14 @@ def banner(stats=None, width=None, color=None):
                 stats["tests"]), GRAY),
         ]
         return "\n".join(lines) + "\n"
-    frame_w = max(len(l) for l in LOGO_LINES) + 8
+    stats_text = ("v%s · %d suites · %d manifests · %d tests" % (
+        stats["version"], stats["suites"], stats["manifests"],
+        stats["tests"]))
+    # Frame fits the widest content (logo, tagline, or live stats line):
+    # a longer version string must widen the frame, never overflow it
+    # (overflow breaks the single-indent frame invariant).
+    frame_w = max([len(l) for l in LOGO_LINES] +
+                  [len(TAGLINE), len(stats_text)]) + 8
     top = "╔" + "═" * (frame_w - 2) + "╗"
     bottom = "╚" + "═" * (frame_w - 2) + "╝"
     empty = "║" + " " * (frame_w - 2) + "║"
@@ -148,10 +155,7 @@ def banner(stats=None, width=None, color=None):
         lines.append(center_framed(logo_line, BLUE_BRIGHT))
     lines.append(center_painted(empty, BLUE_DIM))
     lines.append(center_framed(TAGLINE, CYAN))
-    lines.append(center_framed(
-        "v%s · %d suites · %d manifests · %d tests" % (
-            stats["version"], stats["suites"], stats["manifests"],
-            stats["tests"]), GRAY))
+    lines.append(center_framed(stats_text, GRAY))
     lines.append(center_painted(empty, BLUE_DIM))
     lines.append(center_painted(bottom, BLUE_DIM))
     return "\n".join(lines) + "\n"

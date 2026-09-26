@@ -121,7 +121,7 @@ def pairwise(entries, bundles):
             ma, ea, _ = bundles[a["run_id"]]
             mb, eb, _ = bundles[b["run_id"]]
             comp = compare_models(ea, eb, a["model"], b["model"],
-                                  manifest_a=ma, manifest_b=mb, B=1000)
+                                  manifest_a=ma, manifest_b=mb, B=scoring.BOOTSTRAP_RESAMPLES)
             out.append({
                 "a": a["model"], "b": b["model"],
                 "status": comp.get("status"),

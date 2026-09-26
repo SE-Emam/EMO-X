@@ -1,7 +1,7 @@
 ---
 name: emo-x
 description: Adaptive, execution-based evaluation of AI coding models and agents (EMO-X). Use when the user asks to benchmark a model, run a capability profile, verify harness health, or compare two models with uncertainty. Invokes shared/run.py as a subprocess and reads the immutable raw bundle.
-version: 2.0.0
+version: 2.0.0-rc1
 category: qa
 ---
 

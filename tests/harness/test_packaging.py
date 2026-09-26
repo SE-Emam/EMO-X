@@ -60,7 +60,7 @@ class PackagingTests(unittest.TestCase):
         with redirect_stdout(buf):
             rc = cli.main(["--version"])
         self.assertEqual(rc, 0)
-        self.assertIn("2.0.0", buf.getvalue())
+        self.assertIn("2.0.0-rc1", buf.getvalue())
 
 
 if __name__ == "__main__":

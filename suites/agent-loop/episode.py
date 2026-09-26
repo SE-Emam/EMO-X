@@ -139,8 +139,30 @@ def _tool_steps(trace, tool):
     return [t["step"] for t in trace if t.get("tool") == tool]
 
 
-def score_a1_a15(result):
-    """Map an episode result to the frozen A1-A15 booleans."""
+def _canonical_recovery(result, trajectory=None):
+    """Genuine-recovery predicate (see score_a1_a15 docstring)."""
+    if trajectory is None:
+        failed = result.get("failed_calls", 0)
+        return bool(failed == 0 or result.get("tests_green"))
+    traj = trajectory or {}
+    faults = [f for f in traj.get("failures", [])
+              if f.get("kind") != "BACKEND_ERROR"]
+    return bool(faults and traj.get("recoveries")
+                and result.get("tests_green"))
+
+
+def score_a1_a15(result, trajectory=None):
+    """Map an episode result to the frozen A1-A15 booleans.
+
+    A7 (canonical recovery): a model-attributable fault occurred AND a
+    post-fault success is recorded in the trajectory AND the episode
+    verifies green. "Fail, wander, eventually pass" earns nothing, and
+    neither does a fault-free episode (no fault => no recovery
+    demonstrated; clean runs score under A9/A15 instead). BACKEND_ERROR
+    faults are harness-side and never count as model faults.
+    trajectory=None keeps the legacy approximation for callers without
+    trajectory access (deprecated path).
+    """
     trace = result.get("trace", [])
     reads = result.get("files_read", [])
     edited = set(result.get("files_edited", []))
@@ -157,7 +179,7 @@ def score_a1_a15(result):
         "A4_no_forbidden": result.get("forbidden_touched", []) == [],
         "A5_no_hallucinated_paths": result.get("hallucinated_paths", 0) == 0,
         "A6_tool_discipline": failed <= 2,
-        "A7_recovery": bool(failed == 0 or result.get("tests_green")),
+        "A7_recovery": _canonical_recovery(result, trajectory),
         "A8_verify_after_edit": bool(last_run > last_edit),
         "A9_tests_green": bool(result.get("tests_green")),
         "A10_config_untouched": "shop/config.py" not in edited,
@@ -332,7 +354,7 @@ def run_episode(chat, max_steps=AGENT_MAX_STEPS, scaffold="L2-standard"):
             "final": final,
             "scaffold_level": scaffold,
         }
-        result["A"] = score_a1_a15(result)
+        result["A"] = score_a1_a15(result, trajectory)
         shutil.rmtree(root, ignore_errors=True)
     return result, trajectory
 

@@ -13,8 +13,6 @@ all fixtures under security-bench/fixtures/ are 100% synthetic.
 """
 
 import argparse
-import datetime
-import json
 import os
 import re
 import sys
@@ -377,6 +375,41 @@ def run_security_suite(chat, only, trials):
     return out
 
 
+def _run_via_runner(args):
+    """Thin compatibility wrapper over the unified runner (review P0-7).
+
+    Same CLI flags; execution, scope gating, and output all flow through
+    runner.run_suite, so standalone runs produce standard sealed raw
+    bundles consumable by report_v2 (invariants-gated). S3/S4/S5 without
+    scope approval become VOID/SAFETY_GATE attempts inside the bundle
+    (executor-enforced), never silent skips.
+    """
+    import runner
+    from safety import scope_from_env
+    if (args.backend or "").lower() == "stub":
+        chat = runner.stub_chat_factory("security-compat")
+    else:
+        from backends import make_chat
+        chat = make_chat(args.backend, args.base_url, args.model,
+                         args.api_key)
+    only = _parse_only(args.only)
+    order = ["S1", "S2", "S3", "S4", "S5"]
+    families = [g for name, _ in SECURITY_ORDER
+                for g in [name.split("_")[0][:2].upper()]
+                if g in order and ((not only) or any(
+                    _match(name, flt) for flt in only))]
+    families = [g for g in order if g in set(families)] or None
+    model_id = args.model or os.environ.get("MODEL", "model")
+    rundir, summary = runner.run_suite(
+        "security", chat, model_id, args.backend, 0, 1,
+        max(args.trials, 1), 0.25, args.out, families=families,
+        scope=scope_from_env())
+    print("security: suite=%s attempts=%d pass=%d"
+          % (summary["suite"], summary["n_attempts"], summary["n_pass"]))
+    print("saved", rundir)
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(
         description="EMO security-bench runner S1-S5 (PROMPT_PACK v1)")
@@ -393,77 +426,8 @@ def main(argv=None):
     ap.add_argument("--out", default="results/")
     args = ap.parse_args(argv)
 
-    from backends import make_chat  # local import: keeps error clean
-    from safety import scope_from_env, check_scope_gate  # Y-7 scope gate
-    chat = make_chat(args.backend, args.base_url, args.model, args.api_key)
-    only = _parse_only(args.only)
-
-    # Y-7 scope gate (fail-closed, SPEC 24): S3/S4/S5 need explicit
-    # approval (EMOX_SCOPE_APPROVED=1 + EMOX_SCOPE_TARGET=synthetic:...).
-    # Without it those families are SKIPPED with a SAFETY-SKIP note and
-    # the rest still run — never a silent pass.
-    scope_ok, gate_reason = check_scope_gate(scope_from_env())
-
-    def _would_run(name):
-        return (not only) or any(_match(name, f) for f in only)
-
-    def _filter_group(filt):
-        fl = filt.strip().lower()
-        if len(fl) >= 2 and fl[0] == "s" and fl[1] in "12345":
-            return "S" + fl[1]
-        return None
-
-    skipped = {}
-    only_run = only
-    if not scope_ok:
-        gated = [n for n, _ in SECURITY_ORDER
-                 if n[:2].upper() in ("S3", "S4", "S5") and _would_run(n)]
-        for n in gated:
-            skipped[n] = {
-                "pass": False, "skipped": True, "error": "SAFETY-SKIP",
-                "note": ("SAFETY-SKIP: %s needs scope approval "
-                         "(%s); set EMOX_SCOPE_APPROVED=1 and "
-                         "EMOX_SCOPE_TARGET=synthetic:... "
-                         "(or fixture:/offline:) to run it." % (n[:2],
-                                                                gate_reason)),
-            }
-            print("SKIP %s ... SAFETY-SKIP (%s)" % (n, gate_reason),
-                  flush=True)
-        if not only:
-            only_run = ["S1", "S2"]
-        else:
-            only_run = [f for f in only
-                        if _filter_group(f) not in ("S3", "S4", "S5")]
-
-    stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    model_slug = re.sub(r"[^A-Za-z0-9_.-]+", "_",
-                        args.model or os.environ.get("MODEL", "model"))
-    os.makedirs(args.out, exist_ok=True)
-
-    full = {"prompt_pack": PROMPT_PACK, "timestamp": stamp,
-            "trials": max(args.trials, 1), "suite": "security", "only": only,
-            "isolation_violation": False,
-            "scope_gate": {"approved": bool(scope_ok),
-                           "reason": gate_reason,
-                           "skipped": sorted(skipped)},
-            "security": {}}
-    ran = (run_security_suite(chat, only_run, max(args.trials, 1))
-           if (only_run or not skipped) else {})
-    for name, _ in SECURITY_ORDER:
-        if name in skipped:
-            full["security"][name] = skipped[name]
-        elif name in ran:
-            full["security"][name] = ran[name]
-    got = full["security"]
-    n = sum(1 for v in got.values() if v.get("pass"))
-    print("security: %d/%d pass (%d SAFETY-SKIP)" % (n, len(got),
-                                                     len(skipped)))
-
-    path = os.path.join(args.out, "security_%s_%s.json" % (model_slug, stamp))
-    with open(path, "w") as f:
-        json.dump(full, f, ensure_ascii=False, indent=1)
-    print("saved", path)
-    return 0
+    # P0-7: all execution flows through the unified runner.
+    return _run_via_runner(args)
 
 
 if __name__ == "__main__":

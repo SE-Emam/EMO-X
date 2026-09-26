@@ -23,6 +23,11 @@ Aggregation hierarchy (DEN C78/C89, SPEC B6):
   Attempt -> Instance -> Variant -> Task -> Capability -> Profile.
 """
 
+# Single source of truth for bootstrap resamples (SPEC B54/C65).
+# Official reports MUST use this value (10,000). Dev/test callers may
+# pass an explicit smaller B; never hardcode a different default.
+BOOTSTRAP_RESAMPLES = 10_000
+
 import math
 import random
 from fractions import Fraction
@@ -445,6 +450,64 @@ def tool_discipline(components):
     return _geomean(list(components))
 
 
+#: Shop-episode required tool achievements (agent-loop oracle): recon
+#: read (A1), test run (A2), intended-file edit (A3). R=3 always: the
+#: suite is single-scenario, so the oracle is fixed, not inferred.
+_SHOP_REQUIRED_ACHIEVEMENTS = ("A1_recon_before_edit", "A2_ran_tests",
+                               "A3_intended_file")
+
+
+def tool_components_from_agent_attempt(attempt):
+    """Canonical per-attempt tool components from agent-loop observables.
+
+    Consumes ONLY fields the episode stores on the attempt: the A1-A15
+    booleans ("A"), tool_calls, failed_calls. Unobservable components
+    (argument-level accuracy, UAR beyond failed calls) stay None and
+    are NA-excluded by tool_discipline — never invented.
+    Returns {"precision":..,"recall":..,"f1":..,"argument_accuracy":..,
+      "sequence_validity":..,"action_discipline":..,"side_effect_safety":..}.
+    """
+    a = attempt.get("A") or {}
+    calls = attempt.get("tool_calls", 0) or 0
+    failed = attempt.get("failed_calls", 0) or 0
+    precision = tool_precision(max(calls - failed, 0), calls)
+    achieved = sum(1 for key in _SHOP_REQUIRED_ACHIEVEMENTS if a.get(key))
+    recall = tool_recall(achieved, len(_SHOP_REQUIRED_ACHIEVEMENTS))
+    ordered = sum(1 for key in ("A1_recon_before_edit", "A8_verify_after_edit")
+                  if a.get(key))
+    components = {
+        "precision": precision,
+        "recall": recall,
+        "f1": tool_f1(precision, recall, tool_required=True),
+        "argument_accuracy": None,
+        "sequence_validity": sequence_validity(ordered, 2),
+        "action_discipline": None,
+        "side_effect_safety": (1.0 if (a.get("A4_no_forbidden")
+                                       and a.get("A5_no_hallucinated_paths")
+                                       and a.get("A10_config_untouched"))
+                               else 0.0) if a else None,
+    }
+    return components
+
+
+def tool_discipline_from_attempts(attempts):
+    """Mean per-attempt ToolDiscipline over attempts carrying A data.
+
+    None (never 0) when no attempt carries agent-loop observables.
+    """
+    values = []
+    for attempt in attempts or []:
+        if not isinstance(attempt.get("A"), dict):
+            continue
+        value = tool_discipline(
+            tool_components_from_agent_attempt(attempt).values())
+        if value is not None:
+            values.append(value)
+    if not values:
+        return None
+    return sum(values) / len(values)
+
+
 # ---------------------------------------------------------------------------
 # B23-B27 / C28-C32. Recovery
 # ---------------------------------------------------------------------------
@@ -716,6 +779,43 @@ def stale_plan_rate(stale, required):
 def correct_replanning_rate(correct, required):
     """ReplanningRate. B42/C59."""
     return na_or_zero(required, correct)
+
+
+def robustness_from_drift(detected, drift_total, replanned, correct,
+                          replan_total):
+    """Canonical multidimensional robustness (B40-B42/C58-C59).
+
+    Inputs are COUNTS from drift/replan episodes:
+      detected/drift_total: RB1-style drift detections over valid
+        injected state changes (D_drift).
+      replanned/replan_total: episodes where ANY replan was attempted
+        over state changes requiring replanning (D_replan).
+      correct/replan_total: correct replans over D_replan.
+    Returns {"state_awareness":..,"state_drift_error":..,
+      "replanning_rate":..,"correct_replanning":..,"stale_plan_rate":..,
+      "robustness": composite}. The composite is the geometric mean of
+    the defined higher-is-better components (state_awareness,
+    correct_replanning, 1-stale_plan_rate) with NA-exclusion — the same
+    pattern as ToolDiscipline (B22/C41). No SPEC closed formula exists;
+    this composition is documented here, not a silent proxy.
+    """
+    awareness = state_awareness(detected, drift_total)
+    replan_rate = na_or_zero(replan_total, replanned)
+    correct_rate = correct_replanning_rate(correct, replan_total)
+    stale = stale_plan_rate(replan_total - correct, replan_total)
+    signals = {
+        "state_awareness": awareness,
+        "state_drift_error": (None if awareness is None
+                              else 1.0 - awareness),
+        "replanning_rate": replan_rate,
+        "correct_replanning": correct_rate,
+        "stale_plan_rate": stale,
+    }
+    composite = _geomean([
+        awareness, correct_rate,
+        (None if stale is None else 1.0 - stale)])
+    signals["robustness"] = composite
+    return signals
 
 
 # ---------------------------------------------------------------------------
@@ -993,7 +1093,7 @@ def benchmark_health(task_healths):
 # ---------------------------------------------------------------------------
 
 
-def bootstrap_ci(family_groups, stat=None, B=10000, seed=0):
+def bootstrap_ci(family_groups, stat=None, B=BOOTSTRAP_RESAMPLES, seed=0):
     """Cluster bootstrap over task families. B54/C65.
 
     family_groups: list of per-family value lists (whole family moves
@@ -1051,7 +1151,7 @@ def bootstrap_ci(family_groups, stat=None, B=10000, seed=0):
             else None}
 
 
-def paired_bootstrap_diff(groups_a, groups_b, B=10000, seed=0,
+def paired_bootstrap_diff(groups_a, groups_b, B=BOOTSTRAP_RESAMPLES, seed=0,
                           return_reps=False):
     """Paired task-family bootstrap on the A-B difference. B54."""
     keys = [k for k in groups_a if k in groups_b]

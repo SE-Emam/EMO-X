@@ -136,5 +136,89 @@ class SafePathTests(unittest.TestCase):
             _safe("shop/tests", _Ctx("/tmp/sbx")).startswith("/tmp/sbx"))
 
 
+class CatReadTrailTests(unittest.TestCase):
+    """Audit item 1: cat logs reads like tool_read, capped at 6000."""
+
+    def setUp(self):
+        self.root = tempfile.mkdtemp(prefix="toolsec_cat_")
+        self.ctx = _Ctx(self.root)
+        with open(os.path.join(self.root, "small.txt"), "w") as f:
+            f.write("hello")
+        with open(os.path.join(self.root, "big.txt"), "w") as f:
+            f.write("x" * 9000)
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.root, ignore_errors=True)
+
+    def test_cat_logs_read(self):
+        ok, out = sandbox.safe_tool_run("cat small.txt", self.ctx,
+                                        _ls, _safe)
+        self.assertTrue(ok)
+        self.assertEqual(out, "hello")
+        self.assertIn("small.txt", self.ctx.reads)
+
+    def test_cat_caps_large_file(self):
+        ok, out = sandbox.safe_tool_run("cat big.txt", self.ctx,
+                                        _ls, _safe)
+        self.assertTrue(ok)
+        self.assertTrue(out.endswith("...[truncated]"))
+        self.assertLessEqual(len(out), 6000 + len("...[truncated]"))
+
+    def test_cat_missing_no_crash(self):
+        ok, out = sandbox.safe_tool_run("cat nope.txt", self.ctx,
+                                        _ls, _safe)
+        self.assertFalse(ok)
+        self.assertIn("no such file", out)
+
+
+class ProxyIsolationTests(unittest.TestCase):
+    """Audit item 2: legacy bench_lib children get proxy-stripped env."""
+
+    def test_clean_env_strips_proxies(self):
+        import bench_lib as L
+        os.environ["http_proxy"] = "http://evil:8080"
+        os.environ["HTTPS_PROXY"] = "http://evil:8080"
+        try:
+            env = L._clean_env()
+        finally:
+            del os.environ["http_proxy"]
+            del os.environ["HTTPS_PROXY"]
+        for key in ("http_proxy", "https_proxy", "HTTP_PROXY",
+                    "HTTPS_PROXY", "ALL_PROXY", "all_proxy"):
+            self.assertNotIn(key, env)
+        self.assertEqual(env.get("EMOX_SANDBOX"), "1")
+
+    def test_run_py_still_executes(self):
+        import bench_lib as L
+        ok, log = L.run_py("def f():\n    return 1",
+                           "assert f() == 1; print('PY_OK')")
+        self.assertTrue(ok and "PY_OK" in log)
+
+
+class SingleSourceTests(unittest.TestCase):
+    """Audit item 4: run.py and episode.py share agent_tools objects."""
+
+    def test_names_are_shared_objects(self):
+        import importlib.util
+        root = os.path.normpath(os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+        # 'run' and 'agent_tools' resolve via shared/ (already on path).
+
+        import run as legacy_run
+        import agent_tools as A
+        spec = importlib.util.spec_from_file_location(
+            "episode_under_test",
+            os.path.join(root, "suites", "agent-loop", "episode.py"))
+        ep = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ep)
+        for name in ("Ctx", "_safe", "tool_ls", "tool_read",
+                     "tool_run", "tool_edit"):
+            self.assertIs(getattr(legacy_run, name), getattr(A, name),
+                          "run.%s diverged" % name)
+            self.assertIs(getattr(ep, name), getattr(A, name),
+                          "episode.%s diverged" % name)
+
+
 if __name__ == "__main__":
     unittest.main()

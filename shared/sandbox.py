@@ -107,7 +107,11 @@ def run_python_code(code, test="", timeout=30):
     return rc == 0, tail
 
 
-_SAFE_ARG_RE = re.compile(r"^[\w\-./=:,+@]+$")
+_SAFE_ARG_RE = re.compile(r"^[\w\-./=:+]+$")
+# Audit note: '@' deliberately excluded (defense in depth; nothing
+# legitimate needs it). ':' is KEPT — pytest node IDs (file::test)
+# are legitimate agent usage, and shell=False already renders every
+# character inert. Blindly dropping ':' would break real debugging.
 
 
 def _confine_root(root):
@@ -165,7 +169,16 @@ def safe_tool_run(cmd, ctx, ls_fn, safe_fn, timeout=120):
             if not os.path.isfile(full):
                 return False, "ERROR: no such file: %s" % p
             with open(full, encoding="utf-8", errors="replace") as fh:
-                outs.append(fh.read())
+                data = fh.read()
+            # Audit fix 1: same 6000-char cap as tool_read (memory/context
+            # bound) + unified read trail (ctx.reads, AttributeError-safe
+            # for minimal test doubles).
+            outs.append(data[:6000] +
+                        ("...[truncated]" if len(data) > 6000 else ""))
+            try:
+                ctx.reads.append(p)
+            except AttributeError:
+                pass
         return True, "\n".join(outs)
     if head == "python3" and len(argv) >= 3 and argv[1] == "-m" and \
             argv[2] in ("pytest", "py_compile"):

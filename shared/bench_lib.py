@@ -109,6 +109,21 @@ def arabic_ratio(t):
 
 # ---------------- exec verifiers (all sandboxed, all with timeouts) ----------------
 
+def _clean_env():
+    """Proxy-stripped environment for child processes (audit fix 2).
+
+    Local copy of the sandbox.py policy (kept dependency-free: this is
+    the legacy module). Model-executed code must never reach the network
+    via ambient proxy config — every subprocess below gets this env.
+    """
+    env = dict(os.environ)
+    for key in ("http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY",
+                "ALL_PROXY", "all_proxy"):
+        env.pop(key, None)
+    env["EMOX_SANDBOX"] = "1"
+    return env
+
+
 def _sandbox():
     """Private tmp cwd for executing model code (PLAN §0.5)."""
     return tempfile.mkdtemp(prefix="emobench_")
@@ -119,7 +134,8 @@ def run_py(code, test, timeout=30):
     d = _sandbox()
     try:
         p = subprocess.run(["python3", "-c", code + "\n" + test], cwd=d,
-                           capture_output=True, text=True, timeout=timeout)
+                            capture_output=True, text=True, timeout=timeout,
+                            env=_clean_env())
         return p.returncode == 0, (p.stdout + p.stderr)[-500:]
     finally:
         shutil.rmtree(d, ignore_errors=True)
@@ -130,7 +146,8 @@ def run_py_file(code, timeout=30):
     d = _sandbox()
     try:
         p = subprocess.run(["python3", "-c", code], cwd=d,
-                           capture_output=True, text=True, timeout=timeout)
+                            capture_output=True, text=True, timeout=timeout,
+                            env=_clean_env())
         return p.returncode == 0, p.stdout, (p.stdout + p.stderr)[-500:]
     finally:
         shutil.rmtree(d, ignore_errors=True)
@@ -141,7 +158,8 @@ def run_js(code, test, timeout=30):
     d = _sandbox()
     try:
         p = subprocess.run(["node", "-e", code + "\n" + test], cwd=d,
-                           capture_output=True, text=True, timeout=timeout)
+                            capture_output=True, text=True, timeout=timeout,
+                            env=_clean_env())
         return p.returncode == 0, (p.stdout + p.stderr)[-500:]
     finally:
         shutil.rmtree(d, ignore_errors=True)
@@ -159,12 +177,12 @@ def run_rust(code, timeout_compile=120, timeout_run=30):
         with open(src, "w") as f:
             f.write(code)
         c = subprocess.run(["rustc", "-O", src, "-o", exe],
-                           capture_output=True, text=True,
-                           timeout=timeout_compile)
+                            capture_output=True, text=True,
+                            timeout=timeout_compile, env=_clean_env())
         if c.returncode != 0:
             return False, c.stderr[-400:]
         p = subprocess.run([exe], capture_output=True, text=True,
-                           timeout=timeout_run)
+                            timeout=timeout_run, env=_clean_env())
         return p.returncode == 0, (p.stdout + p.stderr)[-300:]
     finally:
         shutil.rmtree(d, ignore_errors=True)
@@ -188,7 +206,8 @@ def verify_tsc(code, extra="const _chk: string = greet({name: \"Test\", age: 1})
             f.write(code + "\n" + extra + "\n")
         c = subprocess.run([tsc, "--noEmit", "--strict",
                             os.path.join(d, "t.ts")],
-                           capture_output=True, text=True, timeout=timeout)
+                            capture_output=True, text=True, timeout=timeout,
+                            env=_clean_env())
         return c.returncode == 0, c.stderr[-400:] or "tsc-clean"
     finally:
         shutil.rmtree(d, ignore_errors=True)
@@ -225,7 +244,8 @@ def psql_query(query, setup_sql, host="/tmp", port="55433", db="postgres",
         return None, -1, "psql binary not found"
     c = subprocess.run(["psql", "-h", host, "-p", str(port), "-d", db,
                         "-tA", "-c", setup_sql + " " + query],
-                       capture_output=True, text=True, timeout=timeout)
+                        capture_output=True, text=True, timeout=timeout,
+                        env=_clean_env())
     rows = [ln for ln in c.stdout.strip().splitlines() if ln.strip()]
     return rows, c.returncode, c.stderr[-200:]
 
@@ -252,7 +272,7 @@ def verify_patch(orig_name, orig_content, diff_text, must_contain=(),
             with open(diff_path) as f:
                 dry = subprocess.run(["patch", pflag, "--dry-run"], cwd=d,
                                      stdin=f, capture_output=True, text=True,
-                                     timeout=timeout)
+                                     timeout=timeout, env=_clean_env())
             if dry.returncode == 0:
                 strip = pflag
                 break
@@ -260,7 +280,8 @@ def verify_patch(orig_name, orig_content, diff_text, must_contain=(),
             return False, (dry.stdout + dry.stderr)[-300:]
         with open(diff_path) as f:
             subprocess.run(["patch", strip, "-s"], cwd=d, stdin=f,
-                           capture_output=True, text=True, timeout=timeout)
+                           capture_output=True, text=True, timeout=timeout,
+                           env=_clean_env())
         with open(target) as f:
             content = f.read()
         ok = all(s in content for s in must_contain)

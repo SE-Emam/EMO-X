@@ -8,6 +8,19 @@ prompt/harness changes + mandatory re-baseline).
 ## [Unreleased] — v2.0-alpha (Adaptive Agent Evaluation)
 
 ### Fixed (from live-data audit)
+- Follow-up audit, items 1–4:
+  - `cat` in `safe_tool_run` now logs `ctx.reads` (unified trail with
+    `tool_read`) and caps content at 6000 chars with `...[truncated]`
+    (memory/context bound).
+  - Legacy `bench_lib` executors (`run_py`, `run_py_file`, `run_js`,
+    `run_rust`, `verify_tsc`, `psql_query`, `verify_patch`) now spawn
+    with proxy-stripped env (`_clean_env`), matching the documented
+    network-off policy.
+  - `_SAFE_ARG_RE` tightened (`@` dropped; `:` kept — pytest node IDs
+    like `file::test` are legitimate, shell=False renders all inert).
+  - `Ctx`/`_safe`/`tool_*` deduplicated into `shared/agent_tools.py`;
+    `shared/run.py` and `suites/agent-loop/episode.py` import the same
+    objects (divergence now fails tests, not silently).
 - SECURITY D1 (critical, proven): `tool_run` executed agent commands
   with `shell=True` behind a prefix check — `ls; <anything>` ran
   arbitrary commands. Replaced with `sandbox.safe_tool_run`: closed

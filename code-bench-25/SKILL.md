@@ -1,44 +1,48 @@
 ---
 name: code-bench-25
-description: حزمة اختبارات الكود الـ25 (T/R/H) — تنفيذ حقيقي لكل إجابة مع بوابات صارمة موثقة. استخدمها لمقارنة أي موديل قبل اعتماده.
+description: The 25-test code pack (T/R/H) — real execution of every answer with documented strict gates. Use it to compare any model before adopting it.
 ---
 
-# اختبار الكود 25 (code-bench-25)
+# Code test 25 (code-bench-25)
 
-## ما هذا؟
+## What is it?
 
-25 اختباراً تنفذ إجابة الموديل فعلياً (compilers و interpreters حقيقية)، لا بالنظر.
-كل اختبار: برومبت مجمّد من `shared/PROMPT_PACK_v1.md` + تحقق تنفيذي + نتيجة JSON خام.
+25 tests that really execute the model's answer (real compilers and
+interpreters), not eyeballing. Every test: frozen prompt from
+`shared/PROMPT_PACK_v1.md` + execution check + raw JSON result.
 
-## محتويات الحزمة (25 اختباراً)
+## Pack contents (25 tests)
 
-- **T (أساسي + عربي):** ‏T2 فيبوناتشي، T3 إصلاح `is_even`، T4 مجموع JS، T5 شرح عربي، T6 كود عربي، T7 التزام JSON، T8 مهمة ملف.
-- **R (واقعي):** ‏R1 برنامج Rust كامل، R2 استعلام SQLite، R3 أوامر git،
-  ‏R4 ملف vercel.json، R5 دالة supabase-js، R6 يونيفايد diff،
-  ‏R7 استدعاء أداة بصيغة صارمة، R8 رسالة commit، R9 صفحة HTML/CSS،
-  ‏R10 مكون React، R11 تحقق TypeScript، R12 استعلام Postgres.
-- **H (صعب):** ‏H1 أرقام متزايدة، H2 معادلة دايوفانتية، H3 باقي القسمة،
-  ‏H4 أطول palindrome، H5 دلو الرموز، H6 أول occurrence.
+- **T (basic + Arabic):** T2 Fibonacci, T3 `is_even` fix, T4 JS sum, T5 Arabic explanation, T6 Arabic code, T7 JSON conformance, T8 file task.
+- **R (realistic):** R1 complete Rust program, R2 SQLite query, R3 git commands,
+  R4 vercel.json, R5 supabase-js function, R6 unified diff,
+  R7 strict-format tool call, R8 commit message, R9 HTML/CSS page,
+  R10 React component, R11 TypeScript check, R12 Postgres query.
+- **H (hard):** H1 increasing digits, H2 Diophantine equation, H3 modular remainder,
+  H4 longest palindrome, H5 token bucket, H6 first occurrence.
 
-ملاحظة: الترقيم يبدأ من T2 (سبعة اختبارات T + اثنا عشر R + ستة H = 25).
+Note: numbering starts at T2 (seven T + twelve R + six H = 25 tests).
 
-## ملاحظات المنهجية (لا تغيرها دون نسخة PROMPT_PACK جديدة)
+## Methodology notes (do not change without a new PROMPT_PACK version)
 
-1. **صرامة بوابة T5:** النجاح يتطلب `arabic_ratio > 0.3` — الردود المختلطة
-   (عربي قصير + إنجليزي طويل) تفشل عمداً. هذا يقيس الشرح العربي الحقيقي.
-2. **فحص R6 المصحح:** لا يكفي أن يطبق الـ diff؛ يجب أن يحتوي الملف الناتج
-   `def sum_all` **و** جسم الدالة الأصلي (`s += i`). diff يطبق لكنه خاطئ = فشل.
-3. **فحص R10 المصحح:** مطابقة غير حساسة لحالة الأحرف لـ `useState(0)` بدون مسافات،
-   مع `onClick` و `setCount` واسم `Counter` و `export`. يمنع الإيجابيات الكاذبة.
-4. **فحص R12 المصحح:** الصفوف المتوقعة `["Keyboard", "Mouse"]` فقط
-   (أرخص من 100 مرتبة تنازلياً: 50 ثم 25) — أي ترتيب آخر = فشل.
-5. **قاعدة التشغيل الثلاثي H3:** بعد ملاحظة عدم استقرار H3، الجولات الأحادية له
-   **غير مقبولة**. شغّل `--trials 3` واعتمد الأغلبية/المتوسط.
-6. **`think:false` للرياضيات:** اختبارات H1–H3 تعمل عبر الـ native endpoint مع
-   `think=false` (و `num_predict=1400` لـ H2). التفكير المطول يضيف ضجيجاً
-   ويكسر استخراج الإجابة الرقمية.
+1. **T5 gate strictness:** passing requires `arabic_ratio > 0.3` — mixed
+   replies (short Arabic + long English) fail by design. This measures
+   genuine Arabic explanation.
+2. **Corrected R6 check:** applying the diff is not enough; the resulting
+   file must contain `def sum_all` **and** the original body (`s += i`).
+   An applying-but-wrong diff = fail.
+3. **Corrected R10 check:** case-insensitive match of `useState(0)` with no
+   spaces, plus `onClick`, `setCount`, name `Counter`, and `export`.
+   Prevents false positives.
+4. **Corrected R12 check:** only the expected rows `["Keyboard", "Mouse"]`
+   (cheaper than 100 ordered DESC: 50 then 25) — any other order = fail.
+5. **H3 triple-run rule:** after observed H3 instability, single H3 runs
+   are **non-admissible**. Run `--trials 3` and take majority/mean.
+6. **`think:false` for math:** H1–H3 run via the native endpoint with
+   `think=false` (and `num_predict=1400` for H2). Long reasoning adds
+   noise and breaks numeric answer extraction.
 
-## التشغيل
+## Run
 
 ```bash
 # Full suite against a Kaggle tunnel
@@ -52,7 +56,7 @@ python shared/run.py --suite code25 --only T5,R7,H3 --trials 3 --out results/
 python shared/run.py --backend openai-generic --suite code25 --out results/
 ```
 
-## التحقق
+## Verification
 
 ```python
 # Every answer executes in a real toolchain (bench_lib verifiers):
@@ -63,7 +67,8 @@ ok, log = verify_tsc(code)        # tsc --noEmit --strict (+ static fallback)
 ok, log = verify_patch("calc.py", orig, diff, must_contain=("def sum_all", "s += i"))
 ```
 
-## التقارير
+## Reports
 
-نتائج JSON خام في `results/` (لا تعدلها أبداً) + ملخص `pass/total`.
-التقرير يجب أن يذكر: نسخة PROMPT_PACK، الـ backend، الحرارة، عدد المحاولات، العتاد.
+Raw JSON results in `results/` (never edit them) + `pass/total` summary.
+The report must state: PROMPT_PACK version, backend, temperature, trial
+count, hardware.

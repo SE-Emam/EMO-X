@@ -78,11 +78,35 @@ def _tool_health(params):
     return runner.health_snapshot(params.get("out_root"))
 
 
+def _progress_emitter(token):
+    """Build an on_event callback emitting MCP progress notifications.
+
+    Server-initiated notifications (no id) stream to stdout while the
+    tool runs, so clients see suite/attempt progress instead of silence.
+    """
+    def emit(snapshot):
+        sys.stdout.write(json.dumps({
+            "jsonrpc": "2.0",
+            "method": "notifications/progress",
+            "params": dict(snapshot, progressToken=token),
+        }, ensure_ascii=False, default=str) + "\n")
+        sys.stdout.flush()
+    return emit
+
+
 def _tool_run_suite(params):
     suite = params.get("suite")
     if not suite:
         raise ValueError("suite is required")
     chat, model, backend = _chat_from_params(params)
+    try:
+        from progress import ProgressReporter
+    except ImportError:
+        from shared.progress import ProgressReporter
+    token = params.get("progress_token")
+    prog = ProgressReporter(
+        enabled=False,
+        on_event=_progress_emitter(token) if token else None)
     rundir, summary = runner.run_suite(
         suite, chat,
         model_id=params.get("model_id") or model,
@@ -96,12 +120,21 @@ def _tool_run_suite(params):
         provider_profile=params.get("provider_profile"),
         scope=params.get("scope"),
         sampling=params.get("sampling"),
+        progress=prog,
     )
     return dict(summary, run_dir=rundir)
 
 
 def _tool_run_profile(params):
     chat, model, backend = _chat_from_params(params)
+    try:
+        from progress import ProgressReporter
+    except ImportError:
+        from shared.progress import ProgressReporter
+    token = params.get("progress_token")
+    prog = ProgressReporter(
+        enabled=False,
+        on_event=_progress_emitter(token) if token else None)
     runs, report = runner.run_profile(
         chat,
         model_id=params.get("model_id") or model,
@@ -114,6 +147,7 @@ def _tool_run_profile(params):
         provider_profile=params.get("provider_profile"),
         scope=params.get("scope"),
         sampling=params.get("sampling"),
+        progress=prog,
     )
     return {"runs": runs, "report": report}
 
@@ -195,7 +229,9 @@ TOOLS = {
         "fn": _tool_run_suite,
         "description": "Run one EMO-X suite end-to-end into a sealed raw "
                        "bundle. code25-hidden needs scope='hidden-ok'; "
-                       "security S3-S5 need scope approval (fail-closed).",
+                       "security S3-S5 need scope approval (fail-closed). "
+                       "Pass progress_token to stream "
+                       "notifications/progress while it runs.",
         "inputSchema": {
             "type": "object", "required": ["suite"],
             "properties": {
@@ -212,12 +248,15 @@ TOOLS = {
                 "scope": {"type": "string"},
                 "families": {"type": "array", "items": {"type": "string"}},
                 "sampling": {"type": "object"},
+                "progress_token": {"type": ["string", "integer"]},
                 "out_root": {"type": "string"}}},
     },
     "run_profile": {
         "fn": _tool_run_profile,
         "description": "Full capability profile across all suites "
-                       "(profile + fingerprint + efficiency + uncertainty).",
+                       "(profile + fingerprint + efficiency + uncertainty). "
+                       "Pass progress_token to stream "
+                       "notifications/progress while it runs.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -281,11 +320,20 @@ def handle_message(msg):
     req_id = msg.get("id")
     params = msg.get("params") or {}
     if method == "initialize":
+        try:
+            from splash import banner
+        except ImportError:
+            from shared.splash import banner
+        try:
+            splash_text = banner(width=80, color=False)
+        except Exception:
+            splash_text = "EMO-X"
         return _result(req_id, {
             "protocolVersion": "2024-11-05",
             "capabilities": {"tools": {}},
             "serverInfo": {"name": SERVER_NAME,
-                           "version": SERVER_VERSION}})
+                           "version": SERVER_VERSION,
+                           "splash": splash_text}})
     if method in ("initialized",) or str(method).startswith(
             "notifications/"):
         return None

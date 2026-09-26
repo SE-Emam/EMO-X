@@ -59,7 +59,11 @@ def variant_for_difficulty(difficulty):
     """Highest-bump variant compatible with a rung (uses the bump table).
 
     Rungs D0-D1 stay canonical/paraphrase; higher rungs unlock structural,
-    adversarial, recovery, and finally novel/compound material.
+    adversarial, recovery, and finally novel material. Note: there is no
+    dedicated "compound" variant — D6 and D7 both map to "novel"
+    (novel instances serve the compound/long-horizon rungs). This is
+    intentional: variant space ends at R/N levels while difficulty keeps
+    rising via instance complexity, not new variant labels.
     """
     if difficulty <= 1:
         return "canonical"

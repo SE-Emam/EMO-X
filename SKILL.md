@@ -7,146 +7,175 @@ category: qa
 
 # EMO-X Skill (Model B: skill inside the agent)
 
-## ما هذه المهارة؟
+> **Session opening (show once):** display the hero splash first, then
+> these instructions. CLI: printed automatically on stderr each run
+> (`--quiet` silences it). MCP: in `initialize.serverInfo.splash`.
+> forge-agent: `emo_x(action="splash")`. The splash is identity, not
+> decoration — it states the version, live suite/manifest/test counts,
+> and the iron rule below.
 
-EMO-X يقيس ما **يُنجَز تنفيذياً** لا ما يُقال نصّياً: أجنحة كود وتنفيذ
-حقيقي، حلقات وكيلية، تعافٍ، معايرة، سلامة، وأفق طويل — مع بصمة فشل
-وشك إحصائي، لا رقماً واحداً.
+## What is this skill?
 
-## متى تُستدعى؟
+EMO-X measures what is **reliably accomplished**, not what is said as
+text: real-execution code suites, agent loops, recovery, calibration,
+safety, and long horizon — with a failure fingerprint and statistical
+uncertainty, never one number.
 
-- المستخدم يطلب تقييم/مقارنة نموذج (`benchmark this model`, `قارن النموذجين`).
-- المستخدم يطلب تقرير قدرات (`capability profile`, `تقرير EMO`).
-- المستخدم يشتبه بكسر في البيئة (`self-test`, `تحقق من الـharness`).
+## When to invoke it?
 
-## القاعدة الحديدية
+- The user asks to evaluate/compare a model (`benchmark this model`).
+- The user asks for a capability profile (`capability profile`, EMO report).
+- The user suspects a broken environment (`self-test`, harness check).
 
-هذه المهارة **تستدعي** `shared/run.py` كعملية فرعية — لا تعيد تنفيذ
-المنطق، لا تنسخ البرومبتات، لا تخترع أرقاماً. النتائج تُقرأ من الحزمة
-الخام فقط (`results/raw/RUN-ID/`). أي رقم بلا حزمة خام = غير مقبول.
+## The iron rule
 
-## التشغيل (نفّذ حرفياً، عدّل المسار فقط)
+This skill **invokes** `shared/run.py` as a subprocess — it never
+re-implements logic, never copies prompts, never invents numbers.
+Results are read from the raw bundle only (`results/raw/RUN-ID/`).
+Any number without a raw bundle is inadmissible.
 
-> **التقارير تُكتب في مجلد عمل الوكيل** (cwd)، لا في جذر المهارة:
-> مرّر `--out` دائماً (مجلد المشروع الحالي)، واعرض التقرير بالمتصفح
-> عبر `report.html` المولّد بجانب الحزمة (انظر "التقرير البياني" أدناه).
+## Install paths: full clone vs pip (choose once)
+
+- **Track 1 — user (benchmark models):** `pip install emo-x`, then
+  `emo --self-test`, `emo --suite code25 --out results/`. The `emo`
+  entry behaves exactly like `python3 shared/run.py` (same splash on
+  stderr, same `--quiet`, same sealed bundles).
+- **Track 2 — harness developer:** `git clone` this repo; run
+  `python3 tests/run_all.py`. Contribute per `CONTRIBUTING.md`.
+
+## Run (execute literally, adjust paths only)
+
+> **Reports go in the agent's working directory** (cwd), not the skill
+> root: always pass `--out` (the current project dir), and display the
+> report in the browser via the generated `report.html` next to the
+> bundle (see "Graphical report" below).
 
 ```bash
-EMOX=/path/to/emo-x   # جذر هذا المستودع
-OUT=.                  # مجلد المشروع الذي يعمل به الوكيل (cwd) — لا تغيّره لجذر المهارة
+EMOX=/path/to/emo-x   # root of this repo
+OUT=.                  # the agent's working project dir (cwd) — do not point it at the skill root
 
-# 0) تحقق أولاً (دقيقتان، بلا endpoint) — أي فشل يوقف كل شيء:
+# 0) verify first (two minutes, no endpoint) — any failure stops everything:
 python3 $EMOX/shared/run.py --self-test
 python3 $EMOX/tests/run_all.py
 
-# 1) جناح الكود (ابدأ هنا دائماً):
+# 1) code suite (always start here):
 python3 $EMOX/shared/run.py --backend openai-generic --suite code25 --out $OUT/results/
 
-# 2) الملف الكامل (بعد نجاح 1):
+# 2) full profile (after 1 succeeds):
 python3 $EMOX/shared/run.py --suite profile --trials 3 --out $OUT/results/
 
-# 3) أجنحة مركزة:
+# 3) focused suites:
 python3 $EMOX/shared/run.py --suite dynamic-code --instances 20 --seed 12345 --out $OUT/results/
 python3 $EMOX/shared/run.py --suite recovery --fault-rate 0.25 --out $OUT/results/
 python3 $EMOX/shared/run.py --suite gauntlet --out $OUT/results/
 python3 $EMOX/shared/run.py --suite code25 --only T5,R7,H3 --trials 3 --out $OUT/results/
 
-# 4) صحة البنشمارك نفسه:
+# 4) benchmark self-health:
 python3 $EMOX/shared/run.py --health
 
-# 5) تقرير العميل (القالب المجمّد + ختم QA) — يُكتب في $OUT/reports/:
+# 5) client report (frozen template + QA stamp) — written to $OUT/reports/:
 python3 $EMOX/shared/run.py --report $OUT/results/<model>_<stamp>.json --model MODEL-ID --out $OUT/reports/
 ```
 
-## سير العمل: Manual أم Auto (اسأل المستخدم أولاً)
+## Workflow: Manual or Auto (ask the user first)
 
-عند طلب benchmark لنموذج، **خيّر المستخدم صراحة** بين أمرين قبل أي تنفيذ:
+When a model benchmark is requested, **explicitly offer the user** two
+options before any execution:
 
 | | Manual workflow | Auto workflow |
 |---|---|---|
-| المعنى | الوكيل ينفذ خطوة → يعرض النتيجة → **ينتظر تأكيدك** قبل التالية | الوكيل يتولى المهمة كاملة (self-test ← code25 ← profile ← تقرير بياني) **دون الرجوع إليك** حتى يكتمل ويظهر التقرير |
-| متى | endpoint جديد، أول تجربة، نتائج حساسة | endpoint معروف يعمل، تشغيل روتيني |
-| الإيقاف | أي فشل يوقف ويطلب القرار | الفشل الحرج فقط (self-test أحمر، VOID شامل) يوقف؛ الباقي يُسجَّل ويُتابَع |
+| Meaning | The agent runs one step → shows the result → **waits for your confirmation** before the next | The agent owns the full task (self-test ← code25 ← profile ← graphical report) **without coming back to you** until it completes and shows the report |
+| When | New endpoint, first run, sensitive results | Known working endpoint, routine run |
+| Stopping | Any failure stops and asks for a decision | Only critical failure stops (red self-test, blanket VOID); the rest is logged and continued |
 
-سؤال التخيير الحرفي: *"benchmark لِـ MODEL-ID: تريد Manual (خطوة بخطوة مع تأكيدك) أم Auto (أكمل كل شيء وأعرض التقرير)؟"*
+The verbatim choice question: *"Benchmark for MODEL-ID: Manual (step by step with your confirmation) or Auto (complete everything and show the report)?"*
 
-قواعد Auto الإلزامية: self-test أخضر أولاً وإلا توقف فوري؛ الترتيب code25 ← profile ← تقرير؛ لا S3–S5 ولا hidden بلا موافقة صريحة مسبقة؛ التقرير البياني يُفتح تلقائياً في النهاية؛ أي VOID شامل يُعلن ولا يُتجاوز بصمت.
+Mandatory Auto rules: green self-test first or stop immediately; order code25 ← profile ← report; no S3–S5 and no hidden without prior explicit approval; the graphical report opens automatically at the end; any blanket VOID is announced, never silently bypassed.
 
-## التقرير البياني (HTML + رسوم — يُفتح بالمتصفح)
+Progress visibility (both workflows): the harness prints a live bar on
+stderr — `[profile 2/7] [code25 14/25] ██████░░░░ 56% | T14 H3 perturbed · ✓11 ✗2 · 04:12 ~06:30`
+(bar + current step title + pass/fail tallies + elapsed + approximate
+ETA; `--no-progress` disables it, bundles stay identical). In Auto,
+quote the percentage and current step when reporting status
+(e.g. "~35% — code25 trial 2/3, now on T14"), never just "working on it".
 
-بعد أي تشغيل، ولّد العرض من الحزمة الخام وافتحه:
+## Graphical report (HTML + charts — opens in the browser)
+
+After any run, render the view from the raw bundle and open it:
 
 ```bash
 python3 $EMOX/shared/render_report.py $OUT/results/raw/RUN-ID/ --out $OUT/reports/RUN-ID/
-open $OUT/reports/RUN-ID/report.html   # macOS; أو xdg-open على Linux
+open $OUT/reports/RUN-ID/report.html   # macOS; or xdg-open on Linux
 ```
 
-**عدة نماذج (leaderboard):** نموذج واحد أو N — حسب ما يريد المستخدم:
+**Multiple models (leaderboard):** one model or N — as the user wants:
 
 ```bash
 python3 $EMOX/shared/render_leaderboard.py $OUT/results/raw/RUN-A/ [$OUT/results/raw/RUN-B/ ...] --out $OUT/reports/board/
 open $OUT/reports/board/leaderboard.html
 ```
 
-اللوحة تحوي: جدول مرتبة بنطاقات (bands — الفترات المتداخلة تتشارك
-المرتبة، لا دقة زائفة) + جراف SVG (أشرطة + شوارب CI) + جدول المقارنات
-الزوجية (`significant/directional/inconclusive` — كلمة "فائز" ممنوعة).
+The board contains: a banded rank table (overlapping intervals share a
+band, no false precision) + SVG graph (bars + CI whiskers) + pairwise
+comparison table (`significant/directional/inconclusive` — the word
+"winner" is forbidden).
 
-**لوحة security (بيانات v1 المسطحة):**
+**Security board (flat v1 data):**
 
 ```bash
 python3 $EMOX/shared/render_security_board.py $OUT/results/raw/security_*.json --out $OUT/reports/security-board/
 open $OUT/reports/security-board/security-board.html
 ```
 
-جدول مرتبة + مصفوفة خضراء/حمراء لكل اختبار (S1–S5) + tokens/secs +
-حالة الـscope — نموذج واحد أو N.
+Rank table + green/red matrix per test (S1–S5) + tokens/secs +
+scope status — one model or N.
 
-العرض يحوي: شريط القدرات (Capability Profile bars) + بصمة الفشل
-(fingerprint bars) + الكفاءة Tier A/B + فترة الشك 95% CI + جدول
-`claim_tier`/`reasoning_conditions`/البوابات — من الحزمة الخام فقط،
-بلا إنترنت وبلا اعتماديات (SVG/CSS مضمّن).
+The view contains: Capability Profile bars + failure fingerprint bars
++ Tier A/B efficiency + 95% CI interval + `claim_tier` /
+`reasoning_conditions` / gates table — from the raw bundle only, no
+internet and no dependencies (inline SVG/CSS).
 
-المفاتيح عبر البيئة لا الأعلام:
+Keys via environment, not flags:
 
 ```bash
 export OPENAI_BASE_URL="https://HOST/v1" OPENAI_API_KEY="$KEY" OPENAI_MODEL="MODEL-ID"
 ```
 
-## قراءة النتيجة
+## Reading the result
 
-- الحزمة: `results/raw/RUN-ID/{manifest,events,responses,environment}.json*` — لا تُعدَّل أبداً.
-- اعرض: Capability Profile + بصمة الفشل + الكفاءة + الشك (95% CI) — **ممنوع اختزالها لرقم واحد** (SPEC §B61).
-- المقارنة بين نموذجين: `compare_models` في `shared/report_v2.py` فقط — الحالات المسموحة `significant / directional / inconclusive`، وكلمة "فائز" ممنوعة.
+- The bundle: `results/raw/RUN-ID/{manifest,events,responses,environment}.json*` — never modified.
+- Display: Capability Profile + failure fingerprint + efficiency + uncertainty (95% CI) — **never reduce to one number** (SPEC §B61).
+- Comparing two models: `compare_models` in `shared/report_v2.py` only — allowed states are `significant / directional / inconclusive`, and the word "winner" is forbidden.
 
-## تحذير المقارنة (إلزامي في كل تقرير)
+## Comparison warning (mandatory in every report)
 
-سجّل harness الوكيل المضيف (اسمه + إصداره) بجانب كل نتيجة موسومة
-بهذه المهارة. أي مقارنة ضد نتائج `run.py` المباشرة موسومة
-**NON-COMPARABLE** (harness+model هي الوحدة — SPEC §B58، `adapters/ADAPTERS.md` §0).
+Record the host agent harness (name + version) next to every result
+tagged by this skill. Any comparison against direct `run.py` results is
+labeled **NON-COMPARABLE** (harness+model is the unit — SPEC §B58,
+`adapters/ADAPTERS.md` §0).
 
-## ما لا تفعله هذه المهارة
+## What this skill does not do
 
-- أجنحة السلامة S3–S5 تحتاج موافقة scope (`EMOX_SCOPE_APPROVED=1` + `EMOX_SCOPE_TARGET=synthetic:…`) — بلا موافقة تُرفض fail-closed، لا تتجاوزها.
-- الجناح المخفي (`code25-hidden`) يحتاج `--hidden-ok` — لا تستخدمه للمطالبات العامة.
-- `vision` يحتاج endpoint متعدد الوسائط؛ `computer-use` تجريبي (PILOT).
+- Safety suites S3–S5 need scope approval (`EMOX_SCOPE_APPROVED=1` + `EMOX_SCOPE_TARGET=synthetic:…`) — without approval they refuse fail-closed, never bypass them.
+- The hidden suite (`code25-hidden`) needs `--hidden-ok` — never use it for public claims.
+- `vision` needs a multimodal endpoint; `computer-use` is experimental (PILOT).
 
-## التثبيت حسب الوكيل (opencode / pi / forge-agent / codex / hermes-agent)
+## Per-agent install (opencode / pi / forge-agent / codex / hermes-agent)
 
-> تنبيه: **لا يوجد شيء اسمه forgecode** — الاسم الصحيح **forge-agent**
-> (أمر `forge-agent`/`fa`)، وآليته plugins بلغة JS في
-> `~/.deepseek-agent/tools/` — لا يقرأ SKILL.md.
+> Note: **there is no such thing as forgecode** — the correct name is
+> **forge-agent** (the `forge-agent`/`fa` command), whose mechanism is
+> JS plugins in `~/.deepseek-agent/tools/` — it does not read SKILL.md.
 
-| الوكيل | آلية المهارة | التثبيت |
+| Agent | Skill mechanism | Install |
 |---|---|---|
-| opencode | أوامر مخصصة + MCP (لا SKILL.md أصيلاً) | انسخ `commands/emo.md` لمجلد custom-commands، أو اربط خادم MCP: `opencode mcp add emo-x -- python3 /path/to/emo-x/mcp-server/server.py` — انظر `mcp-server/` |
-| pi | `--skill <path>` أصيل (يُحمَّل ملفاً أو مجلداً، قابل للتكرار) | `pi --skill /path/to/emo-x/SKILL.md "benchmark this model"` — يُحمَّل مباشرة بلا تثبيت |
-| hermes-agent | مهارات أصيلة `SKILL.md` (frontmatter `name/description/version/category`) — محلية `./.hermes/skills/` + `skills trust`، أو `~/.hermes/skills/`، أو `publish`/`sync` | **مثبتة في هذا المستودع**: `.hermes/skills/emo-x/SKILL.md` — نفّذ `hermes skills trust` في الجذر ثم تُحمَّل تلقائياً |
-| forge-agent (DeepSeek/Gemini) | **plugins بلغة JS** (`~/.deepseek-agent/tools/*.js`) — لا SKILL.md | انسخ `adapters/forge_agent_emo_x.js` إلى `~/.deepseek-agent/tools/emo_x.js` (مثبت ومُتحقق: `forge-agent --list-plugins` تُظهر `emo_x`) |
-| codex CLI | `~/.codex/commands/` + shell | انسخ `commands/emo.md` إلى `~/.codex/commands/emo.md` ثم `/emo code25` |
-| kilo / cline | إضافتا VS Code **بلا CLI** — لا تحميل آلي ممكن | manual-trace: نفّذ الأوامر يدوياً من `SKILL.md` وسجّل النتائج بنفس الحقول |
+| opencode | Custom commands + MCP (no native SKILL.md) | Copy `commands/emo.md` to the custom-commands dir, or attach the MCP server: `opencode mcp add emo-x -- python3 /path/to/emo-x/mcp-server/server.py` — see `mcp-server/` |
+| pi | Native `--skill <path>` (loads a file or dir, repeatable) | `pi --skill /path/to/emo-x/SKILL.md "benchmark this model"` — loads directly, no install |
+| hermes-agent | Native `SKILL.md` skills (frontmatter `name/description/version/category`) — local `./.hermes/skills/` + `skills trust`, or `~/.hermes/skills/`, or `publish`/`sync` | **Installed in this repo**: `.hermes/skills/emo-x/SKILL.md` — run `hermes skills trust` at the root, then it loads automatically |
+| forge-agent (DeepSeek/Gemini) | **JS plugins** (`~/.deepseek-agent/tools/*.js`) — no SKILL.md | Copy `adapters/forge_agent_emo_x.js` to `~/.deepseek-agent/tools/emo_x.js` (installed and verified: `forge-agent --list-plugins` shows `emo_x`) |
+| codex CLI | `~/.codex/commands/` + shell | Copy `commands/emo.md` to `~/.codex/commands/emo.md`, then `/emo code25` |
+| kilo / cline | VS Code extensions **with no CLI** — no automatic loading possible | manual-trace: run the commands from `SKILL.md` by hand and record results with the same fields |
 
-قيد hermes الخاص: أوامر `run.py` تُنفَّذ عبر أدوات الـterminal لدى
-hermes (`--yolo` للتشغيل غير التفاعلي)؛ سجِّل `cli_command_argv`
-وإصدار hermes (`hermes --version`) ضمن `harness` كل نتيجة — نفس قاعدة
-NON-COMPARABLE أعلاه.
+hermes-specific constraint: `run.py` commands execute via hermes
+terminal tools (`--yolo` for non-interactive runs); record
+`cli_command_argv` and the hermes version (`hermes --version`) inside
+every result's `harness` — same NON-COMPARABLE rule as above.

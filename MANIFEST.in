@@ -1,0 +1,15 @@
+graft src
+graft shared
+graft suites
+graft prompts
+graft generators
+graft judges
+graft health
+graft adapters
+graft mcp-server
+graft commands
+include SKILL.md LICENSE README.md SPEC.md DENOMINATORS.md
+global-exclude __pycache__ *.pyc *.pyo .DS_Store
+prune results
+prune reports
+prune .git

@@ -1,35 +1,37 @@
 ---
 name: agent-loop-bench
-description: اختبار الوكيل الحقيقي (سيناريو shop/) — حلقة أدوات ls/read/run/edit مع مقاييس A1-A15 والكفاءة. استخدمه لقياس قدرة الوكيل لا مجرد صحة الكود.
+description: Real agent test (shop/ scenario) — ls/read/run/edit tool loop with A1-A15 metrics and efficiency. Use it to measure agent capability, not just code correctness.
 ---
 
-# اختبار حلقة الوكيل (agent-loop-bench)
+# Agent loop test (agent-loop-bench)
 
-## ما هذا؟
+## What is it?
 
-وكيل حقيقي داخل مستودع `shop/` معطوب: الموديل يقود أدوات whitelist حتى تخضر الاختبارات.
-يقيس السلوك الوكيلي (استكشاف، تشخيص، إصلاح، تحقق، توقف نظيف)، لا صحة مقتطف واحد.
+A real agent inside a broken `shop/` repo: the model drives whitelist
+tools until the tests go green. It measures agentic behavior
+(exploration, diagnosis, repair, verification, clean stop), not the
+correctness of one snippet.
 
-## السيناريو (`shop/`)
+## The scenario (`shop/`)
 
-- `shop/taxes.py` يقرأ `REGION` لكنه يعالج `"EU"` فقط فيرجع `0.0` بدل `0.20`.
-- `shop/config.py` فيه `REGION = "UK"` وهو **صحيح ويمنوع لمسه** (فحص A10).
-- `shop/pricing.py` يجمع الأسعار + الضريبة (التصليب الاختياري الوحيد المقبول مع `taxes.py`).
-- `shop/tests/test_pricing.py` يتوقع `total([100.0, 50.0]) == 180.0`.
-- `shop/vendor_dump.py` ملف مشتت ~40KB (فخ A11/A13) — لا تستخدمه أبداً.
+- `shop/taxes.py` reads `REGION` but only handles `"EU"`, returning `0.0` instead of `0.20`.
+- `shop/config.py` holds `REGION = "UK"` and is **correct and must not be touched** (check A10).
+- `shop/pricing.py` sums prices + tax (the only acceptable hardening alongside `taxes.py`).
+- `shop/tests/test_pricing.py` expects `total([100.0, 50.0]) == 180.0`.
+- `shop/vendor_dump.py` is a ~40KB distractor file (A11/A13 trap) — never use it.
 
-الإصلاح المقصود: ملف واحد (`shop/taxes.py`)؛ `shop/pricing.py` تصليب اختياري.
+Intended fix: one file (`shop/taxes.py`); `shop/pricing.py` is optional hardening.
 
-## مواصفات الأدوات (أسماء البارامترات صارمة)
+## Tool spec (parameter names are strict)
 
-- أربع أدوات فقط: `ls` و `read` و `run` و `edit` — استدعاء واحد لكل رسالة.
-- الأسماء الدقيقة: `ls` يستخدم `path`؛ `read` يستخدم `path`؛
-  `run` يستخدم `cmd`؛ `edit` يستخدم `path+old+new`.
-- `run` يسمح فقط بـ `pytest/py_compile/ls/cat` داخل `/repo`.
-- `edit` يفشل إن لم يوجد `old` حرفياً (تحقق من المسافات).
-- أي صيغة أخرى (`<parameter name="path">`, `<path>`, JSON) = **no-tool-call**
-  (راجع درس `<parameter=P>` في `shared/PROMPT_PACK_v1.md`).
-- عند اخضرار الاختبارات: `FINAL: <سطر واحد>` بدون استدعاء أداة، ثم التوقف (A14).
+- Only four tools: `ls`, `read`, `run`, `edit` — one call per message.
+- Exact names: `ls` uses `path`; `read` uses `path`;
+  `run` uses `cmd`; `edit` uses `path+old+new`.
+- `run` allows only `pytest/py_compile/ls/cat` inside `/repo`.
+- `edit` fails unless `old` exists verbatim (check whitespace).
+- Any other shape (`<parameter name="path">`, `<path>`, JSON) = **no-tool-call**
+  (see the `<parameter=P>` lesson in `shared/PROMPT_PACK_v1.md`).
+- When tests go green: `FINAL: <one line>` with no tool call, then stop (A14).
 
 ```xml
 <tool_call>
@@ -39,36 +41,37 @@ description: اختبار الوكيل الحقيقي (سيناريو shop/) —
 </tool_call>
 ```
 
-## خريطة A1–A15 (مجمّدة)
+## A1–A15 map (frozen)
 
-- **A1** الاستطلاع قبل التعديل: قراءة ملف مصدري قبل أول `edit`.
-- **A2** التشخيص: تشغيل حزمة الاختبارات مرة واحدة على الأقل.
-- **A3** السبب الجذري: لمس `shop/taxes.py`.
-- **A4** بلا ممنوعات: لا تعديل في `shop/tests/` أو الملفات المحظورة.
-- **A5** بلا هلوسة مسارات: صفر مسارات غير موجودة.
-- **A6** انضباط الأدوات: استدعاءات فاشلة ≤ 2.
-- **A7** التعافي: جولة نظيفة، أو فشل متبوع بإنهاء أخضر.
-- **A8** التحقق بعد التعديل: تشغيل اختبارات بعد آخر `edit`.
-- **A9** الاختبارات خضراء عند التحقق النهائي.
-- **A10** ملف `shop/config.py` لم يُمس.
-- **A11** تجاهل المشتت: `shop/vendor_dump.py` لم يُقرأ ولم يُعدل.
-- **A12** نظافة الـ diff: الملفات المغيرة ⊆ ‏{`taxes.py`, `pricing.py`} وغير فارغة.
-- **A13** كفاءة الاستكشاف: الاستدعاءات ≤ الحد وقراءة الملف المعطوب.
-- **A14** التوقف النظيف: رد `FINAL` بدون استدعاء معلق.
-- **A15** النجاح الكلي: اختبارات خضراء + توقف نظيف.
+- **A1** recon before edit: read a source file before the first `edit`.
+- **A2** diagnosis: run the test suite at least once.
+- **A3** root cause: touched `shop/taxes.py`.
+- **A4** no forbidden edits: no changes in `shop/tests/` or forbidden files.
+- **A5** no hallucinated paths: zero nonexistent paths.
+- **A6** tool discipline: failed calls ≤ 2.
+- **A7** recovery: clean run, or failure followed by a green finish.
+- **A8** verify after edit: test run after the last `edit`.
+- **A9** tests green at final verification.
+- **A10** `shop/config.py` untouched.
+- **A11** distractor ignored: `shop/vendor_dump.py` neither read nor edited.
+- **A12** clean diff: changed files ⊆ {`taxes.py`, `pricing.py`} and non-empty.
+- **A13** efficient exploration: calls within budget and the buggy file read.
+- **A14** clean stop: `FINAL` reply with no pending call.
+- **A15** overall success: green tests + clean stop.
 
-## مقاييس الكفاءة (تقرير إلزامي بجانب النجاح/الفشل)
+## Efficiency metrics (mandatory report next to success/failure)
 
-الاستدعاءات، الفاشلة، التعافي، الرموز، زمن الاستجابة، المسارات المحظورة،
-نظافة الـ diff، التوقف النظيف (A14). قارن **الرموز لكل مهمة محلولة**
-(تشمل المحاولات الفاشلة) لا نسبة النجاح وحدها.
+Calls, failed, recoveries, tokens, latency, forbidden paths,
+diff cleanliness, clean stop (A14). Compare **tokens per solved task**
+(including failed attempts), not pass rate alone.
 
-## قاعدة البرومبت المتطابق
+## Identical-prompt rule
 
-بايتات البرومبت (SYSTEM + TASK في `shared/PROMPT_PACK_v1.md`) متطابقة لكل
-متنافس — أي اختلاف يجعل الجولة **باطلة**. سجل نسخة PROMPT_PACK في التقرير.
+Prompt bytes (SYSTEM + TASK in `shared/PROMPT_PACK_v1.md`) are identical
+for every contender — any difference voids the round. Record the
+PROMPT_PACK version in the report.
 
-## التشغيل
+## Run
 
 ```bash
 # Single episode (15 steps max)

@@ -7,7 +7,38 @@ prompt/harness changes + mandatory re-baseline).
 
 ## [Unreleased] — v2.0-alpha (Adaptive Agent Evaluation)
 
+### Added
+- `pip install emo-x` (Track 1): `pyproject.toml` + `src/emox/`
+  (`emo` entry, lazy API, tree resolution via EMOX_ROOT/bundled
+  data/live checkout) with build-time data bundling (`setup.py`,
+  `MANIFEST.in`); single-version lock test across pyproject, runner,
+  MCP server, and SKILL frontmatter.
+- Hero splash (`shared/splash.py`): large centered blue ASCII logo on
+  stderr every run (`--quiet` silences; NO_COLOR/non-tty safe),
+  dynamic version/suite/manifest/test counts, compact fallback under
+  60 columns; surfaced in MCP `initialize.serverInfo`, forge `splash`
+  action, and the SKILL session opening.
+- `suites/issues/` (IS1 csv-quoted-commas, IS2 config-deep-merge,
+  IS3 backoff-cap, IS4 url-join-slash, IS5 budget-sum-check,
+  IS6 json-required-keys, IS7 dedup-order, IS8 utc-offset-sign,
+  IS9 ttl-expiry): GitHub-issue-style repair tasks with a
+  SWE-bench-shaped oracle — visible fixture tests plus held-out hidden
+  tests executed post-episode and deleted unseen; PASS needs fixture
+  green AND hidden green AND FINAL stop. Registered in runner + CLI.
+- Live progress (`shared/progress.py`): suite/attempt bar + current
+  step title + pass/fail tallies + elapsed/approximate ETA on stderr
+  (`--no-progress` disables); MCP `notifications/progress` via
+  `progress_token`; progress never touches scored events (bundles
+  byte-identical on/off).
+
 ### Fixed (from live-data audit)
+- Independent audit follow-up: removed one dead code line
+  (`run_agent_suite` unused dict), one dead import (`bench_lib` in
+  `hermes_adapter.py`), fixed `REVIEW-X.md` stale test count
+  (214 → 505, AST-counted), clarified `variant_for_difficulty`
+  D6/D7→novel mapping in docstring, added 12 `adaptive.py` tests
+  (previously untested), hardened CI with compileall + secrets scan
+  + dangerous-pattern guard.
 - Follow-up audit, items 1–4:
   - `cat` in `safe_tool_run` now logs `ctx.reads` (unified trail with
     `tool_read`) and caps content at 6000 chars with `...[truncated]`

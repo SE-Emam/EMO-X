@@ -1,76 +1,78 @@
-# EMO-X — خطة الوكلاء التنفيذيين (Execution Agents Plan)
+# EMO-X — Executive Agents Plan
 
-> يعمل الوكلاء بالتوازي عبر `Task` tool. كل وكيل مالك حصري لملفاته (§3).
-> المراقب `X-0` يعمل باستمرار ويملك حق النقض (veto) عند كسر العقود.
+> Agents work in parallel via the `Task` tool. Each agent exclusively owns
+> its files (§3). The `X-0` monitor runs continuously and holds veto power
+> on contract breaks.
 
 ---
 
-## 1. التشكيلة
+## 1. Roster
 
-| الوكيل | الدور | المرحلة | حزم العمل |
+| Agent | Role | Phase | Work packs |
 |---|---|---|---|
-| **X-0 Monitor** | مراقبة ومتابعة + QA + منع التضارب | مستمر (α→2.0) | كل WP (قراءة فقط + veto) |
-| **X-1 Contracts** | العقود: schemas, manifests, هيكل results, self-test, sandbox | α أولاً (يفتح الطريق) | WP1, WP2 |
-| **X-2 Generators** | Task DSL + توليد حتمي + طفرات + PROMPT_PACK_v2 | α (بعد WP1) | WP4 |
-| **X-3 Scoring** | محرك scoring + metrics + golden tests (Parts B+C) | α (بعد WP1) | WP3, WP6 |
-| **X-4 Suites** | هجرة Core-25 + agent-loop + security إلى `suites/` | α→β (بعد WP1,WP2) | WP5 (+β: WP7–WP10 suites) |
-| **X-5 Integration** | health + adaptive + CLI + تقرير v2 + long-horizon + gauntlet | β→2.0 (بعد WP3) | WP11–WP15 |
+| **X-0 Monitor** | monitoring + QA + conflict prevention | ongoing (α→2.0) | all WPs (read-only + veto) |
+| **X-1 Contracts** | contracts: schemas, manifests, results layout, self-test, sandbox | α first (opens the road) | WP1, WP2 |
+| **X-2 Generators** | Task DSL + deterministic generation + mutations + PROMPT_PACK_v2 | α (after WP1) | WP4 |
+| **X-3 Scoring** | scoring engine + metrics + golden tests (Parts B+C) | α (after WP1) | WP3, WP6 |
+| **X-4 Suites** | Core-25 + agent-loop + security migration to `suites/` | α→β (after WP1,WP2) | WP5 (+β: WP7–WP10 suites) |
+| **X-5 Integration** | health + adaptive + CLI + v2 report + long-horizon + gauntlet | β→2.0 (after WP3) | WP11–WP15 |
 
 ---
 
-## 2. مخطط التوازي (DAG)
+## 2. Parallelism DAG
 
 ```text
-Batch 0 (فوري، متوازٍ):  X-1 يبدأ العقود
-                          X-0 يبدأ المراقبة (baseline: self-test v1 أخضر؟)
-Batch 1 (بعد تجميد schemas/manifests):
-                          X-2  ┐
-                          X-3  ├─ متوازٍ تماماً (ملفات منفصلة)
-                          X-4  ┘  (X-4 يحتاج WP2 أيضاً للتنفيذ)
-Batch 2 (بعد WP3 أخضر):  X-5 health/adaptive/CLI
-Batch 3 (2.0):            X-5 gauntlet/long-horizon + X-4 suites المتبقية
+Batch 0 (immediate, parallel):  X-1 starts contracts
+                                 X-0 starts monitoring (baseline: v1 self-test green?)
+Batch 1 (after schemas/manifests frozen):
+                                 X-2  ┐
+                                 X-3  ├─ fully parallel (separate files)
+                                 X-4  ┘  (X-4 also needs WP2 for execution)
+Batch 2 (after WP3 green):  X-5 health/adaptive/CLI
+Batch 3 (2.0):              X-5 gauntlet/long-horizon + remaining X-4 suites
 ```
 
-القاعدة: لا وكيل ينتظر وكيلاً آخر داخل نفس الـBatch — الاعتماد فقط على العقود المجمّدة من Batch 0.
+Rule: no agent waits for another inside the same batch — dependencies are
+only on the frozen Batch-0 contracts.
 
 ---
 
-## 3. ملكية الملفات (حصرية — ممنوع الكتابة خارجها)
+## 3. File ownership (exclusive — writing outside is forbidden)
 
-| الوكيل | يملك كتابةً | يقرأ فقط |
+| Agent | Owns for writing | Read-only |
 |---|---|---|
-| X-1 | `shared/schemas.py`, `shared/manifests.py`, `shared/sandbox.py`, `shared/safety.py`, `results/` هيكل, `tests/harness/` | SPEC Parts A |
+| X-1 | `shared/schemas.py`, `shared/manifests.py`, `shared/sandbox.py`, `shared/safety.py`, `results/` layout, `tests/harness/` | SPEC Parts A |
 | X-2 | `generators/*`, `prompts/PROMPT_PACK_v2.md`, `prompts/SHA256SUMS`, `tests/generators/` | `shared/schemas.py` |
 | X-3 | `shared/scoring.py`, `shared/metrics.py`, `judges/*`, `tests/scoring/`, `tests/golden/` | DENOMINATORS §§C1–C93 |
-| X-4 | `suites/*`, `tests/backends/` (هجرة) | `shared/sandbox.py`, `shared/schemas.py` |
-| X-5 | `health/*`, `shared/adaptive.py`, `shared/runner.py`, `shared/run.py` (CLI), `docs/*`, تقرير v2 | كل ما سبق (قراءة) |
-| X-0 | لا يكتب كوداً؛ يكتب `reports/QA_X*.md` فقط | كل شيء |
+| X-4 | `suites/*`, `tests/backends/` (migration) | `shared/sandbox.py`, `shared/schemas.py` |
+| X-5 | `health/*`, `shared/adaptive.py`, `shared/runner.py`, `shared/run.py` (CLI), `docs/*`, v2 report | everything above (read) |
+| X-0 | writes no code; writes `reports/QA_X*.md` only | everything |
 
 ---
 
-## 4. بروتوكول التسليم بين الوكلاء
+## 4. Handoff protocol between agents
 
-1. X-1 ينشر **العقود المجمّدة**: `schemas.py` (حقول §C83 + `run_manifest.json` §32) + `manifests.py` (Task DSL §7). أي تغيير لاحق = bump نسخة.
-2. X-3 ينشر **سجل المقامات** كوحدة قابلة للاستيراد (§C81) + جدول الحالات الحدّية (§C82) كاختبارات — على X-4/X-5 استيراده لا إعادة اختراعه.
-3. X-2 ينشر **مفتاح الحتمية**: `seed → instance_hash` (`generators/seeds.py`) — على X-4 استخدامه لكل instance جديد.
-4. التسليم = ملفات + اختبارات خضراء + سطر في `PLAN-X.md` §4 checklist. بلا ذلك يُرفض الاستلام (X-0).
-
----
-
-## 5. صلاحيات المراقب X-0 (نقض فوري عند)
-
-- كتابة خارج الملكية (§3) أو تعديل عقد مجمّد (PROMPT_PACK_v1, REPORT v1, `EMO{SYNTH_…}`).
-- صيغة scoring بلا golden test أو بلا تغطية `D=0 ⇒ NA`.
-- دمج `ERROR/VOID` في مقام أداء (§C9) أو double-counting داخل محور واحد (§C77).
-- عرض رقم بلا CI/Coverage/Health (§B60).
-
-تقرير المراقب: `reports/QA_X_<date>.md` (مخالفات + حالة كل WP + اختناقات).
+1. X-1 publishes the **frozen contracts**: `schemas.py` (§C83 fields + `run_manifest.json` §32) + `manifests.py` (Task DSL §7). Any later change = version bump.
+2. X-3 publishes the **denominator registry** as importable code (§C81) + the edge-case table (§C82) as tests — X-4/X-5 import it, never reinvent it.
+3. X-2 publishes the **determinism key**: `seed → instance_hash` (`generators/seeds.py`) — X-4 uses it for every new instance.
+4. Handoff = files + green tests + one line in `PLAN-X.md` §4 checklist. Without that, acceptance is refused (X-0).
 
 ---
 
-## 6. مهام جاهزة للإطلاق (تُلصق في Task tool)
+## 5. X-0 monitor powers (instant veto on)
 
-### X-0 — Monitor (يُطلق أولاً، يعمل طوال المشروع)
+- Writing outside ownership (§3) or touching a frozen contract (PROMPT_PACK_v1, REPORT v1, `EMO{SYNTH_…}`).
+- A scoring formula with no golden test or no `D=0 ⇒ NA` coverage.
+- Merging `ERROR/VOID` into a performance denominator (§C9) or double-counting within one axis (§C77).
+- Displaying a number with no CI/Coverage/Health (§B60).
+
+Monitor report: `reports/QA_X_<date>.md` (violations + per-WP status + bottlenecks).
+
+---
+
+## 6. Ready-to-launch tasks (paste into the Task tool)
+
+### X-0 — Monitor (launch first, runs for the whole project)
 
 ```text
 Role: EMO-X QA monitor (read-only over code, write-only reports/QA_X_*.md).
@@ -113,7 +115,7 @@ order: Attempt→Instance→Variant→Task→Capability (C78). Primary labels mu
 exclusive; secondary tags may overlap (C25-C26). Done = all goldens green.
 ```
 
-### X-4 — Suites Migration (Batch 1, needs X-1 + X-2 inout)
+### X-4 — Suites Migration (Batch 1, needs X-1 + X-2 input)
 
 ```text
 Migrate legacy suites to suites/ as canonical task families with Task DSL
@@ -137,10 +139,10 @@ fingerprint+efficiency+uncertainty, never one number). Safety gate CSVRate=0
 
 ---
 
-## 7. تسلسل الإطلاق المقترح الآن
+## 7. Proposed launch sequence
 
-1. أطلق **X-0** أولاً (يؤسس خط الأساس).
-2. أطلق **X-1** (Batch 0).
-3. عند تجميد العقود: أطلق **X-2 + X-3 + X-4** متوازية.
-4. عند اخضرار WP3: أطلق **X-5**.
-5. X-0 يسلّم `reports/QA_X_*.md` بعد كل Batch.
+1. Launch **X-0** first (establishes the baseline).
+2. Launch **X-1** (Batch 0).
+3. On contract freeze: launch **X-2 + X-3 + X-4** in parallel.
+4. On WP3 green: launch **X-5**.
+5. X-0 delivers `reports/QA_X_*.md` after every batch.

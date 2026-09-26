@@ -53,6 +53,7 @@ SUITE_DIRS = {
     "gauntlet": "gauntlet",
     "vision": "vision",
     "realworld": "realworld",
+    "issues": "issues",
 }
 
 #: Claim tier per suite (overfitting defense, Y-4). Hidden validation
@@ -564,7 +565,7 @@ def _family_variants(executor, family):
 def run_suite(suite, chat, model_id="stub-model", backend="stub", seed=0,
               instances=1, trials=1, fault_rate=0.25, out_root=None,
               families=None, run_id=None, provider_profile=None,
-              scope=None, sampling=None):
+              scope=None, sampling=None, progress=None):
     """Run one suite end-to-end and write the raw bundle. SPEC 32-33, 42.
 
     instances: canonical instances per family (index 1..N).
@@ -594,6 +595,19 @@ def run_suite(suite, chat, model_id="stub-model", backend="stub", seed=0,
         hidden_gate(scope)
     fams = list(families) if families else suite_families(suite, executor)
     run_id = run_id or make_run_id("RUN-%s" % suite.replace("-", ""))
+    try:
+        from progress import ProgressReporter, NullProgress
+    except ImportError:
+        from shared.progress import ProgressReporter, NullProgress
+    prog = progress if progress is not None else NullProgress()
+    total = 0
+    for _family in fams:
+        try:
+            n_variants = len(_family_variants(executor, _family))
+        except Exception:
+            n_variants = 1
+        total += max(instances, 1) * n_variants * max(trials, 1)
+    prog.start_suite(suite, total_attempts=total)
     attempts, responses = [], []
     for index in range(1, max(instances, 1) + 1):
         for family in fams:
@@ -601,6 +615,14 @@ def run_suite(suite, chat, model_id="stub-model", backend="stub", seed=0,
             for trial in range(1, max(trials, 1) + 1):
                 # One attempt per (family, instance, variant, trial).
                 for variant in variants:
+                    title = family
+                    if variant and variant != "canonical":
+                        title += " " + str(variant)
+                    title += " trial %d/%d" % (trial, max(trials, 1))
+                    if max(instances, 1) > 1:
+                        title += " · inst %d/%d" % (index,
+                                                    max(instances, 1))
+                    prog.start_attempt(title)
                     kwargs = dict(run_id=run_id, model_id=model_id,
                                   trial_id=trial, index=index, seed=seed,
                                   scope=scope)
@@ -644,6 +666,8 @@ def run_suite(suite, chat, model_id="stub-model", backend="stub", seed=0,
                             "trial_id": trial, "reply": "",
                             "usage": {}, "void": True}
                     attempts.append(attempt)
+                    prog.finish_attempt(
+                        attempt.get("primary_status", "UNKNOWN"))
                     if response.get("human_minutes") is None:
                         mins = manifest_minutes(suite, family)
                         if mins is not None:
@@ -663,6 +687,7 @@ def run_suite(suite, chat, model_id="stub-model", backend="stub", seed=0,
     rundir = write_raw_bundle(out_root, manifest, attempts, responses,
                               collect_environment())
     n_pass = sum(1 for a in attempts if a["primary_status"] == "PASS")
+    prog.finish_suite()
     summary = {"run_id": run_id, "suite": suite, "n_attempts": len(attempts),
                "n_pass": n_pass, "run_dir": rundir,
                "prompt_sha256": manifest["prompt_sha256"],
@@ -672,18 +697,27 @@ def run_suite(suite, chat, model_id="stub-model", backend="stub", seed=0,
 
 def run_profile(chat, model_id="stub-model", backend="stub", seed=0,
                 instances=1, trials=1, fault_rate=0.25, out_root=None,
-                provider_profile=None, scope=None, sampling=None):
+                provider_profile=None, scope=None, sampling=None,
+                progress=None):
     """SPEC 42 --suite profile: every suite once + v2 roll-up report."""
     try:
         from report_v2 import build_v2_report
     except ImportError:
         from shared.report_v2 import build_v2_report
+    try:
+        from progress import NullProgress
+    except ImportError:
+        from shared.progress import NullProgress
+    prog = progress if progress is not None else NullProgress()
+    prog.start_run(total_suites=len(PROFILE_SUITES))
     runs, all_attempts, all_responses = [], [], []
-    for suite in PROFILE_SUITES:
+    for idx, suite in enumerate(PROFILE_SUITES, 1):
+        prog.set_suite_index(idx)
         _, summary = run_suite(suite, chat, model_id, backend, seed,
                                instances, trials, fault_rate, out_root,
                                provider_profile=provider_profile,
-                               scope=scope, sampling=sampling)
+                               scope=scope, sampling=sampling,
+                               progress=prog)
         runs.append(summary)
     for summary in runs:
         rundir = summary["run_dir"]
@@ -695,6 +729,7 @@ def run_profile(chat, model_id="stub-model", backend="stub", seed=0,
             all_responses.extend(json.loads(line) for line in f if line.strip())
     report = build_v2_report(all_attempts, all_responses,
                              model_id=model_id)
+    prog.finish_run()
     return runs, report
 
 

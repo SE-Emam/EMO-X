@@ -111,7 +111,6 @@ def main(argv=None):
         return 2
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                     "..", "shared"))
-    import bench_lib
     outdir = a.out if os.path.isabs(a.out) else os.path.join(os.getcwd(), a.out)
     os.makedirs(outdir, exist_ok=True)
     slug = "".join(c if (c.isalnum() or c in "-_.") else "_" for c in a.model)

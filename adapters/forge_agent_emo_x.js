@@ -5,6 +5,7 @@
 // from results/raw/RUN-ID/. Install: copy to ~/.deepseek-agent/tools/.
 //
 // Usage inside forge-agent:
+//   emo_x(action="splash")                            hero splash screen
 //   emo_x(action="self_test")                       harness check first
 //   emo_x(action="run", suite="code25", trials=1)   code suite
 //   emo_x(action="run", suite="profile", trials=3)  full profile
@@ -19,10 +20,10 @@ const { spawn } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 
-// Adjust if you cloned emo-x elsewhere.
-const EMOX = process.env.EMOX_ROOT ||
-  "/Users/AI Workspace/EMO-Benchmark-Skills";
-const RUN_PY = path.join(EMOX, "shared", "run.py");
+// Set EMOX_ROOT to your emo-x checkout. No default path is baked in
+// (a hardcoded path would leak the author's machine layout).
+const EMOX = process.env.EMOX_ROOT || "";
+const RUN_PY = EMOX ? path.join(EMOX, "shared", "run.py") : "";
 
 const SUITES = ["code25", "dynamic-code", "recovery", "robustness",
   "calibration", "long-horizon", "gauntlet", "profile", "security"];
@@ -65,6 +66,11 @@ module.exports = {
   async execute({ action, suite, trials, seed, instances, model, out, run_dir }) {
     if (!fs.existsSync(RUN_PY)) {
       return "emo_x misconfigured: shared/run.py not found. Set EMOX_ROOT to your emo-x checkout.";
+    }
+    if (action === "splash") {
+      const r = await runPy([], EMOX,
+        path.join(EMOX, "shared", "splash.py"));
+      return r.code === 0 ? r.stdout : "Splash unavailable.";
     }
     if (action === "self_test") {
       const r = await runPy(["--self-test"]);
@@ -112,6 +118,6 @@ module.exports = {
         "EMO-X run exited " + r.code + ":\n") + summary +
         "\nRead the sealed bundle under results/raw/RUN-*/ (manifest+events+responses+environment). Report profile+fingerprint+efficiency+uncertainty, never one number.";
     }
-    return 'Unknown action. Use action="self_test" | "run" | "health".';
+    return 'Unknown action. Use action="splash" | "self_test" | "run" | "health" | "render".';
   },
 };

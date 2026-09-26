@@ -26,4 +26,7 @@ Contract refs: SPEC sections 7 (Task DSL), 32-33 (manifest, raw layout),
 ## Example suites
 
 `suites/dynamic-code` (parametric + mutations), `suites/recovery`
-(fault injection, D_recoverable), `suites/gauntlet` (>=7 dimensions).
+(fault injection, D_recoverable), `suites/gauntlet` (>=7 dimensions),
+`suites/realworld` (fixture repos, real pytest), `suites/issues`
+(issue reports + held-out hidden tests: write hidden file post-episode,
+run, delete — the agent never sees it).

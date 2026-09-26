@@ -676,7 +676,6 @@ def run_agent_suite(chat, trials, max_steps=AGENT_MAX_STEPS):
         except Exception as e:
             r = {"success": False, "error": str(e)[:300]}
         episodes.append(r)
-        ok = {k: v for k, v in r.items() if k not in ("trace",)}
         print("   success=%s calls=%s failed=%s err=%s"
               % (r.get("success"), r.get("tool_calls"),
                  r.get("failed_calls"), r.get("error")), flush=True)
@@ -710,7 +709,7 @@ def main(argv=None):
                     choices=["code25", "code25-hidden", "agent-loop", "all",
                              "security", "dynamic-code", "recovery",
                              "robustness", "calibration", "long-horizon",
-                             "gauntlet", "vision", "realworld", "profile"],
+                             "gauntlet", "vision", "realworld", "issues", "profile"],
                     help="code25-hidden needs --hidden-ok (HIDDEN-VALIDATION); "
                          "security S3-S5 need scope approval (SAFETY-SKIP "
                          "otherwise); security-bench/run_security.py stays "
@@ -746,7 +745,22 @@ def main(argv=None):
                     help="report output dir (default: <repo>/reports/). "
                          "Agents: point it at the working project dir so "
                          "reports land next to the project, not the skill.")
+    ap.add_argument("--no-progress", action="store_true",
+                    help="disable the live progress bar on stderr "
+                         "(on by default; bundles are identical either way)")
+    ap.add_argument("--quiet", "-q", action="store_true",
+                    help="suppress the hero splash banner and progress bar "
+                         "on stderr (machine mode; stdout stays clean either "
+                         "way)")
     args = ap.parse_args(argv)
+
+    # Hero splash: stderr only, every run unless --quiet.
+    if not args.quiet:
+        try:
+            from splash import print_banner
+        except ImportError:
+            from shared.splash import print_banner
+        print_banner()
 
     # X-5 additive entry points (SPEC 35/42). Legacy path below untouched.
     if args.self_test:
@@ -776,6 +790,11 @@ def main(argv=None):
                  "top_k": args.top_k, "context": args.context}
     if args.suite in _NEW_SUITES or (args.backend or "").lower() == "stub":
         import runner as _runner
+        try:
+            from progress import ProgressReporter
+        except ImportError:
+            from shared.progress import ProgressReporter
+        _prog = ProgressReporter(enabled=not args.no_progress)
         _chat = _runner.stub_chat_factory("cli-%s" % args.suite)
         _model = args.model or os.environ.get("MODEL", "stub-model")
         if (args.backend or "").lower() != "stub":
@@ -786,7 +805,7 @@ def main(argv=None):
                 _chat, _model, args.backend, args.seed, args.instances,
                 max(args.trials, 1), args.fault_rate, _raw_root(args.out),
                 provider_profile=args.provider_profile,
-                scope=_scope, sampling=_sampling)
+                scope=_scope, sampling=_sampling, progress=_prog)
             for s in runs:
                 print("suite=%s attempts=%d pass=%d dir=%s"
                       % (s["suite"], s["n_attempts"], s["n_pass"],
@@ -803,7 +822,7 @@ def main(argv=None):
                 args.suite, _chat, _model, args.backend, args.seed,
                 args.instances, max(args.trials, 1), args.fault_rate,
                 _raw_root(args.out), provider_profile=args.provider_profile,
-                scope=_scope, sampling=_sampling)
+                scope=_scope, sampling=_sampling, progress=_prog)
         except Exception as e:
             # Hidden/scope refusals surface cleanly before any model call.
             if "hidden-ok" in str(e) or "Scope" in type(e).__name__:

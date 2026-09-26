@@ -1,3 +1,7 @@
+---
+description: Run the EMO-X benchmark (self-test, suites, profile, health, reports) via shared/run.py or the emo-x MCP tools
+---
+
 # /emo — run EMO-X from your agent
 
 Thin wrapper over the `emo-x` skill (see `SKILL.md`). Passes arguments

@@ -1,123 +1,128 @@
-# PLAN-Y — الخطة الشاملة للمهام المتبقية (EMO-X)
+# PLAN-Y — Master Plan for Remaining Work (EMO-X)
 
-> العقد الملزم للموجتين + التكامل + QA. كل وكيل يقرأ هذا الملف أولاً
-> ثم `SPEC.md` + `DENOMINATORS.md` للأقسام المذكورة في نطاقه.
-> القاعدة الحديدية: **ملكية ملفات حصرية** (§3) — أي كتابة خارجها = veto.
+> Binding contract for both waves + integration + QA. Every agent reads
+> this file first, then `SPEC.md` + `DENOMINATORS.md` for the sections in
+> its scope.
+> Iron rule: **exclusive file ownership** (§3) — any write outside it = veto.
 
-## 1. الموجة 1 — 9 وكلاء متوازيين (لا يعتمد بعضهم على بعض)
+## 1. Wave 1 — 9 parallel agents (no dependencies between them)
 
-| الوكيل | المهمة | الملفات المملوكة (كتابة حصرية) | القبول |
+| Agent | Task | Exclusively owned files | Acceptance |
 |---|---|---|---|
-| Y-1 | VOID الرسمي | `shared/schemas.py` (STATUS_CAUSES + classify_cause + VISIBILITY ثوابت)، `shared/manifests.py` (verify_prompt_pack)، `docs/status-model.md`، `tests/harness/test_status_model.py` | جدول الأسباب الـ7 يُختبر؛ العبث بالحزمة يُكتشف |
-| Y-2 | Self-test الموسّع | `shared/selftest.py` (جديد: 14 فحصاً + SKIP)، `tests/harness/test_selftest.py` | الثنائيات الغائبة = SKIP لا FAIL؛ العبث = FAIL مغلق |
-| Y-3 | Raw immutable تقنياً | `shared/seal.py` (جديد: seal/verify/no-overwrite/derived)، `tests/harness/test_seal.py` | العبث يُكتشف؛ الكتابة فوق RUN_ID مرفوضة |
-| Y-4 | Hidden suite | `suites/code-bench-25-hidden/*` (جديد)، `docs/contamination.md`، `tests/backends/test_hidden.py` | instances وقت التشغيل فقط؛ البوابة ترفض بلا opt-in |
-| Y-5 | think الرسمي | `shared/backends.py` (إلحاق reasoning_mode_for فقط)، `suites/*/executor.py` سطور الـmode (code25/agent-loop/dynamic)، `tests/harness/test_reasoning_mode.py` | كل attempt يحمل mode صالحاً؛ مقارنة الشروط المختلفة موسومة |
-| Y-6 | إحصاء المقارنة | `shared/scoring.py` (reps flag فقط)، `shared/report_v2.py` (compare/render)، `README.md` (حذف 3pp)، `docs/metrics.md`، `tests/scoring/test_compare.py` | 24/25 ضد 23/25 = inconclusive/directional أبداً significant؛ لا كلمة wins |
-| Y-7 | Scope-gate الأمني | `shared/safety.py` (تصليب)، `suites/security/executor.py` (جديد)، `security-bench/run_security.py` (بوابة S3-S5)، `docs/security-model.md`، `tests/harness/test_safety_gate.py` | S3-S5 ترفض بلا approval ولا تستدعي الموديل؛ العبث بالـfixtures يُكتشف |
-| Y-8 | Manifest مصدر الحقيقة | دمج JSON في `suites/code-bench-25/manifests/*.json` (بيانات فقط) + `tests/backends/test_manifest_truth.py` (تساوي البرومبتات) | 25/25 متساوية بايتاً؛ لا تعديل `.py` |
-| Y-9 | Rebuild المتبقي | `docs/REPRODUCIBILITY.md` (قائمة الحقول)، `tests/harness/test_rebuild_manifest.py` | كل حقول القائمة حاضرة في manifest حقيقي |
+| Y-1 | Official VOID | `shared/schemas.py` (STATUS_CAUSES + classify_cause + VISIBILITY constants), `shared/manifests.py` (verify_prompt_pack), `docs/status-model.md`, `tests/harness/test_status_model.py` | 7-cause table tested; pack tampering detected |
+| Y-2 | Extended self-test | `shared/selftest.py` (new: 14 checks + SKIP), `tests/harness/test_selftest.py` | missing binaries = SKIP not FAIL; tampering = closed FAIL |
+| Y-3 | Technical raw immutability | `shared/seal.py` (new: seal/verify/no-overwrite/derived), `tests/harness/test_seal.py` | tampering detected; overwriting RUN_ID refused |
+| Y-4 | Hidden suite | `suites/code-bench-25-hidden/*` (new), `docs/contamination.md`, `tests/backends/test_hidden.py` | runtime-only instances; gate refuses without opt-in |
+| Y-5 | Official think | `shared/backends.py` (append reasoning_mode_for only), `suites/*/executor.py` mode lines (code25/agent-loop/dynamic), `tests/harness/test_reasoning_mode.py` | every attempt carries a valid mode; mixed-condition comparison labeled |
+| Y-6 | Comparison statistics | `shared/scoring.py` (reps flag only), `shared/report_v2.py` (compare/render), `README.md` (3pp removal), `docs/metrics.md`, `tests/scoring/test_compare.py` | 24/25 vs 23/25 = inconclusive/directional, never significant; no "wins" word |
+| Y-7 | Security scope-gate | `shared/safety.py` (hardening), `suites/security/executor.py` (new), `security-bench/run_security.py` (S3–S5 gate), `docs/security-model.md`, `tests/harness/test_safety_gate.py` | S3–S5 refuse without approval and never call the model; fixture tampering detected |
+| Y-8 | Manifest as source of truth | JSON merges in `suites/code-bench-25/manifests/*.json` (data only) + `tests/backends/test_manifest_truth.py` (prompt equality) | 25/25 byte-identical; no `.py` edits |
+| Y-9 | Rebuild remainder | `docs/REPRODUCIBILITY.md` (field list), `tests/harness/test_rebuild_manifest.py` | every field on the list present in a real manifest |
 
-### العقود العابرة (ينشرها المالك ويستهلكها Y-INT)
+### Cross-cutting contracts (published by owner, consumed by Y-INT)
 - Y-1: `classify_cause(cause)->status` + `VoidRun` + `verify_prompt_pack(name)` + `VISIBILITY/normalize_visibility`.
-- Y-2: `run_all_checks()->(ok, rows)` بنفس شكل `run_self_test` (name, bool, detail + "SKIP: ").
+- Y-2: `run_all_checks()->(ok, rows)` in the same shape as `run_self_test` (name, bool, detail + "SKIP: ").
 - Y-3: `seal_bundle(rundir)->seal.json` + `verify_bundle_seal(rundir)->bool` + `refuse_overwrite`.
-- Y-4: اتفاقية `instance_id` + `H3-hidden-*` + حقل `visibility` في manifests.
+- Y-4: `instance_id` convention + `H3-hidden-*` + `visibility` field in manifests.
 - Y-5: `reasoning_mode_for(think, num_predict, native)->mode`.
 - Y-6: `compare_models/render_comparison` + `paired_bootstrap_diff(..., return_reps=True)`.
 - Y-7: `require_scope_gate(family, scope)` + `ScopeDenied` + `verify_fixture_dir`.
-- Y-8: manifests تحمل `prompt` النهائي (byte-identical).
-- Y-9: قائمة حقول manifest النهائية.
+- Y-8: manifests carry the final `prompt` (byte-identical).
+- Y-9: final manifest field list.
 
-## 2. الموجة 2 — Y-INT (التكامل، يعمل وحده بعد خضرار الموجة 1)
+## 2. Wave 2 — Y-INT (integration, works alone after Wave 1 green)
 
-يملك حصرياً: `shared/runner.py` + `shared/run.py` (CLI) + قلب مصدر البرومبت إلى manifests.
-Checklist (كلها إلزامية):
-1. run_suite: exceptions→VOID (Y-1)، تفويض self-test لـY-2، seal بعد الكتابة (Y-3)، SUITE_DIRS+gates+claim-tier للمخفي (Y-4)، reasoning_conditions (Y-5)، sampling pass-through (موجود — تحقق).
-2. run.py: أعلام `--hidden-ok` و`--temperature/--top-p/--top-k/--context` (provider-profile موجود).
-3. قلب code25 إلى prompts الـmanifests (Y-8) والحارس هو اختبار التساوي.
-4. `tests/run_all.py` أخضر + `--self-test` أخضر + حزمة e2e خام صالحة. ممنوع الانتقال لـQA قبل ذلك.
+Exclusively owns: `shared/runner.py` + `shared/run.py` (CLI) + flipping the prompt source to manifests.
+Checklist (all mandatory):
+1. run_suite: exceptions→VOID (Y-1), self-test delegation to Y-2, seal after writing (Y-3), SUITE_DIRS+gates+claim-tier for hidden (Y-4), reasoning_conditions (Y-5), sampling pass-through (present — verify).
+2. run.py: `--hidden-ok` and `--temperature/--top-p/--top-k/--context` flags (provider-profile present).
+3. Flip code25 to manifest prompts (Y-8); the guard is the equality test.
+4. Green `tests/run_all.py` + green `--self-test` + valid raw e2e bundle. No moving to QA before that.
 
-## 3. المراجعة الشاملة + ضمان الجودة (X-0)
+## 3. Full review + quality assurance (X-0)
 
-- إعادة تشغيل مستقلة لكل قبول §1 + checklist Y-INT §2.
-- فحص المجمّد والملكية والأسرار والشجرة (R1 من `REVIEW-X.md`).
-- تقرير `reports/QA_X_final2.md` + حكم GO/NO-GO + punch list مرقّمة.
-- ممنوع الدفع قبل GO مكتوبة.
+- Independent re-run of every §1 acceptance + Y-INT §2 checklist.
+- Frozen/ownership/secrets/tree check (R1 from `REVIEW-X.md`).
+- `reports/QA_X_final2.md` report + GO/NO-GO verdict + numbered punch list.
+- No push before a written GO.
 
-## 5. خطة الاستكمال (completion — تُنفذ بعد GO الموجة 2)
+## 5. Completion plan (executes after Wave-2 GO)
 
-الحالة المُتحقق منها بالفحص المباشر (وليس بالتقارير): تكامل Y-INT
-موجود فعلاً في الكود — `run_suite` يحوّل الاستثناءات إلى VOID
-(`_void_attempt` + `classify_cause`)، يتحقق من الحزمة المجمّدة، يختم
-الحزم (`refuse_overwrite` + `seal_bundle`)، يمرّر `scope` مع رفض المخفي
-قبل أي model call، ويسجّل `claim_tier` + `reasoning_conditions`؛
-والـCLI يحمل `--hidden-ok` + أعلام الـsampling. التعديلات الأربعة في
-SPEC (§14/§27/§28/§B28/§32) موثّقة بلا تنفيذ بعد.
+Direct-inspection verified state (not reports): Y-INT integration is
+really in the code — `run_suite` converts exceptions to VOID
+(`_void_attempt` + `classify_cause`), verifies the frozen pack, seals
+bundles (`refuse_overwrite` + `seal_bundle`), passes `scope` with hidden
+refusal before any model call, and records `claim_tier` +
+`reasoning_conditions`; the CLI carries `--hidden-ok` + sampling flags.
+The four SPEC amendments (§14/§27/§28/§B28/§32) are documented, not yet
+implemented.
 
-| المرحلة | البنود | التفاصيل |
+| Phase | Items | Details |
 |---|---|---|
-| **C1. إغلاق الموجة 2 (تحقق، لا بناء)** | 1. `tests/run_all.py` + `--self-test` أخضر مؤكد بالتشغيل | أي فشل = إصلاح قبل المتابعة |
-| | 2. حزمة e2e مختومة: تشغيل stub واحد + `verify_bundle_seal == ok` ثم حذف الحزمة | الدليل المادي على سلامة التكامل |
-| | 3. سلوك البوابات حيّاً: مخفي بلا `--hidden-ok` = REFUSED نظيف؛ security تعمل عبر المسار الجديد | يمنع انحدار Y-4/Y-7 الصامت |
-| | 4. تقرير `reports/QA_X_final2.md` + حكم GO/NO-GO | ممنوع الدفع قبل GO مكتوبة |
-| **C2. التنظيف قبل العام** | 1. حذف `__pycache__` + `.DS_Store` | الشجرة خام للمستخدمين |
-| | 2. ملفات `results/raw/*.json` الحالية **تبقى** (تعمل عليها) — تُستثنى من الـcommit عبر `.gitignore` لا بالحذف | نتائجك الخاصة لا تُدفع للعام |
-| | 3. تأكيد `.gitignore` يغطي `results/raw/RUN-*` والحزم التجريبية | |
-| **C3. Fine-Tuning (بعد GO فقط، بالترتيب الملزم)** | P0 Scaffold: طبقات L0/L1/L2 في agent-loop + `scaffold_level(s)` + أربعة أرقام Gain + اختبارات ذهبية | SPEC §27 |
-| | P1 Hardware: كائن العتاد + `device_class` + فصل Tier A/B + وسم المقارنات المختلطة | SPEC §B28 + §32 |
-| | P2 Recovery Precision: صيغة `L/A` الحتمية + زوج (rate, precision) في التقرير + اختبارات القواعد الثلاث | SPEC §14 |
-| | P3 Gauntlet: `first_missed` + المرساة المرجعية (الـoracle بايت-مطابق) + اختبارات | SPEC §28 |
-| **C4. النشر** | 1. `git add` انتقائي (الكود + المواصفة + الاختبارات فقط) | 2. R2: استنساخ نظيف يعيد إنتاج الأخضر 3. أول baseline حقيقي = R3 قبل أي رقم OFFICIAL |
+| **C1. Wave-2 closure (verify, don't build)** | 1. Green `tests/run_all.py` + `--self-test` confirmed by running | any failure = fix before proceeding |
+| | 2. Sealed e2e bundle: one stub run + `verify_bundle_seal == ok`, then delete the bundle | physical proof of integration soundness |
+| | 3. Live gate behavior: hidden without `--hidden-ok` = clean REFUSED; security works via the new path | prevents silent Y-4/Y-7 regression |
+| | 4. `reports/QA_X_final2.md` report + GO/NO-GO verdict | no push before written GO |
+| **C2. Pre-public cleanup** | 1. Delete `__pycache__` + `.DS_Store` | raw tree for users |
+| | 2. Current `results/raw/*.json` files **stay** (you work on them) — excluded from commit via `.gitignore`, not deleted | your private results never push public |
+| | 3. Confirm `.gitignore` covers `results/raw/RUN-*` and trial bundles | |
+| **C3. Fine-Tuning (only after GO, binding order)** | P0 Scaffold: L0/L1/L2 layers in agent-loop + `scaffold_level(s)` + four Gain numbers + golden tests | SPEC §27 |
+| | P1 Hardware: hardware object + `device_class` + Tier A/B split + mixed-comparison labeling | SPEC §B28 + §32 |
+| | P2 Recovery Precision: deterministic `L/A` formula + (rate, precision) pair in report + three-rule tests | SPEC §14 |
+| | P3 Gauntlet: `first_missed` + reference anchor (byte-identical oracle) + tests | SPEC §28 |
+| **C4. Release** | 1. Selective `git add` (code + spec + tests only) | 2. R2: clean clone reproduces green 3. First real baseline = R3 before any OFFICIAL number |
 
-قاعدة: لا مرحلة تبدأ قبل إغلاق سابقتها بدليل تشغيلي، لا بتقرير.
+Rule: no phase starts before the previous one closes with runnable proof, not a report.
 
-## 6. خطة الوكلاء لـ C1 (إغلاق الموجة 2 — 3 وكلاء متوازيين)
+## 6. Agent plan for C1 (Wave-2 closure — 3 parallel agents)
 
-C1 تحقق لا بناء. الثلاثة يعملون متوازيين بلا اعتماد متبادل.
+C1 is verification, not construction. All three run in parallel with no
+mutual dependency.
 
-| الوكيل | المهمة | النطاق المسموح (قراءة/كتابة) | الدليل المطلوب |
+| Agent | Task | Allowed scope (read/write) | Required proof |
 |---|---|---|---|
-| Z-1 تحقق التكامل | إعادة التشغيل المستقلة: `tests/run_all.py` + `--self-test` + حزمة e2e مختومة واحدة | كتابة: `reports/QA_X_final2.md` فقط (حكم GO/NO-GO)؛ قراءة: كل شيء؛ ممنوع لمس أي كود | `verify_bundle_seal == ok` ثم **حذف الحزمة**؛ أي فشل = punch list مرقّمة لا إصلاح صامت |
-| Z-2 تحقق البوابات | سلوك البوابات حيّاً: (1) مخفي بلا `--hidden-ok` = REFUSED نظيف بلا حزمة ولا model call (2) security عبر المسار الجديد مع S3-S5 المرفوضة بلا approval (3) حزمة code25 عادية تنجح وتُختم | كتابة: قسم البوابات داخل `reports/QA_X_final2.md` فقط؛ قراءة: `shared/run*.py` + المنفّذان | ثلاثة أوامر CLI بنتائجها الحرفية في التقرير |
-| Z-3 تدقيق الشجرة | R1 كامل: المجمّد (حزمة/قالب/سطر report.py:86/fixtures) + الملكية + مسح الأسرار + الشجرة (لا RUN dirs ولا `__pycache__` ولا `.DS_Store` بعد التنظيف) | كتابة: قسم R1 داخل `reports/QA_X_final2.md` فقط؛ قراءة: كل شيء | جدول PASS/FAIL/OPEN بدليل `file:line` لكل بند |
+| Z-1 integration check | Independent re-run: `tests/run_all.py` + `--self-test` + one sealed e2e bundle | write: `reports/QA_X_final2.md` only (GO/NO-GO verdict); read: everything; no code touched | `verify_bundle_seal == ok` then **delete the bundle**; any failure = numbered punch list, no silent fix |
+| Z-2 gate check | Live gate behavior: (1) hidden without `--hidden-ok` = clean REFUSED with no bundle and no model call (2) security via the new path with S3–S5 refused without approval (3) normal code25 bundle succeeds and seals | write: gates section inside `reports/QA_X_final2.md` only; read: `shared/run*.py` + both executors | three CLI commands with verbatim results in the report |
+| Z-3 tree audit | Full R1: frozen (pack/template/report.py:86/fixtures) + ownership + secrets scan + tree (no RUN dirs, no `__pycache__`, no `.DS_Store` after cleanup) | write: R1 section inside `reports/QA_X_final2.md` only; read: everything | PASS/FAIL/OPEN table with `file:line` evidence per item |
 
-قاعدة الإغلاق: GO تتطلب Z-1 وZ-2 وZ-3 خضراء معاً في تقرير واحد.
-أي NO-GO تُحوَّل لوكيل الإصلاح المالك للملف (Y-1..Y-9 أو Y-INT)، لا
-يُصلحها Z بنفسه — الفصل بين المحقق والمنفذ إلزامي.
+Closure rule: GO requires Z-1, Z-2, and Z-3 green together in one report.
+Any NO-GO goes to the file-owning fix agent (Y-1..Y-9 or Y-INT) — Z agents
+never fix; investigator/executor separation is mandatory.
 
-## 7. خطة الوكلاء لـ C3 (Fine-Tuning — 4 وكلاء متسلسلين)
+## 7. Agent plan for C3 (Fine-Tuning — 4 sequential agents)
 
-الترتيب ملزم: P0 ← P1 ← P2 ← P3. لا توازي هنا — كل وكيل يبني على
-المنفّذ المدمج لسابقه. القبول من SPEC مباشرة (§14/§27/§28/§B28/§32).
+Binding order: P0 ← P1 ← P2 ← P3. No parallelism here — each agent builds
+on its predecessor's merged output. Acceptance straight from SPEC
+(§14/§27/§28/§B28/§32).
 
-| الوكيل | المهمة | الملفات المملوكة (كتابة حصرية) | القبول |
+| Agent | Task | Exclusively owned files | Acceptance |
 |---|---|---|---|
-| F-0 الطبقات | P0 Scaffold: وضعا L0 (chat فقط) وL1 (read+run فقط) في `episode.py` عبر مفتاح أدوات مسموحة (البرومبتات المجمّدة بايت-مطابقة) + `scaffold_level` في كل attempt + `scaffold_levels` في الـmanifest (عبر `extra=` الموجود) + SG وSG_L1 والنسبيتين في `report_v2` | `suites/agent-loop/episode.py` (إلحاق وضعيات) + `shared/report_v2.py` (قسم SG) + `tests/backends/test_scaffold_tiers.py` | L0/L1/L2 تعمل؛ cross-harness = NON_COMPARABLE؛ ذهبيات الأرقام الأربعة |
-| F-1 العتاد | P1 Hardware: كائن `hardware` في `collect_environment` (unknown-tolerant) + `device_class` في الـmanifest + فصل Tier A/B في `report_v2` (رقم EfficiencyScore الحالي = Tier A؛ Tier B معدلات خام + فئة) + وسم المختلط CONDITIONALLY_COMPARABLE | `shared/runner.py` (environment فقط) + `shared/report_v2.py` (قسم الكفاءة) + `tests/harness/test_hardware.py` | M1 ضد i9 موسوم لا مدمج؛ الرقم المدمج مرفوض باختبار |
-| F-2 الدقة | P2 Recovery Precision: `recovery_precision()` حتمية في `scoring.py` (القواعد الثلاث + استبعاد التكرار الأعمى + NA للصفر) + زوج (rate, precision) ودليل القراءة في `report_v2` | `shared/scoring.py` (دالة واحدة) + `shared/report_v2.py` (سطرا العرض) + `tests/scoring/test_recovery_precision.py` | الوكيل المتخبط: rate عالٍ + precision منخفض (ذهبية) |
-| F-3 التشخيص | P3 Gauntlet: `first_missed` بالترتيب السببي + المرساة المرجعية ( recovery/robustness) في قسم التقرير — **الـoracle بايت-مطابق** (B58 hashes لا تتغير) | `shared/report_v2.py` (قسم gauntlet) + `tests/scoring/test_gauntlet_diag.py` | hashes قبل/بعد متطابقة؛ ذهبيات الترتيب والمرساة |
+| F-0 tiers | P0 Scaffold: L0 (chat only) and L1 (read+run only) modes in `episode.py` via allowed-tools key (frozen prompts byte-identical) + `scaffold_level` per attempt + `scaffold_levels` in manifest (via existing `extra=`) + SG, SG_L1 and both relatives in `report_v2` | `suites/agent-loop/episode.py` (mode appends) + `shared/report_v2.py` (SG section) + `tests/backends/test_scaffold_tiers.py` | L0/L1/L2 work; cross-harness = NON_COMPARABLE; four-number goldens |
+| F-1 hardware | P1 Hardware: `hardware` object in `collect_environment` (unknown-tolerant) + `device_class` in manifest + Tier A/B split in `report_v2` (current EfficiencyScore number = Tier A; Tier B raw rates + class) + mixed CONDITIONALLY_COMPARABLE label | `shared/runner.py` (environment only) + `shared/report_v2.py` (efficiency section) + `tests/harness/test_hardware.py` | M1 vs i9 labeled not merged; blended number rejected by test |
+| F-2 precision | P2 Recovery Precision: deterministic `recovery_precision()` in `scoring.py` (three rules + blind-repeat exclusion + zero NA) + (rate, precision) pair and reading guide in `report_v2` | `shared/scoring.py` (one function) + `shared/report_v2.py` (display lines) + `tests/scoring/test_recovery_precision.py` | thrashing agent: high rate + low precision (golden) |
+| F-3 diagnosis | P3 Gauntlet: causal-order `first_missed` + reference anchor (recovery/robustness) in report section — **byte-identical oracle** (B58 hashes unchanged) | `shared/report_v2.py` (gauntlet section) + `tests/scoring/test_gauntlet_diag.py` | hashes identical before/after; ordering + anchor goldens |
 
-قواعد مشتركة للـF: stdlib فقط؛ إنجليزية الكود؛ docstring يستشهد بقسم
-SPEC؛ المجمّد لا يُمس (برومبتات agent-loop المجمّدة تُعاد كتابتها
-بايتاً لا صياغةً)؛ الأخضر الكامل بعد كل وكيل قبل التالي.
+Shared F rules: stdlib only; English code; docstring cites a SPEC
+section; frozen untouched (frozen agent-loop prompts rewritten byte-wise
+not paraphrased); full green after each agent before the next.
 
-## 8. خطة النموذج B — المهارة داخل الوكيل (ليست هدفاً يُختبر، بل واجهة تُستدعى)
+## 8. Model B plan — skill inside the agent (an interface to invoke, not a target to test)
 
-الفرق الجوهري عن المحولات (`adapters/` = EMO يختبر وكيلاً خارجياً):
-هنا **المستخدم داخل وكيله** (hermes/codex/opencode/pi/forge/…) يستدعي
-EMO كمهارة لاختبار نموذج ما. مهارة واحدة محمولة، لا محوّل لكل وكيل.
+The fundamental difference from adapters (`adapters/` = EMO tests an
+external agent): here **the user inside their agent** (hermes/codex/
+opencode/pi/forge/…) invokes EMO as a skill to test a model. One
+portable skill, no adapter per agent.
 
-| الطبقة | الملف | يخدم | المحتوى |
+| Layer | File | Serves | Content |
 |---|---|---|---|
-| B1 المهارة المحمولة | `SKILL.md` (جذر المشروع، صيغة Agent Skills: frontmatter `name/description` + تعليمات + أوامر) | opencode, pi, forge, codex CLI (كلها تقرأ صيغة skill المتوافقة مع Claude وتنفذ shell) | متى تُستدعى المهارة + `python3 <emo-x>/shared/run.py --suite …` حرفياً + قراءة الحزمة الخام + تحذير NON-COMPARABLE عند اختلاف الـharness |
-| B2 أمر `/emo` | `commands/emo.md` | codex (`~/.codex/commands/`) + opencode (custom commands) — نفس الملف بلا fork | وسيط رقيق يمرر (`--suite`, `--trials`, `--seed`) لمهارة B1 |
-| B3 خادم MCP | `mcp-server/` (stdio + JSON-RPC: أدوات `run_suite`, `self_test`, `health`) | open-web / AnythingLLM (واجهات دردشة بلا shell — الطريقة الوحيدة الممكنة) | **مُنجز**: `mcp-server/server.py` (stdlib فقط، 5 أدوات، نفس البوابات fail-closed) + `tests/backends/test_mcp_server.py` (12 اختباراً) — يخدم أي وكيل MCP-capable |
+| B1 portable skill | `SKILL.md` (repo root, Agent Skills format: frontmatter `name/description` + instructions + commands) | opencode, pi, forge, codex CLI (all read Claude-compatible skill format and run shell) | when to invoke the skill + verbatim `python3 <emo-x>/shared/run.py --suite …` + raw bundle reading + NON-COMPARABLE warning on harness mismatch |
+| B2 `/emo` command | `commands/emo.md` | codex (`~/.codex/commands/`) + opencode (custom commands) — same file, no fork | thin wrapper passing (`--suite`, `--trials`, `--seed`) to B1 |
+| B3 MCP server | `mcp-server/` (stdio + JSON-RPC: `run_suite`, `self_test`, `health` tools) | open-web / AnythingLLM (chat UIs with no shell — the only possible way) | **done**: `mcp-server/server.py` (stdlib only, 5 tools, same fail-closed gates) + `tests/backends/test_mcp_server.py` (12 tests) — serves any MCP-capable agent |
 
-قواعد ملزمة:
-1. المهارة **تستدعي** `shared/run.py` كعملية فرعية — لا تعيد تنفيذ المنطق ولا تنسخ البرومبتات (المجمّد يبقى مصدراً واحداً).
-2. كل نتيجة عبر المهارة تحمل `harness` الوكيل المضيف (اسم الوكيل + إصداره) وتُوسم NON-COMPARABLE ضد نتائج `run.py` المباشرة (قاعدة §B58 + درس `ADAPTERS.md` §0).
-3. codex CLI يتطلب اشتراك ChatGPT لا مفتاح API — يُوثّق كقيد لا كدعم كامل. cline/kilo (إضافات VS Code بلا CLI) تبقى manual-trace كما في `ADAPTERS.md` §6.
-4. لا محوّل جديد لكل وكيل من السبعة — المحولات الثلاثة القائمة عيّنات مرجعية كافية.
+Binding rules:
+1. The skill **invokes** `shared/run.py` as a subprocess — never re-implements logic or copies prompts (frozen stays single-sourced).
+2. Every skill-routed result carries the host agent harness (agent name + version) and is labeled NON-COMPARABLE against direct `run.py` results (§B58 rule + `ADAPTERS.md` §0 lesson).
+3. codex CLI needs a ChatGPT subscription, not an API key — documented as a constraint, not full support. cline/kilo (VS Code extensions with no CLI) stay manual-trace per `ADAPTERS.md` §6.
+4. No new adapter per each of the seven agents — the three existing adapters are sufficient reference samples.
 
-الترتيب كان B1 ← B2 ← B3 (المشروط بالطلب) — أُنجزت الثلاث طبقات.
+Order was B1 ← B2 ← B3 (conditional on demand) — all three layers done.

@@ -2814,22 +2814,25 @@ Every metric in EMO must answer these six questions:
 ```
 
 If any answer is absent, the metric is not permitted in an official EMO release.
-
 ---
-## ملحق عربي — خلاصة تنفيذية (غير معياري)
 
-أهم تغييرين هنا هما:
+## Executive summary appendix (non-normative)
+
+The two load-bearing changes here are:
 
 $$ D=0 \Rightarrow NA $$
 
-بدل تحويل الـ`undefined` إلى 0، ووجود هرمية إلزامية:
+instead of coercing `undefined` to 0, plus a mandatory hierarchy:
 
 ```text
 Attempt → Instance → Variant → Task → Capability
 ```
 
-مع قاعدة واضحة جدًا:
+with one crisp rule:
 
-لا يوجد double-counting داخل نفس المحور التصنيفي، بينما يُسمح بالتداخل بين metrics مختلفة لأنها تقيس أبعادًا مختلفة.
+No double-counting within the same categorical axis, while overlap
+across different metrics is allowed because they measure different
+dimensions.
 
-وهذا يجعل الـscoring engine قابلاً للتنفيذ آليًا دون قرارات بشرية مخفية.
+This makes the scoring engine mechanically implementable with no
+hidden human decisions.

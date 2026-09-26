@@ -1,6 +1,10 @@
 __pycache__/
 *.pyc
 *.pyo
+*.egg-info/
+src/*.egg-info
+build/
+dist/
 results/*.json
 results/raw/*.json
 results/raw/RUN-*/

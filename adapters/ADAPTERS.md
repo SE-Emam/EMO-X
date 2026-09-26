@@ -1,9 +1,10 @@
 # Third-party AGENTS ADAPTER layer
 
-> ملخص عربي: هذا المجلد يتيح تشغيل وكلاء خارجيين حقيقيين (`opencode` و `pi`)
-> على نفس سيناريو `shop/`، وتحويل مسار كل حلقة إلى trace JSON موحد مع
-> **توثيق مواصفات الـ harness كاملة بجانب كل نتيجة** — وأي مقارنة عبر
-> harnesses مختلفة موسومة **غير قابلة للمقارنة** (درس harness+model).
+> Summary: this folder lets real external agents (`opencode` and `pi`)
+> run on the same `shop/` scenario, converting each loop trace into a
+> unified trace JSON with the **full harness spec documented next to
+> every result** — and any cross-harness comparison is labeled
+> **non-comparable** (the harness+model lesson).
 
 ## 0. Why adapters exist (the harness+model lesson)
 

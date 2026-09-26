@@ -14,7 +14,20 @@
 - A model endpoint: any OpenAI-compatible `/v1` (OpenAI, OpenRouter,
   DeepSeek, Gemini, local vLLM/Ollama, Kaggle/Colab tunnel)
 
-## 2. Install (no build step)
+## 2. Install — two tracks (pick one)
+
+**Track 1 — benchmark users (`pip install emo-x`):**
+
+```bash
+pip install emo-x
+emo --self-test    # must end: RESULT: PASS
+emo --suite code25 --out results/
+```
+
+The `emo` entry behaves exactly like `python3 shared/run.py`
+(same hero splash on stderr, same `--quiet`, same sealed bundles).
+
+**Track 2 — harness developers (full checkout):**
 
 ```bash
 git clone https://github.com/SE-Emam/EMO-X-Adaptive-Agent-Evaluation.git emo-x
@@ -22,7 +35,7 @@ cd emo-x
 python3 shared/run.py --help   # must print usage, no errors
 ```
 
-No `pip install` needed. Keys/endpoints are supplied per run (see §4).
+No `pip install` needed for Track 2. Keys/endpoints are supplied per run (see §4).
 
 ## 3. Verify first (2 minutes, no endpoint needed)
 

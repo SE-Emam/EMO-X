@@ -17,7 +17,7 @@ class PackagingTests(unittest.TestCase):
         import tomllib
         with open(os.path.join(_ROOT, "pyproject.toml"), "rb") as f:
             data = tomllib.load(f)
-        self.assertEqual(data["project"]["name"], "emo-x")
+        self.assertEqual(data["project"]["name"], "emo-x-eval")
         self.assertIn("emo", data["project"]["scripts"])
 
     def test_version_lock(self):

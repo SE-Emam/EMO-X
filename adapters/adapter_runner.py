@@ -32,6 +32,9 @@ for _p in (ADAPTERS_DIR, SHARED_DIR):
         sys.path.insert(0, _p)
 
 import bench_lib as L  # noqa: E402  (reuses save_result result writer)
+from _log import configure, get_logger  # noqa: E402  (P1-02 stdlib logging)
+
+log = get_logger("adapter_runner")
 
 ADAPTERS = ("opencode", "pi", "hermes")
 
@@ -102,14 +105,15 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     task_dir = args.task_dir or _fresh_task_dir()
+    configure()
     if not os.path.isdir(task_dir):
-        print("adapter_runner error: task_dir does not exist: %s" % task_dir,
-              file=sys.stderr)
+        log.warning("adapter_runner error: task_dir does not exist: %s"
+                    % task_dir)
         return 2
     try:
         record = run_once(args.adapter, args.model, task_dir, args.timeout)
     except RuntimeError as e:
-        print("adapter_runner error: %s" % e, file=sys.stderr)
+        log.warning("adapter_runner error: %s" % e)
         return 2
 
     os.makedirs(args.out, exist_ok=True)
@@ -118,12 +122,12 @@ def main(argv=None):
     path = os.path.join(args.out, "adapter-%s_%s_%s.json"
                         % (args.adapter, slug, stamp))
     L.save_result(path, "agent-loop-%s" % args.adapter, record)
-    print("adapter=%s model=%s tests_green=%s stopped_cleanly=%s" % (
+    log.info("adapter=%s model=%s tests_green=%s stopped_cleanly=%s" % (
         args.adapter, args.model, record["tests_green"],
         record["trace"].get("stopped_cleanly")))
-    print("task_dir=%s" % task_dir)
-    print("saved %s" % path)
-    print("NOTE: %s" % record["comparability"])
+    log.info("task_dir=%s" % task_dir)
+    log.info("saved %s" % path)
+    log.info("NOTE: %s" % record["comparability"])
     return 0
 
 

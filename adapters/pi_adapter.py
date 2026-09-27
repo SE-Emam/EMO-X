@@ -31,6 +31,15 @@ import shutil
 import subprocess
 import sys
 
+try:
+    from _log import configure, get_logger  # noqa: E402  (P1-02 logging)
+except ImportError:  # standalone `python adapters/x.py`: shared/ off path
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                    "..", "shared"))
+    from _log import configure, get_logger  # noqa: E402
+
+log = get_logger("pi_adapter")
+
 ADAPTER_NAME = "pi"
 TIMEOUT_S = 600
 TRUNC_STEP = 2000
@@ -288,10 +297,11 @@ def main(argv=None):
         cap = probe()
         print(json.dumps(cap, ensure_ascii=False, indent=1))
         return 0 if cap.get("ok") else 1
+    configure()
     try:
         trace = run_episode(args.task_dir, args.model, args.timeout)
     except RuntimeError as e:
-        print("pi_adapter error: %s" % e, file=sys.stderr)
+        log.warning("pi_adapter error: %s" % e)
         return 1
     print(json.dumps(trace, ensure_ascii=False, indent=1))
     return 0

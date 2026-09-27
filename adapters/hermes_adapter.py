@@ -12,6 +12,15 @@ import shutil
 import subprocess
 import sys
 
+try:
+    from _log import configure, get_logger  # noqa: E402  (P1-02 logging)
+except ImportError:  # standalone `python adapters/x.py`: shared/ off path
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                    "..", "shared"))
+    from _log import configure, get_logger  # noqa: E402
+
+log = get_logger("hermes_adapter")
+
 TASK_PROMPT = (
     "Pip-free repo. Run the test suite: `python3 -m pytest shop/tests/ -x -q`. "
     "One or more tests fail. Inspect the repo, locate the bug, fix source files, "
@@ -103,11 +112,12 @@ def main(argv=None):
     ap.add_argument("--out", default="results/")
     a = ap.parse_args(argv)
     task_dir = a.task_dir or os.getcwd()
+    configure()
     try:
         trace = run_episode(task_dir, a.model, timeout=a.timeout)
         rc = 0
     except RuntimeError as e:
-        print("adapter infra error: %s" % e, file=sys.stderr)
+        log.warning("adapter infra error: %s" % e)
         return 2
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                     "..", "shared"))
@@ -117,8 +127,8 @@ def main(argv=None):
     outp = os.path.join(outdir, "adapter-hermes_%s.json" % slug)
     with open(outp, "w") as f:
         json.dump({"agent-loop-hermes": trace}, f, ensure_ascii=False, indent=1)
-    print("saved", outp)
-    print("NOTE: NON-COMPARABLE across harnesses.")
+    log.info("saved %s" % outp)
+    log.info("NOTE: NON-COMPARABLE across harnesses.")
     return rc
 
 

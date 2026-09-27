@@ -31,6 +31,10 @@ if HERE not in sys.path:
 
 import bench_lib as L
 
+from _log import configure, get_logger  # noqa: E402  (P1-02 stdlib logging)
+
+log = get_logger("run")
+
 PROMPT_PACK = "v1"
 CODE_TEMP = 0.4
 MATH_NUM_PREDICT = 600
@@ -641,11 +645,12 @@ def _budgeted(chat, name):
 
 
 def run_code25(chat, only, trials):
+    configure()
     out = {}
     for name, fn in CODE25_ORDER:
         if only and not any(_match(name, f) for f in only):
             continue
-        print("== %s ..." % name, flush=True)
+        log.info("== %s ..." % name)
         passes = []
         rec = {}
         tchat = _budgeted(chat, name)
@@ -661,24 +666,24 @@ def run_code25(chat, only, trials):
             rec["passes"] = passes
             rec["pass"] = bool(sum(passes) * 2 >= len(passes))  # majority
         out[name] = rec
-        print("   pass=%s err=%s" % (rec.get("pass"), rec.get("error")),
-              flush=True)
+        log.info("   pass=%s err=%s" % (rec.get("pass"), rec.get("error")))
     return out
 
 
 def run_agent_suite(chat, trials, max_steps=AGENT_MAX_STEPS):
+    configure()
     episodes = []
     for t in range(trials):
-        print("== agent-loop episode %d/%d ..." % (t + 1, trials), flush=True)
+        log.info("== agent-loop episode %d/%d ..." % (t + 1, trials))
         try:
             r = run_agent(chat, max_steps=max_steps)
             r["error"] = None
         except Exception as e:
             r = {"success": False, "error": str(e)[:300]}
         episodes.append(r)
-        print("   success=%s calls=%s failed=%s err=%s"
-              % (r.get("success"), r.get("tool_calls"),
-                 r.get("failed_calls"), r.get("error")), flush=True)
+        log.info("   success=%s calls=%s failed=%s err=%s"
+                 % (r.get("success"), r.get("tool_calls"),
+                    r.get("failed_calls"), r.get("error")))
     if trials == 1:
         single = episodes[0]
         single["A_summary"] = single.get("A", {})
@@ -695,6 +700,7 @@ def _raw_root(out):
 
 def main(argv=None):
     global AGENT_MAX_STEPS
+    configure()
     ap = argparse.ArgumentParser(description="EMO-X runner (PROMPT_PACK v1)")
     ap.add_argument("--backend", default=os.environ.get("BACKEND", "kaggle"),
                     help="kaggle | colab | openai-generic")
@@ -766,11 +772,11 @@ def main(argv=None):
     if args.self_test:
         import runner as _runner
         ok, rows = _runner.run_self_test()
-        print("EMO-X harness self-test (SPEC 35, fail-closed):")
+        log.info("EMO-X harness self-test (SPEC 35, fail-closed):")
         for name, passed, detail in rows:
-            print("  %-16s %s  %s" % (name, "PASS" if passed else "FAIL",
-                                      detail))
-        print("RESULT:", "PASS" if ok else "FAIL")
+            log.info("  %-16s %s  %s" % (name, "PASS" if passed else "FAIL",
+                                         detail))
+        log.info("RESULT: %s" % ("PASS" if ok else "FAIL"))
         return 0 if ok else 1
 
     if args.health:
@@ -807,15 +813,15 @@ def main(argv=None):
                 provider_profile=args.provider_profile,
                 scope=_scope, sampling=_sampling, progress=_prog)
             for s in runs:
-                print("suite=%s attempts=%d pass=%d dir=%s"
-                      % (s["suite"], s["n_attempts"], s["n_pass"],
-                         s["run_dir"]))
+                log.info("suite=%s attempts=%d pass=%d dir=%s"
+                         % (s["suite"], s["n_attempts"], s["n_pass"],
+                            s["run_dir"]))
             import json as _json
             print(_json.dumps(report, indent=1, default=str))
             return 0
         if args.suite not in _runner.SUITE_DIRS:
-            print("suite %r needs a model backend (stub covers %s)"
-                  % (args.suite, ", ".join(sorted(_runner.SUITE_DIRS))))
+            log.warning("suite %r needs a model backend (stub covers %s)"
+                        % (args.suite, ", ".join(sorted(_runner.SUITE_DIRS))))
             return 2
         try:
             _dir, s = _runner.run_suite(
@@ -826,14 +832,14 @@ def main(argv=None):
         except Exception as e:
             # Hidden/scope refusals surface cleanly before any model call.
             if "hidden-ok" in str(e) or "Scope" in type(e).__name__:
-                print("REFUSED: %s" % e)
+                log.warning("REFUSED: %s" % e)
                 return 2
             raise
-        print("suite=%s attempts=%d pass=%d" % (s["suite"], s["n_attempts"],
-                                                s["n_pass"]))
-        print("prompt_sha256=%s" % s["prompt_sha256"])
-        print("harness_sha256=%s" % s["harness_sha256"])
-        print("saved", _dir)
+        log.info("suite=%s attempts=%d pass=%d" % (s["suite"], s["n_attempts"],
+                                                  s["n_pass"]))
+        log.info("prompt_sha256=%s" % s["prompt_sha256"])
+        log.info("harness_sha256=%s" % s["harness_sha256"])
+        log.info("saved %s" % _dir)
         return 0
 
     if args.report:
@@ -849,8 +855,8 @@ def main(argv=None):
         outp = os.path.join(rdir, stem + "_REPORT.md")
         with open(outp, "w") as f:
             f.write(text)
-        print("QA stamp:", stamp)
-        print("written", outp)
+        log.info("QA stamp: %s" % stamp)
+        log.info("written %s" % outp)
         return 0
 
     # NOTE: --suite security is handled by the runner path above
@@ -879,7 +885,7 @@ def main(argv=None):
             full["code25"] = run_code25(chat, only, max(args.trials, 1))
             got = full["code25"]
             n = sum(1 for v in got.values() if v.get("pass"))
-            print("code25: %d/%d pass" % (n, len(got)))
+            log.info("code25: %d/%d pass" % (n, len(got)))
         else:
             full["agent-loop"] = run_agent_suite(chat, max(args.trials, 1),
                                                      max_steps=args.max_steps)
@@ -887,7 +893,7 @@ def main(argv=None):
     path = os.path.join(args.out, "%s_%s.json" % (model_slug, stamp))
     with open(path, "w") as f:
         json.dump(full, f, ensure_ascii=False, indent=1)
-    print("saved", path)
+    log.info("saved %s" % path)
     return 0
 
 

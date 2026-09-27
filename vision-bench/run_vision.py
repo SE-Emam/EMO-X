@@ -86,7 +86,17 @@ def vision_messages(prompt, image_path):
 # ---------------- capability gating ----------------
 
 def models_hint_supports_vision(base_url, timeout=20):
-    """GET {base}/models; True/False/None(unknown). Never raises."""
+    """GET {base}/models; True/False/None(unknown). Never raises.
+
+    Auditor MEDIUM: validate the URL first (fail-closed on metadata /
+    loopback unless EMOX_ALLOW_LOCAL=1) — this helper reaches the
+    network with a caller-supplied base.
+    """
+    try:
+        from backends import _validate_base_url  # noqa: E402
+        _validate_base_url(base_url)
+    except Exception:
+        return None
     url = base_url.rstrip("/") + "/models"
     try:
         req = urllib.request.Request(url)

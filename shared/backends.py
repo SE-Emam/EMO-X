@@ -29,13 +29,68 @@ streaming, stop behavior, seed, or max-tokens semantics across providers.
 import json
 import os
 import time
+import urllib.error
+import urllib.parse
 import urllib.request
 
 TIMEOUT = 300
 
+#: Hosts that resolve_config() refuses unless EMOX_ALLOW_LOCAL=1 is set.
+#: Blocks cloud instance-metadata endpoints and loopback/local targets
+#: (SSRF guard: a base URL must never point at local infrastructure by
+#: default; local dev endpoints opt in explicitly).
+_BLOCKED_HOSTS = frozenset((
+    "169.254.169.254",
+    "metadata.google.internal",
+    "localhost",
+    "127.0.0.1",
+    "::1",
+    "0.0.0.0",
+))
+
 
 def _strip_slash(u):
     return (u or "").rstrip("/")
+
+
+def _redact_host(url):
+    """Return a log-safe host label for a URL (never includes userinfo).
+
+    Used in error messages so connection failures cannot echo embedded
+    credentials. Returns the hostname (plus port when present), or the
+    input unchanged when it does not parse.
+    """
+    try:
+        parts = urllib.parse.urlsplit(url or "")
+        host = parts.hostname or ""
+        if not host:
+            return str(url)
+        if parts.port:
+            return "%s:%d" % (host, parts.port)
+        return host
+    except Exception:
+        return str(url)
+
+
+def _validate_base_url(base_url):
+    """Reject metadata/loopback base URLs unless EMOX_ALLOW_LOCAL=1.
+
+    Returns the validated URL unchanged. Raises ValueError on blocked
+    hosts (169.254.169.254, metadata.google.internal, localhost,
+    127.0.0.1, ::1, 0.0.0.0) when the opt-in env var is unset.
+    """
+    if os.environ.get("EMOX_ALLOW_LOCAL") == "1":
+        return base_url
+    try:
+        host = (urllib.parse.urlsplit(base_url or "").hostname or "")
+    except Exception:
+        host = ""
+    if host.lower() in _BLOCKED_HOSTS:
+        raise ValueError(
+            "refusing base URL host %r (loopback/metadata); "
+            "set EMOX_ALLOW_LOCAL=1 to allow local endpoints"
+            % host)
+    return base_url
 
 
 def resolve_config(backend="kaggle", base_url=None, model=None, api_key=None):
@@ -59,6 +114,7 @@ def resolve_config(backend="kaggle", base_url=None, model=None, api_key=None):
         raise ValueError("missing base URL (pass --base-url or set BASE_URL)")
     if not mod:
         raise ValueError("missing model (pass --model or set MODEL)")
+    _validate_base_url(base)
     return backend, _strip_slash(base), mod, key
 
 
@@ -69,8 +125,18 @@ def _post_json(url, payload, api_key=None, timeout=TIMEOUT):
         headers["Authorization"] = "Bearer " + api_key
     req = urllib.request.Request(url, data=data, headers=headers)
     t0 = time.time()
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        body = json.load(r)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            body = json.load(r)
+    except urllib.error.HTTPError as e:
+        # Re-raise without the response body: error surfaces carry the
+        # status code and (redacted) host only, never backend output
+        # that could echo credentials or prompt content.
+        raise RuntimeError("HTTP error %s for %s" % (
+            getattr(e, "code", "?"), _redact_host(url)))
+    except urllib.error.URLError as e:
+        raise RuntimeError("connection failed for %s: %s" % (
+            _redact_host(url), getattr(e, "reason", e)))
     return body, round(time.time() - t0, 1)
 
 

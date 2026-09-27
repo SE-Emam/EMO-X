@@ -63,7 +63,7 @@ With Ollama (free, local, no API key):
 
 ```bash
 ollama pull qwen3:1.7b
-python3 shared/run.py --backend openai-generic \
+EMOX_ALLOW_LOCAL=1 python3 shared/run.py --backend openai-generic \
   --base-url http://localhost:11434/v1 --model qwen3:1.7b \
   --suite code25 --out results/
 ```
@@ -89,7 +89,7 @@ python3 shared/run.py --self-test   # لازم ينتهي بـ RESULT: PASS
 
 ```bash
 ollama pull qwen3:1.7b
-python3 shared/run.py --backend openai-generic \
+EMOX_ALLOW_LOCAL=1 python3 shared/run.py --backend openai-generic \
   --base-url http://localhost:11434/v1 --model qwen3:1.7b \
   --suite code25 --out results/
 ```

@@ -167,9 +167,9 @@ def stub_chat_factory(note="stub"):
 
 def make_run_id(prefix="RUN"):
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime(
-        "%Y%m%dT%H%M%SZ")
-    digest = hashlib.sha256(os.urandom(8)).hexdigest()[:6]
-    return "%s-%s-%s" % (prefix, stamp, digest)
+        "%Y%m%dT%H%M%S.%fZ")
+    digest = hashlib.sha256(os.urandom(16)).hexdigest()[:10]
+    return "%s-%s-%s-p%d" % (prefix, stamp, digest, os.getpid())
 
 
 def build_manifest(suite, prompt_sha256, harness_sha256, model, backend,
@@ -478,6 +478,10 @@ def write_raw_bundle(out_root, manifest, attempts, responses,
     raw -> never edited (Y-3): existing RUN_ID is refused (old run
     retained, harness fix => new RUN_ID); the bundle is hash-sealed and
     chmodded read-only after writing (seal.json included).
+
+    Crash safety: files are written into a sibling staging directory and
+    the staging directory is os.renamed to the final RUN_ID path, so a
+    mid-write crash never leaves a partial run directory behind.
     """
     run_id = manifest["run_id"]
     try:
@@ -485,25 +489,40 @@ def write_raw_bundle(out_root, manifest, attempts, responses,
     except ImportError:  # pragma: no cover - path fallback (X-2 pattern)
         from shared.seal import refuse_overwrite, seal_bundle
     rundir = refuse_overwrite(out_root, run_id)
-    os.makedirs(rundir, exist_ok=False)
-    with open(os.path.join(rundir, "manifest.json"), "w",
-              encoding="utf-8") as f:
-        json.dump(manifest, f, ensure_ascii=False, indent=1)
-    with open(os.path.join(rundir, "events.jsonl"), "w",
-              encoding="utf-8") as f:
-        for a in attempts:
-            f.write(json.dumps(validate_attempt(a), ensure_ascii=False)
-                    + "\n")
-    with open(os.path.join(rundir, "responses.jsonl"), "w",
-              encoding="utf-8") as f:
-        for r in responses:
-            f.write(json.dumps(r, ensure_ascii=False) + "\n")
-    env = dict(environment or {})
-    env.setdefault("written_utc", datetime.datetime.now(
-        datetime.timezone.utc).isoformat())
-    with open(os.path.join(rundir, "environment.json"), "w",
-              encoding="utf-8") as f:
-        json.dump(env, f, ensure_ascii=False, indent=1)
+    staging = "%s.staging-%d-%s" % (
+        rundir, os.getpid(), hashlib.sha256(
+            os.urandom(16)).hexdigest()[:8])
+    if os.path.lexists(staging):
+        raise FileExistsError(
+            "staging dir already exists: %s" % staging)
+    os.makedirs(staging, exist_ok=False)
+    try:
+        with open(os.path.join(staging, "manifest.json"), "w",
+                  encoding="utf-8") as f:
+            json.dump(manifest, f, ensure_ascii=False, indent=1)
+        with open(os.path.join(staging, "events.jsonl"), "w",
+                  encoding="utf-8") as f:
+            for a in attempts:
+                f.write(json.dumps(validate_attempt(a), ensure_ascii=False)
+                        + "\n")
+        with open(os.path.join(staging, "responses.jsonl"), "w",
+                  encoding="utf-8") as f:
+            for r in responses:
+                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+        env = dict(environment or {})
+        env.setdefault("written_utc", datetime.datetime.now(
+            datetime.timezone.utc).isoformat())
+        with open(os.path.join(staging, "environment.json"), "w",
+                  encoding="utf-8") as f:
+            json.dump(env, f, ensure_ascii=False, indent=1)
+        os.rename(staging, rundir)
+    except BaseException:
+        import shutil
+        try:
+            if os.path.isdir(staging) and not os.path.lexists(rundir):
+                shutil.rmtree(staging, ignore_errors=True)
+        finally:
+            raise
     seal_bundle(rundir)  # raw -> immutable: hash-sealed, read-only (Y-3)
     return rundir
 

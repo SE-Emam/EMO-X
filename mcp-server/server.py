@@ -304,6 +304,31 @@ TOOLS = {
 }
 
 
+#: Substrings marking a parameter as credential-bearing (case-insensitive).
+#: Matched as substrings, except that "monkey"/"donkey" are stripped first
+#: so words like "monkey" never count as containing "key".
+_SENSITIVE_SUBSTRINGS = ("key", "secret", "token", "password", "passwd",
+                         "cred", "authorization")
+
+
+def _is_sensitive_key(name):
+    """True if a parameter name looks credential-bearing. Case-insensitive.
+
+    "monkey"/"donkey" never match (they merely end in "key").
+    """
+    low = str(name).lower()
+    stripped = low.replace("monkey", "").replace("donkey", "")
+    return any(s in stripped for s in _SENSITIVE_SUBSTRINGS)
+
+
+def _redact_args(args):
+    """Return args with credential-bearing values replaced by '***'."""
+    if not isinstance(args, dict):
+        return args
+    return {k: ("***" if _is_sensitive_key(k) else v)
+            for k, v in args.items()}
+
+
 def _result(req_id, result):
     return {"jsonrpc": "2.0", "id": req_id, "result": result}
 
@@ -350,10 +375,8 @@ def handle_message(msg):
         if tool is None:
             return _error(req_id, -32602, "unknown tool: %r" % (name,))
         # Redact credentials from any error surface: errors carry the
-        # redacted arguments (keys masked) for safe diagnosis.
-        redacted = {k: ("***" if "key" in k.lower() else v)
-                    for k, v in args.items()} if isinstance(args,
-                                                             dict) else args
+        # redacted arguments (credential values masked) for safe diagnosis.
+        redacted = _redact_args(args)
         try:
             return _result(req_id, {"content": [
                 {"type": "text",

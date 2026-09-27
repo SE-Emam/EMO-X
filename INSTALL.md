@@ -10,6 +10,7 @@
   `node` (JS tests), `rustc` (Rust test), `tsc` (TypeScript test),
   `psql` + local Postgres (R12), `patch` (diff tests)
 - For agent-loop: `pytest` + `git`
+- For running tests with pytest directly: `pip install "pytest>=7"` (or `pip install -e ".[dev]"`)
 - For agent adapters: the agent CLIs (`opencode`, `pi`, `hermes`) + their own auth
 - A model endpoint: any OpenAI-compatible `/v1` (OpenAI, OpenRouter,
   DeepSeek, Gemini, local vLLM/Ollama, Kaggle/Colab tunnel)
@@ -60,6 +61,11 @@ export OPENAI_MODEL="MODEL-ID"
 ```bash
 # 25 code tests (T/R/H) — start here:
 python3 shared/run.py --backend openai-generic --suite code25 --out results/
+
+# Local endpoints (loopback/metadata hosts are refused by default — opt in):
+EMOX_ALLOW_LOCAL=1 python3 shared/run.py --backend openai-generic \
+  --base-url http://localhost:11434/v1 --model qwen3:1.7b \
+  --suite code25 --out results/
 
 # Kaggle/Colab tunnel (native math path enabled automatically for H-tests):
 python3 shared/run.py --backend kaggle \

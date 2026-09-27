@@ -61,6 +61,20 @@ class VisionGateTests(unittest.TestCase):
                             force=True)
 
 
+class VisionHintSSRFTests(unittest.TestCase):
+    def test_hint_rejects_metadata_without_request(self):
+        vb = _load("vision_bench_run_vision",
+                   os.path.join(_ROOT, "vision-bench", "run_vision.py"))
+        self.assertIsNone(vb.models_hint_supports_vision(
+            "http://169.254.169.254/"))
+
+    def test_hint_rejects_loopback_without_request(self):
+        vb = _load("vision_bench_run_vision",
+                   os.path.join(_ROOT, "vision-bench", "run_vision.py"))
+        self.assertIsNone(vb.models_hint_supports_vision(
+            "http://localhost:11434/"))
+
+
 class VisionOracleTests(unittest.TestCase):
     def test_count_pass(self):
         chat = _vision_chat_factory("7")

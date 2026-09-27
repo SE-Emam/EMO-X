@@ -13,6 +13,7 @@ audit fix D1); _safe uses os.path.commonpath (audit fix D2).
 
 import os
 import subprocess
+import tempfile
 
 
 class Ctx(object):
@@ -30,8 +31,11 @@ def _safe(p, ctx):
     full = os.path.normpath(os.path.join(ctx.root, (p or "").lstrip("/")))
     # Audit fix D2: commonpath (not startswith) — a sibling whose name
     # merely shares the prefix (e.g. /tmp/sbx_evil vs /tmp/sbx) must fail.
+    # The root is rstripped so a trailing slash on ctx.root cannot cause
+    # a false escape (commonpath never returns a trailing slash).
+    root = (ctx.root or "").rstrip(os.sep) or os.sep
     try:
-        if os.path.commonpath([full, ctx.root]) != ctx.root:
+        if os.path.commonpath([full, root]) != root:
             raise ValueError("path escape")
     except ValueError:
         raise ValueError("path escape")
@@ -71,6 +75,8 @@ def tool_run(cmd, ctx):
 
 def tool_edit(path, old, new, ctx):
     f = _safe(path, ctx)
+    if os.path.islink(f):
+        return False, "ERROR: refusing to edit symlink: %s" % path
     if not os.path.isfile(f):
         ctx.nonexistent += 1
         return False, "ERROR: no such file: %s" % path
@@ -78,7 +84,29 @@ def tool_edit(path, old, new, ctx):
         data = fh.read()
     if old not in data:
         return False, "ERROR: `old` block not found verbatim (check whitespace)"
-    with open(f, "w") as fh:
-        fh.write(data.replace(old, new, 1))
+    new_data = data.replace(old, new, 1)
+    # Re-read at write time: refuse if the file changed under us.
+    with open(f) as fh:
+        fresh = fh.read()
+    if fresh != data:
+        return False, "ERROR: file changed during edit, retry: %s" % path
+    if old not in fresh:
+        return False, "ERROR: `old` block not found verbatim (check whitespace)"
+    new_data = fresh.replace(old, new, 1)
+    # Atomic write: temp file in the same directory + os.replace, so a
+    # crash never leaves a half-written target behind.
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(f) or ".",
+                               prefix=".edit-",
+                               suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as fh:
+            fh.write(new_data)
+        os.replace(tmp, f)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
     ctx.edited.add(os.path.relpath(f, ctx.root))
     return True, "OK edited %s" % path

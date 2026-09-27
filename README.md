@@ -2,7 +2,9 @@
 
 ![EMO-X banner — Execution · Measurement · Observability](src/emo-x-banner.png)
 
-Execution-based benchmark skills for coding models and coding agents — reusable with **any agent, any time**, against models on Kaggle, Colab, or any commercial LLM provider. Arabic-first docs, English code.
+[![Dataset on HF](https://img.shields.io/badge/🤗_Dataset-EMO--X--Core-yellow)](https://huggingface.co/datasets/emosoft/EMO-X-Core) [![PyPI](https://img.shields.io/pypi/v/emo-x-eval)](https://pypi.org/project/emo-x-eval/) [![License](https://img.shields.io/badge/License-Apache_2.0-blue)](LICENSE)
+
+Execution-based benchmark skills for coding models and coding agents — reusable with **any agent, any time**, against models on Kaggle, Colab, or any commercial LLM provider. English docs, English code (Arabic covered in functional test data).
 
 ## What it measures (not just pass/fail)
 

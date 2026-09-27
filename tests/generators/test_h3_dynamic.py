@@ -84,7 +84,9 @@ class H3DynamicTests(unittest.TestCase):
         self.assertIn("novel", exc.VARIANTS)
 
         def chat_ok(messages, **kw):
-            inst = build_h3_equation(9, variant="perturbed", index=1)
+            inst = build_h3_equation(
+                9, variant="perturbed", index=1,
+                subtype=exc._h3_math_subtype("perturbed"))
             return "x = %d" % inst["oracle"]["expected"], 0.1, {}
 
         rec, _ = exc.run_family("H3", chat_ok, run_id="R", model_id="m",

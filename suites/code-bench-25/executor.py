@@ -50,10 +50,17 @@ except ImportError:  # generators/ on path (runner) or add it (standalone)
 
 #: Variant classes served by this executor (SPEC 9). Canonical prompts are
 #: frozen (PROMPT_PACK v1); H3 additionally serves generated perturbed/novel
-#: instances with the same oracle kind (unique modular-equation solution).
+#: instances. The H3 dynamic oracle kind follows the manifest's
+#: math_subtype field: "modular_exponentiation" (the frozen canonical
+#: kind, remainder of c^t divided by m) selects the "exp" generator
+#: subtype, while a missing field keeps the legacy "linear" equation
+#: subtype for existing manifests (P0-08).
+VARIANTS = ("canonical", "perturbed", "novel")
+
+#: Manifest spelling selecting the exponentiation generator subtype.
+H3_MATH_SUBTYPE_MODULAR_EXPONENTIATION = "modular_exponentiation"
 #: Runner skips unsupported (family, variant) pairs via TypeError (DEN: a
 #: missing variant observation is NA, never zero).
-VARIANTS = ("canonical", "perturbed", "novel")
 
 # --- small helpers copied in spirit from shared/bench_lib.py (frozen
 # behavior; legacy file untouched). Kept local so this suite never
@@ -479,20 +486,50 @@ def prompt_messages(family):
     return cases.prompt_messages(family)
 
 
-def _run_h3_dynamic(chat, run_id, model_id, trial_id, index, seed, variant):
+def _h3_math_subtype(variant, manifest=None):
+    """Resolve the H3 generator math subtype for a variant. SPEC 9.
+
+    Precedence: an explicitly passed manifest dict's math_subtype field
+    first, else the suite H3.json math_subtype field, else "linear".
+    "modular_exponentiation" (the frozen canonical oracle kind) maps to
+    the "exp" generator subtype; a missing field preserves the legacy
+    "linear" equation subtype for existing manifests (P0-08).
+    """
+    data = manifest if isinstance(manifest, dict) else None
+    if data is None:
+        try:
+            path = os.path.join(HERE, "manifests", "H3.json")
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            return "linear"
+    field = data.get("math_subtype")
+    if not isinstance(field, dict):
+        return "linear"
+    if field.get(variant) == H3_MATH_SUBTYPE_MODULAR_EXPONENTIATION:
+        return "exp"
+    return "linear"
+
+
+def _run_h3_dynamic(chat, run_id, model_id, trial_id, index, seed, variant,
+                    subtype="linear"):
     """H3.seed -> generated instance -> same-kind oracle. SPEC 9.
 
     Surface varies (numbers/names/representation/wording/context);
-    truth is preserved (unique modular-equation solution).
+    truth is preserved (unique modular-equation solution for "linear",
+    modular-exponentiation remainder for "exp" — the frozen canonical
+    oracle kind selected via the manifest math_subtype field).
     """
-    inst = build_h3_equation(seed, variant=variant, index=index)
+    inst = build_h3_equation(seed, variant=variant, index=index,
+                             subtype=subtype)
     messages = [{"role": "user", "content": inst["prompt"]}]
     opts = cases.chat_options("H3")
     text, secs, usage = "", 0.0, {}
     passed, log, error_kind, err_msg = False, "", None, None
     try:
         text, secs, usage = chat(messages, **opts)
-        passed, log = check_h3_equation(text, inst["oracle"]["expected"])
+        passed, log = check_h3_equation(text, inst["oracle"]["expected"],
+                                       subtype=subtype)
     except sandbox.SandboxTimeout as e:
         error_kind, err_msg = "timeout", str(e)[:300]
         log = "TIMEOUT: %s" % err_msg
@@ -541,15 +578,18 @@ def _run_h3_dynamic(chat, run_id, model_id, trial_id, index, seed, variant):
 
 
 def run_family(family, chat, run_id, model_id, trial_id=1, index=1, seed=0,
-               manifest=None, variant=None):
+               manifest=None, variant=None, subtype=None):
     """Run one canonical family with a chat callable.
 
     Returns (attempt_record, response_record). The attempt record is
     schema-valid per shared/schemas.py (C4/C83). No scoring.
 
     variant: None/"canonical" -> frozen PROMPT_PACK v1 prompt. H3 also
-      serves "perturbed"/"novel" generated instances (same oracle kind:
-      unique solution of a modular equation). Any other (family,
+      serves "perturbed"/"novel" generated instances (same oracle kind
+      as the frozen canonical prompt). subtype: explicit H3 math
+      subtype ("linear"|"exp"); when None it resolves from the passed
+      manifest dict's math_subtype field, else the suite H3.json
+      math_subtype field, else "linear" (P0-08). Any other (family,
       variant) pair raises TypeError so the runner skips it (NA, DEN).
     """
     v = variant or "canonical"
@@ -557,8 +597,9 @@ def run_family(family, chat, run_id, model_id, trial_id=1, index=1, seed=0,
         if family != "H3":
             raise TypeError("variant %r not supported for family %r"
                             % (v, family))
+        sub = subtype or _h3_math_subtype(v, manifest)
         return _run_h3_dynamic(chat, run_id, model_id, trial_id, index,
-                               seed, v)
+                               seed, v, sub)
     messages = prompt_messages(family)
     opts = cases.chat_options(family)
     instance = instances.make_instance(

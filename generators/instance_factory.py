@@ -69,6 +69,37 @@ H3_CONTEXTS = (
 )
 H3_NOVEL_FRAME = "In other words, {body} State the final value only."
 
+#: H3 math subtypes (SPEC 9, P0-08). The frozen canonical H3 prompt
+#: (shared/PROMPT_PACK_v1.md) is modular EXPONENTIATION (remainder of
+#: 3^100 divided by 7), so generated perturbed/novel instances offer an
+#: "exp" subtype (new base/exponent/modulus c^t mod m) alongside the
+#: legacy "linear" subtype (unique solution of a*v == b mod m).
+H3_SUBTYPES = ("linear", "exp")
+#: H3 exponentiation axes (SPEC 9: same oracle kind as the canonical
+#: prompt — a single remainder — with varied surface). perturbed = new
+#: numbers, standard power wording. novel = new representation
+#: (remainder/code form) + irrelevant context.
+H3_EXP_FORMS = ("power", "remainder", "code")
+H3_EXP_WORDINGS = (
+    "What is the remainder when {c}^{t} is divided by {m}? "
+    "Be concise and state the final remainder clearly.",
+    "Find the remainder of {c}^{t} upon division by {m}. "
+    "Reply with ONLY the final integer.",
+)
+H3_EXP_REMAINDER_WORDINGS = (
+    "When {c}^{t} is divided by {m}, what is the remainder? "
+    "Reply with ONLY the final integer.",
+    "The remainder of {c}^{t} upon division by {m} equals what? "
+    "Give ONLY the final integer.",
+)
+H3_EXP_CODE_WORDINGS = (
+    "Complete: result = ({c} ** {t}) % {m} with result == ___ "
+    "and 0 <= result < {m}. Reply with ONLY the final integer.",
+    "A program asserts ({c} ** {t}) % {m} == ___ for the missing value "
+    "with 0 <= result < {m}. Find the value. "
+    "Reply with ONLY the final integer.",
+)
+
 
 def _h3_gcd(a, b):
     while b:
@@ -77,21 +108,30 @@ def _h3_gcd(a, b):
 
 
 def build_h3_equation(seed, variant="perturbed", index=1,
-                      generator_version=GENERATOR_VERSION):
+                      generator_version=GENERATOR_VERSION,
+                      subtype="linear"):
     """H3.seed -> parametric modular-equation instance. SPEC 9.
 
-    Same mathematical oracle kind as canonical H3 (unique solution of
-    a·v ≡ b mod m) with varied surface: numbers, variable names,
-    representation (congruence/remainder/code), wording, and (novel
-    only) irrelevant context. The expected answer is NEVER rendered
-    into the prompt (SPEC 6).
+    Same mathematical oracle kind as canonical H3 with varied surface:
+    numbers, variable names, representation (congruence/remainder/code),
+    wording, and (novel only) irrelevant context. The expected answer is
+    NEVER rendered into the prompt (SPEC 6).
 
     variant: "perturbed" (new numbers/names, standard wording) or
       "novel" (new representation + context + reframe).
+    subtype: "linear" (default, legacy unique solution of a·v ≡ b mod
+      m — byte-identical to the pre-P0-08 generator) or "exp"
+      (modular exponentiation c^t mod m — the oracle kind of the
+      frozen canonical prompt, SPEC B/C remainder oracle).
     Returns the build_instance() record shape.
     """
     if variant not in ("perturbed", "novel"):
         raise SchemaError("H3 dynamic variant must be perturbed|novel")
+    if subtype not in H3_SUBTYPES:
+        raise SchemaError("H3 math subtype must be linear|exp")
+    if subtype == "exp":
+        return _build_h3_exp_equation(seed, variant, index,
+                                      generator_version)
     rng = make_rng(seed * 100003 + index, generator_version)
     modulus = rng.randint(11, 99)
     coefficient = 1
@@ -145,21 +185,86 @@ def build_h3_equation(seed, variant="perturbed", index=1,
     }
 
 
-def check_h3_equation(reply, expected):
+def _build_h3_exp_equation(seed, variant, index, generator_version):
+    """H3.seed -> modular-exponentiation instance. SPEC 9.
+
+    Oracle kind matches the frozen canonical H3 prompt
+    (shared/PROMPT_PACK_v1.md: remainder of c^t divided by m):
+    perturbed draws a new base/exponent/modulus with standard power
+    wording; novel rewords (remainder/code form) and prepends
+    irrelevant context. The expected remainder is NEVER rendered into
+    the prompt (SPEC 6). Deterministic: same seed + index yields a
+    byte-identical instance_hash on any machine (SPEC 8).
+    """
+    rng = make_rng(seed * 100003 + index, generator_version)
+    modulus = rng.randint(5, 50)
+    base = rng.randint(2, 20)
+    exponent = rng.randint(10, 150)
+    if variant == "perturbed":
+        form = "power"
+        prompt = H3_EXP_WORDINGS[
+            rng.randrange(len(H3_EXP_WORDINGS))].format(
+                c=base, t=exponent, m=modulus)
+    else:
+        form = H3_EXP_FORMS[rng.randrange(len(H3_EXP_FORMS))]
+        if form == "power":
+            body = H3_EXP_WORDINGS[rng.randrange(len(H3_EXP_WORDINGS))]
+        elif form == "remainder":
+            body = H3_EXP_REMAINDER_WORDINGS[
+                rng.randrange(len(H3_EXP_REMAINDER_WORDINGS))]
+        else:
+            body = H3_EXP_CODE_WORDINGS[
+                rng.randrange(len(H3_EXP_CODE_WORDINGS))]
+        body = body.format(c=base, t=exponent, m=modulus)
+        prompt = (H3_CONTEXTS[rng.randrange(len(H3_CONTEXTS))]
+                  + H3_NOVEL_FRAME.format(body=body))
+    expected = pow(base, exponent, modulus)
+    parameters = {"base": base, "exponent": exponent,
+                  "modulus": modulus, "form": form}
+    oracle = {"oracle_type": "deterministic", "task": "H3",
+              "equation": "pow(%d,%d) mod %d (remainder)"
+                          % (base, exponent, modulus),
+              "expected": expected}
+    record = build_instance_record("H3", seed, generator_version,
+                                   parameters, oracle, variant=variant)
+    return {
+        "instance_id": make_instance_id("H3", variant, index),
+        "task": record["task"],
+        "task_name": "modular_exponentiation",
+        "variant": variant,
+        "seed": record["seed"],
+        "generator_version": record["generator_version"],
+        "parameters": parameters,
+        "prompt": prompt,
+        "oracle": oracle,
+        "instance_hash": record["instance_hash"],
+        "oracle_hash": record["oracle_hash"],
+    }
+
+
+def check_h3_equation(reply, expected, subtype="linear"):
     """Verify an H3-equation reply against the oracle solution.
 
     Anchored on the trailing `= N` answer (novel prompts contain noise
     numbers by design); falls back to the last bare integer for clean
-    perturbed prompts. Returns (ok_bool, detail).
+    perturbed prompts. Returns (ok_bool, detail). SPEC 9.
+
+    subtype: "linear" (a·v ≡ b mod m solution) or "exp" (c^t mod m
+    remainder) — both expect a single trailing integer, so the check
+    logic is shared; the parameter is validated and selects the
+    detail tag for auditability.
     """
+    if subtype not in H3_SUBTYPES:
+        raise SchemaError("H3 math subtype must be linear|exp")
+    tag = "equation-check" if subtype == "linear" else "modexp-check"
     text = reply or ""
     anchored = re.findall(r"=\s*(-?\d+)", text)
     if anchored:
-        return bool(int(anchored[-1]) == expected), "equation-check"
+        return bool(int(anchored[-1]) == expected), tag
     bare = re.findall(r"-?\d+", text)
     if bare:
-        return bool(int(bare[-1]) == expected), "equation-check"
-    return False, "equation-check:no-integer"
+        return bool(int(bare[-1]) == expected), tag
+    return False, tag + ":no-integer"
 
 
 

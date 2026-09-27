@@ -67,8 +67,13 @@
   "seed": "random",
   "type": "parametric"
  },
- "id": "H3",
- "name": "modular_arithmetic",
+  "id": "H3",
+  "name": "modular_arithmetic",
+  "math_subtype": {
+    "canonical": "modular_exponentiation",
+    "novel": "modular_exponentiation",
+    "perturbed": "modular_exponentiation"
+  },
  "network": {
   "allowed": false
  },

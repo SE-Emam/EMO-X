@@ -174,8 +174,8 @@ prompt/harness changes + mandatory re-baseline).
   calibration, long-horizon, gauntlet, vision (real executor over
   vision-bench fixtures), realworld (RW1–RW3 mini-real repos),
   computer-use (PILOT).
-- `tests/`: 577 tests (harness 210, generators 51, scoring 157,
-  golden 30, backends 129) + `tests/run_all.py` unified runner.
+- `tests/`: 660 tests (harness 249, generators 67, scoring 183,
+  golden 30, backends 131) + `tests/run_all.py` unified runner.
 - CLI: `--suite dynamic-code|recovery|gauntlet|profile`,
   `--instances`, `--seed`, `--fault-rate`, `--self-test`, `--health`.
 - `docs/`: architecture, task-dsl, metrics, backend-contract,

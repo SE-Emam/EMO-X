@@ -3,6 +3,7 @@
 ![EMO-X banner — Execution · Measurement · Observability](src/emo-x-banner.png)
 
 [![Dataset on HF](https://img.shields.io/badge/🤗_Dataset-EMO--X--Core-yellow)](https://huggingface.co/datasets/SE-Emam/EMO-X-Core) [![PyPI](https://img.shields.io/pypi/v/emo-x-eval)](https://pypi.org/project/emo-x-eval/) [![License](https://img.shields.io/badge/License-Apache_2.0-blue)](LICENSE)
+[![Suites](https://img.shields.io/badge/suites-14-blue)](suites/) [![Tests](https://img.shields.io/badge/tests-577-green)](tests/run_all.py) [![Ollama](https://img.shields.io/badge/Ollama-supported-orange)](INSTALL.md) [![Install](https://img.shields.io/badge/pip_install-emo--x--eval-blue)](https://pypi.org/project/emo-x-eval/)
 
 Execution-based benchmark skills for coding models and coding agents — reusable with **any agent, any time**, against models on Kaggle, Colab, or any commercial LLM provider. English docs, English code (Arabic covered in functional test data).
 
@@ -50,11 +51,57 @@ measurement science. What distinguishes EMO-X is that it also evaluates
 itself — a saturated or contaminated task loses ranking weight by rule,
 not by committee.
 
-## Quickstart
+## Quickstart (60 seconds)
 
 ```bash
-git clone <this-repo> emo-x && cd emo-x
-python3 shared/run.py --help   # no pip install needed (stdlib only)
+git clone https://github.com/SE-Emam/EMO-X-Adaptive-Agent-Evaluation
+cd EMO-X-Adaptive-Agent-Evaluation
+python3 shared/run.py --self-test   # must end: RESULT: PASS
+```
+
+With Ollama (free, local, no API key):
+
+```bash
+ollama pull qwen3:1.7b
+python3 shared/run.py --backend openai-generic \
+  --base-url http://localhost:11434/v1 --model qwen3:1.7b \
+  --suite code25 --out results/
+```
+
+Or install the CLI:
+
+```bash
+pip install emo-x-eval
+emo --self-test
+```
+
+Or run in your browser (no install): [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/SE-Emam/EMO-X-Adaptive-Agent-Evaluation/blob/main/notebooks/emo_x_quickstart.ipynb)
+
+## البدء السريع (٦٠ ثانية)
+
+```bash
+git clone https://github.com/SE-Emam/EMO-X-Adaptive-Agent-Evaluation
+cd EMO-X-Adaptive-Agent-Evaluation
+python3 shared/run.py --self-test   # لازم ينتهي بـ RESULT: PASS
+```
+
+مع Ollama (مجاني ومحلي، بدون مفاتيح):
+
+```bash
+ollama pull qwen3:1.7b
+python3 shared/run.py --backend openai-generic \
+  --base-url http://localhost:11434/v1 --model qwen3:1.7b \
+  --suite code25 --out results/
+```
+
+## Open leaderboard — no official baseline yet
+
+> **Be the first to submit one.** Run any model with 3 trials on the
+> frozen suites, keep the sealed raw bundle, and open a PR adding it
+> under `results/community/` — the board ranks only COMPARABLE runs
+> (identical prompt/harness/manifest hashes), so no one can game it.
+
+## Full quickstart
 
 # any OpenAI-compatible endpoint (OpenAI, OpenRouter, DeepSeek, Gemini, vLLM, Ollama…)
 python3 shared/run.py --backend openai-generic \

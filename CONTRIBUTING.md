@@ -24,3 +24,26 @@
 
 See `docs/adding-a-suite.md`: Task DSL manifest + canonical instances
 (deterministic seeds) + raw-only executor + schema-validated outputs.
+
+## Good first issues (start here — all labeled `good first issue`)
+
+1. **LangGraph general-agent adapter** — mirror
+   `adapters/forge_agent_emo_x.js`: wrap `shared/run.py` as a LangGraph
+   tool node, record harness spec next to results. No scoring changes.
+2. **Arabic vision task (V7)** — add a second Arabic fixture
+   (`vision-bench/fixtures/make_fixtures.py` generates PNGs; no Pillow
+   needed at runtime) + `ground_truth.json` keywords + oracle test.
+   Follow the V3 pattern.
+3. **qwen3-2b vs llama3.1:8b on code25** — run both via Ollama
+   (3 trials, same seed), submit sealed bundles under
+   `results/community/` per its README. No code, pure measurement.
+4. **Third agent-loop scenario** — copy the `ledger/` pattern in
+   `suites/agent-loop/episode.py`: new repo + bug class + oracle tests
+   + manifest, registered in `SCENARIOS`. shop/ stays frozen.
+5. **Health-board widget** — add one panel to
+   `shared/render_health_board.py` (e.g. per-model validity table).
+   HTML/CSS only, no deps.
+
+Bigger threads are labeled `help wanted` (multi-repo AgentLoop,
+hidden-suite rotation, contamination canary expansion). Ask in
+Discussions before large PRs.

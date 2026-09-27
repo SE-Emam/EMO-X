@@ -16,10 +16,10 @@
 
 ## 2. Install — two tracks (pick one)
 
-**Track 1 — benchmark users (`pip install emo-x`):**
+**Track 1 — benchmark users (`pip install emo-x-eval`):**
 
 ```bash
-pip install emo-x
+pip install emo-x-eval
 emo --self-test    # must end: RESULT: PASS
 emo --suite code25 --out results/
 ```

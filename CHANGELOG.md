@@ -8,7 +8,7 @@ prompt/harness changes + mandatory re-baseline).
 ## [Unreleased] — v2.0.0-rc1 (Adaptive Agent Evaluation)
 
 ### Added
-- `pip install emo-x` (Track 1): `pyproject.toml` + `src/emox/`
+- `pip install emo-x-eval` (Track 1): `pyproject.toml` + `src/emox/`
   (`emo` entry, lazy API, tree resolution via EMOX_ROOT/bundled
   data/live checkout) with build-time data bundling (`setup.py`,
   `MANIFEST.in`); single-version lock test across pyproject, runner,

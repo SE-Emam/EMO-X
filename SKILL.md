@@ -47,7 +47,7 @@ Any number without a raw bundle is inadmissible.
 
 ## Install paths: full clone vs pip (choose once)
 
-- **Track 1 — user (benchmark models):** `pip install emo-x`, then
+- **Track 1 — user (benchmark models):** `pip install emo-x-eval`, then
   `emo --self-test`, `emo --suite code25 --out results/`. The `emo`
   entry behaves exactly like `python3 shared/run.py` (same splash on
   stderr, same `--quiet`, same sealed bundles).

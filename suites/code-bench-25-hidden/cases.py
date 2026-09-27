@@ -9,10 +9,17 @@ Families:
   HH1 modular-equation hard  a*v == b (mod m), large modulus, unique solution.
   HH2 code-task variant      pow(base, exponent, modulus), exact integer.
   HH3 reasoning              positional weighted checksum mod modulus.
+  HH4 reasoning              lcm(a, b) for large coprime-shifted pairs.
+  HH5 code-task variant      digit-sum of N in base B (B in 2..16).
+  HH6 reasoning              sum of multiples of d in [1, N], large N.
 
 All oracles are deterministic (SPEC P6 Tier 1). Every instance carries
 variant_class "hidden" and an instance_id of the form
 "{family}-hidden-{index:05d}" via generators.seeds.make_instance_id.
+
+Canary (SPEC 38): every hidden prompt carries a digit-free integrity
+tag (CANARY). It contains no digits, so the integer oracle regex is
+unaffected; its presence in training data proves prompt leakage.
 
 Stdlib only. English code.
 """
@@ -37,8 +44,14 @@ from generators.seeds import (GENERATOR_VERSION, make_rng,  # noqa: E402
                               build_instance_record)
 
 SUITE = "code-bench-25-hidden"
-FAMILY_IDS = ("HH1", "HH2", "HH3")
+FAMILY_IDS = ("HH1", "HH2", "HH3", "HH4", "HH5", "HH6")
 HIDDEN_VARIANT = "hidden"
+
+#: Digit-free canary: no [0-9], so the integer-answer regex in
+#: check_family can never match it. Presence of this tag in any
+#: training corpus proves hidden-prompt leakage (SPEC 38).
+CANARY = ("EMO-X-HIDDEN-CANARY-training-on-this-prompt-is-prohibited-"
+          "benchmark-integrity-tag")
 
 HH1_VAR_NAMES = ("x", "n", "k", "t")
 
@@ -71,7 +84,25 @@ def resolve_params(family, seed, index=1):
     if family == "HH3":
         return {"items": [rng.randint(1, 99) for _ in range(5)],
                 "modulus": rng.randint(101, 997)}
+    if family == "HH4":
+        base = rng.randint(101, 499)
+        return {"a": base * rng.randint(2, 9),
+                "b": base * rng.randint(2, 9)}
+    if family == "HH5":
+        return {"n": rng.randint(10 ** 6, 10 ** 9),
+                "base": rng.randint(2, 16)}
+    if family == "HH6":
+        return {"d": rng.randint(3, 49),
+                "n": rng.randint(10 ** 5, 10 ** 6)}
     raise KeyError("unknown hidden family: %r" % (family,))
+
+
+def _digit_sum(n, base):
+    total = 0
+    while n:
+        total += n % base
+        n //= base
+    return total
 
 
 def oracle_value(family, params):
@@ -85,7 +116,22 @@ def oracle_value(family, params):
     if family == "HH3":
         total = sum((i + 1) * v for i, v in enumerate(params["items"]))
         return str(total % params["modulus"])
+    if family == "HH4":
+        a, b = params["a"], params["b"]
+        return str(a * b // _gcd(a, b))
+    if family == "HH5":
+        return str(_digit_sum(params["n"], params["base"]))
+    if family == "HH6":
+        d, n = params["d"], params["n"]
+        count = n // d
+        return str(d * count * (count + 1) // 2)
     raise KeyError(family)
+
+
+def _canary_line():
+    """Integrity tag appended to every hidden prompt (SPEC 38)."""
+    return ("Benchmark integrity tag (ignore, reply integer only): "
+            + CANARY)
 
 
 def prompt_text(family, params):
@@ -93,21 +139,45 @@ def prompt_text(family, params):
     if family == "HH1":
         return ("Solve for %(v)s: %(a)d * %(v)s == %(b)d (mod %(m)d). "
                 "There is a unique solution with 0 <= %(v)s < %(m)d. "
-                "Reply with ONLY the final integer, no explanation."
+                "Reply with ONLY the final integer, no explanation. "
+                "%(canary)s"
                 % {"v": params["variable"], "a": params["coefficient"],
-                   "b": params["target"], "m": params["modulus"]})
+                   "b": params["target"], "m": params["modulus"],
+                   "canary": _canary_line()})
     if family == "HH2":
         return ("Compute (%(b)d ** %(e)d) mod %(m)d. "
-                "Reply with ONLY the final integer, no explanation."
+                "Reply with ONLY the final integer, no explanation. "
+                "%(canary)s"
                 % {"b": params["base"], "e": params["exponent"],
-                   "m": params["modulus"]})
+                   "m": params["modulus"], "canary": _canary_line()})
     if family == "HH3":
         items = ", ".join(str(v) for v in params["items"])
         return ("Given the list [%s], compute the weighted checksum "
                 "sum((position) * value) for positions 1..5, "
                 "then take it mod %d. "
-                "Reply with ONLY the final integer, no explanation."
-                % (items, params["modulus"]))
+                "Reply with ONLY the final integer, no explanation. "
+                "%s"
+                % (items, params["modulus"], _canary_line()))
+    if family == "HH4":
+        return ("Compute lcm(%(a)d, %(b)d) (least common multiple). "
+                "Reply with ONLY the final integer, no explanation. "
+                "%(canary)s"
+                % {"a": params["a"], "b": params["b"],
+                   "canary": _canary_line()})
+    if family == "HH5":
+        return ("Express %(n)d in base %(b)d, then compute the sum of "
+                "its base-%(b)d digits. "
+                "Reply with ONLY the final integer, no explanation. "
+                "%(canary)s"
+                % {"n": params["n"], "b": params["base"],
+                   "canary": _canary_line()})
+    if family == "HH6":
+        return ("Compute the sum of all multiples of %(d)d in "
+                "[1, %(n)d]. "
+                "Reply with ONLY the final integer, no explanation. "
+                "%(canary)s"
+                % {"d": params["d"], "n": params["n"],
+                   "canary": _canary_line()})
     raise KeyError(family)
 
 

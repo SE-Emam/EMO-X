@@ -801,14 +801,52 @@ def health_snapshot(out_root=None):
     matrix = build_model_task_matrix(attempts) if attempts else {}
     disc = {t: discrimination_snapshot(matrix, t)
             for t in by_task_status} if matrix else {}
+    # Contamination pairs (P2-14): per-family (canonical, novel) pass
+    # rates over scored attempts; novel = novel/adversarial/hidden
+    # variants. Retention collapse flags the TASK for rotation.
+    pairs_by_task = {}
+    for task in by_task_status:
+        canon_all = [a for a in attempts
+                     if a.get("task_family_id") == task
+                     and a.get("primary_status") in ("PASS", "FAIL")
+                     and (a.get("variant_class") or "canonical")
+                     == "canonical"]
+        canon = [a for a in canon_all
+                 if a.get("primary_status") == "PASS"]
+        novel = [a for a in attempts
+                 if a.get("task_family_id") == task
+                 and a.get("primary_status") in ("PASS", "FAIL")
+                 and (a.get("variant_class") or "") in (
+                     "novel", "adversarial", "hidden")]
+        novel_pass = sum(1 for a in novel
+                         if a.get("primary_status") == "PASS")
+        if canon_all and novel:
+            pairs_by_task[task] = (len(canon) / len(canon_all),
+                                   novel_pass / len(novel))
+    pairs = list(pairs_by_task.values())
+    # Saturation per task (P2-15): reference scores across models.
+    saturation = {}
+    for task in by_task_status:
+        ref = [scores.get(task) for scores in matrix.values()] \
+            if matrix else []
+        saturation[task] = saturation_snapshot(ref)
+    saturated_tasks = sorted(
+        t for t, s in saturation.items() if s.get("saturated"))
+    contaminated_tasks = sorted(
+        t for t, p in pairs_by_task.items()
+        if contamination_snapshot(pairs=[p]).get("level") == "high")
     return {
         "n_attempts": len(attempts),
         "n_models": len(matrix),
         "validity": validity_snapshot(n_error, len(attempts)),
         "tasks": tasks,
         "discrimination": disc,
-        "saturation_note": "per-task saturation needs >=3 reference "
-                           "models (C71); see health.saturation.",
-        "contamination": contamination_snapshot(pairs=[]),
-        "saturation": saturation_snapshot([]),
+        "contamination": contamination_snapshot(pairs=pairs),
+        "contamination_by_task": {
+            t: contamination_snapshot(pairs=[p])
+            for t, p in pairs_by_task.items()},
+        "saturation": saturation,
+        "saturated_tasks": saturated_tasks,
+        "rotation_candidates": sorted(set(saturated_tasks)
+                                      | set(contaminated_tasks)),
     }

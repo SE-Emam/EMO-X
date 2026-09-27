@@ -232,6 +232,10 @@ def build_tests(gt):
          os.path.join(FIX_DIR, "ui_toolbar.png"),
          P_COUNT.format(what="buttons in the dark toolbar (excluding the search field)"),
          ("count", gt["ui_toolbar.png"]["toolbar_button_count"])),
+        ("V6_count_red_squares",
+         os.path.join(FIX_DIR, "grid_count.png"),
+         P_COUNT.format(what="red squares (squares only, not circles)"),
+         ("count", gt["grid_count.png"]["red_squares"])),
     ]
 
 
@@ -284,7 +288,7 @@ def _run_via_runner(args):
         chat = make_chat(args.backend, args.base_url, args.model,
                          args.api_key)
     only = [x.strip().upper() for x in args.only.split(",") if x.strip()]
-    order = ["V1", "V2", "V3", "V4", "V5"]
+    order = ["V1", "V2", "V3", "V4", "V5", "V6"]
     families = [v for v in order
                 if (not only) or v in only] or None
     model_id = args.model or os.environ.get("MODEL", "model")

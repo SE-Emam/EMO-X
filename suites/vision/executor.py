@@ -34,7 +34,7 @@ from schemas import validate_attempt  # noqa: E402
 from manifests import sha256_bytes, sha256_manifest  # noqa: E402
 
 SUITE = "vision"
-FAMILY_IDS = ("V1", "V2", "V3", "V4", "V5")
+FAMILY_IDS = ("V1", "V2", "V3", "V4", "V5", "V6")
 VARIANTS = ("canonical",)
 
 

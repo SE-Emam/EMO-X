@@ -81,6 +81,19 @@ class VisionOracleTests(unittest.TestCase):
                                  trial_id=1, base_url="", force=True)
         self.assertEqual(rec["primary_status"], "PASS")
 
+    def test_conjunctive_count_pass(self):
+        chat = _vision_chat_factory("There are 4 red squares.")
+        rec, _ = EXEC.run_family("V6", chat, run_id="R", model_id="m",
+                                 trial_id=1, base_url="", force=True)
+        self.assertEqual(rec["primary_status"], "PASS")
+
+    def test_conjunctive_count_rejects_single_attribute(self):
+        # "7" is the V4 (blue circles) answer: conjunction must fail it.
+        chat = _vision_chat_factory("7")
+        rec, _ = EXEC.run_family("V6", chat, run_id="R", model_id="m",
+                                 trial_id=1, base_url="", force=True)
+        self.assertEqual(rec["primary_status"], "FAIL")
+
     def test_hashes_stable(self):
         h1, h2 = EXEC.prompt_pack_sha256(), EXEC.prompt_pack_sha256()
         self.assertEqual(h1, h2)

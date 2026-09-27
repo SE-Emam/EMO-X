@@ -1,6 +1,6 @@
 ---
 name: vision-bench
-description: Vision tests V1-V5 — UI element grounding (IoU), Arabic reading from image, element counting; gracefully refused when the endpoint lacks image support. Use it to compare VLM capabilities before adopting them.
+description: Vision tests V1-V6 — UI element grounding (IoU), Arabic reading from image, element counting, attribute-conjunction counting; gracefully refused when the endpoint lacks image support. Use it to compare VLM capabilities before adopting them.
 ---
 
 ![EMO-X banner — Execution · Measurement · Observability](../src/emo-x-banner.png)
@@ -14,7 +14,7 @@ description: Vision tests V1-V5 — UI element grounding (IoU), Arabic reading f
 Measure what agents accomplish — not what they say
 ```
 
-# Vision test (vision-bench) — V1–V5
+# Vision test (vision-bench) — V1–V6
 
 ## What is it?
 
@@ -78,6 +78,9 @@ Arabic font.
   reply = the answer, exact match.
 - **V5 button counting:** how many buttons in the dark toolbar (excluding
   the search field)? (`3`).
+- **V6 conjunctive counting:** how many RED SQUARES (squares only, not
+  circles)? (`4`) — color+shape conjunction, harder than V4's single
+  attribute.
 
 Statistical rule from the plan (§0.4): `--trials 3` with majority as
 verdict; gaps < 3pp are noise. Raw `iou` is always preserved (partial
@@ -110,7 +113,7 @@ box = parse_box(reply)   # {x,y,w,h} or {x_min,...} -> [x0,y0,x1,y1]
 ok = box is not None and iou(box, GT) >= 0.5   # raw iou always logged
 # V3 Arabic-from-image (keyword-substring, order-free)
 ok = all(k in reply for k in ("تسجيل", "الدخول"))  # Arabic keywords: test data
-# V4/V5 counting (first integer wins, exact match)
+# V4/V5/V6 counting (first integer wins, exact match)
 m = re.search(r"-?\d+", reply); ok = (m and int(m.group(0)) == 7)
 ```
 
@@ -119,5 +122,5 @@ m = re.search(r"-?\d+", reply); ok = (m and int(m.group(0)) == 7)
 Raw JSON results in `results/` (never edit them). The report must
 state: PROMPT_PACK version (`vision-v1`), backend, model, temperature
 (0.2), trial count, hardware, `fixture_font`/`fixture_arabic_engine`,
-the `[V1..V5]` vector with raw `iou`, and any `status: skipped` with
+the `[V1..V6]` vector with raw `iou`, and any `status: skipped` with
 its reason.

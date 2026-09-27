@@ -7,7 +7,7 @@ Public/hidden evaluation separation for EMO-X.
 | Tier | Suites | Purpose | Claim language |
 |---|---|---|---|
 | Public / dev | `code-bench-25`, `dynamic-code`, all visible suites | Development, debugging, iteration | `PUBLIC-BENCHMARK` |
-| Maintainer / hidden | `code-bench-25-hidden` (HH1, HH2, HH3) | Final validation only | `HIDDEN-VALIDATION` |
+| Maintainer / hidden | `code-bench-25-hidden` (HH1–HH6, runtime-generated, canary-tagged) | Final validation only | `HIDDEN-VALIDATION` |
 
 Rules:
 

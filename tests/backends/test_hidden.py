@@ -40,7 +40,7 @@ hidden_cases = _load_by_path("hidden_cases_under_test",
 hidden_executor = _load_by_path("hidden_executor_under_test",
                                 os.path.join(HIDDEN, "executor.py"))
 
-FAMILIES = ("HH1", "HH2", "HH3")
+FAMILIES = ("HH1", "HH2", "HH3", "HH4", "HH5", "HH6")
 
 
 def _stub_chat_factory(reply_fn):
@@ -58,9 +58,10 @@ def _snapshot_files(top):
 
 
 class TestHiddenManifests(unittest.TestCase):
-    def test_three_manifests_validate(self):
+    def test_six_manifests_validate(self):
         files = sorted(f for f in os.listdir(MANIFESTS) if f.endswith(".json"))
-        self.assertEqual(files, ["HH1.json", "HH2.json", "HH3.json"])
+        self.assertEqual(files, ["HH1.json", "HH2.json", "HH3.json",
+                                 "HH4.json", "HH5.json", "HH6.json"])
         for name in files:
             with self.subTest(manifest=name):
                 manifest = manifest_lib.load_task_manifest(
@@ -188,6 +189,40 @@ class TestHiddenOracles(unittest.TestCase):
             scope="hidden-ok")
         self.assertEqual(attempt["primary_status"], "FAIL")
         _schemas.validate_attempt(attempt)
+
+
+class TestHiddenCanary(unittest.TestCase):
+    def test_canary_digit_free(self):
+        import re
+        self.assertTrue(hidden_cases.CANARY)
+        self.assertIsNone(re.search(r"[0-9]", hidden_cases.CANARY))
+
+    def test_every_prompt_carries_canary(self):
+        for family in FAMILIES:
+            with self.subTest(family=family):
+                inst = hidden_cases.make_instance(family, 4242, 3)
+                self.assertIn(hidden_cases.CANARY, inst["prompt"])
+
+    def test_canary_never_satisfies_oracle(self):
+        for family in FAMILIES:
+            with self.subTest(family=family):
+                inst = hidden_cases.make_instance(family, 4242, 3)
+                ok, _ = hidden_cases.check_family(
+                    family, hidden_cases.CANARY, inst)
+                self.assertFalse(ok)
+
+
+class TestHiddenNewFamilies(unittest.TestCase):
+    def test_oracles_recompute(self):
+        for family in ("HH4", "HH5", "HH6"):
+            with self.subTest(family=family):
+                params = hidden_cases.resolve_params(family, 7, 1)
+                inst = hidden_cases.make_instance(family, 7, 1)
+                self.assertEqual(inst["oracle"]["value"],
+                                 hidden_cases.oracle_value(family, params))
+                ok, _ = hidden_cases.check_family(
+                    family, "work " + inst["oracle"]["value"], inst)
+                self.assertTrue(ok)
 
 
 if __name__ == "__main__":

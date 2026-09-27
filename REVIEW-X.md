@@ -20,7 +20,7 @@
 
 ## 2. R1 checklist — pre-push (mandatory gate)
 
-- [ ] `python3 tests/run_all.py` → PASS all suites (currently 5/5 = 567).
+- [ ] `python3 tests/run_all.py` → PASS all suites (currently 5/5 = 577).
 - [ ] `python3 shared/run.py --self-test` → PASS (currently 10/10, fail-closed).
 - [ ] Frozen contracts intact: `PROMPT_PACK_v1` header, `REPORT_TEMPLATE` (8 sections in order), `report.py:17 + :86`, all 7 fixtures sha256-identical to originals, legacy `run/bench_lib/backends` logic unmodified (CLI additions only).
 - [ ] No secrets: `rg -i "api[_-]?key|token|secret|password" --glob '!reports/*'` clean, and `.env` untracked (`.gitignore`).

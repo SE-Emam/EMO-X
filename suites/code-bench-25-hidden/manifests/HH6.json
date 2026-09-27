@@ -1,0 +1,56 @@
+{
+ "capabilities": [
+  "mathematical_reasoning",
+  "generalization",
+  "verification"
+ ],
+ "category": "reasoning",
+ "difficulty": {
+  "adaptive": true,
+  "base": 3
+ },
+ "estimated_human_minutes": 10,
+ "execution": {
+  "harness": "suites/code-bench-25-hidden/executor.py",
+  "type": "text"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "generator": {
+  "parameters": {
+   "d": {
+    "min": 3,
+    "max": 49
+   },
+   "n": {
+    "min": 100000,
+    "max": 1000000
+   }
+  },
+  "type": "parametric"
+ },
+ "id": "HH6",
+ "name": "multiples_sum",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "sum of all multiples of d in [1, N]",
+  "type": "deterministic"
+ },
+ "prompt_pack": "hidden",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "code-bench-25-hidden",
+ "timeouts": {
+  "execution_seconds": 30,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "hidden"
+ ],
+ "version": "1.0",
+ "visibility": "hidden"
+}

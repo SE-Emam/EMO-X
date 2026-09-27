@@ -1,0 +1,82 @@
+name: Bug report
+description: Report a harness, scoring, or documentation bug in EMO-X.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please fill in every field — incomplete reports
+        are slow to reproduce. Raw bundles are immutable: never edit
+        `results/raw/`; describe the run instead.
+  - type: input
+    id: version
+    attributes:
+      label: EMO-X version
+      description: |
+        Version under test (e.g. output of `git rev-parse HEAD`, release tag,
+        or `pip show emo-x-eval`). Required.
+      placeholder: "e.g. v2.0.0-rc1 / commit 9f3a…"
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - runner / harness (shared/run.py, shared/runner.py)
+        - scoring / metrics (shared/scoring.py, shared/metrics.py, DENOMINATORS.md)
+        - suite case / oracle (suites/, code-bench-25/, security-bench/, …)
+        - backend / adapter (shared/backends.py, adapters/, mcp-server/)
+        - reports / rendering (shared/render_*.py, shared/report_v2.py)
+        - docs / spec (SPEC.md, INSTALL.md, SKILL.md, …)
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you observed vs. what you expected.
+      placeholder: "Expected X, observed Y."
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: Exact commands, suite, flags, seed, model/backend used.
+      placeholder: |
+        python3 shared/run.py --backend stub --suite code25 --trials 1 --seed 0 --out /tmp/repro/
+    validations:
+      required: true
+  - type: textarea
+    id: selftest
+    attributes:
+      label: Self-test output
+      description: |
+        Paste the full output of `python3 shared/run.py --self-test`
+        (required — proves harness health at report time).
+      render: shell
+      placeholder: |
+        RESULT: PASS
+    validations:
+      required: true
+  - type: input
+    id: bundle
+    attributes:
+      label: Bundle path
+      description: |
+        Path to the sealed raw bundle for this run, if any
+        (e.g. results/raw/RUN-20260101T000000Z-abcdef/). Do NOT attach
+        edited bundles — raw is write-once (see shared/seal.py).
+      placeholder: "results/raw/<RUN-ID>/ (or: no bundle — harness failed before writing)"
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / extra context
+      description: Relevant log excerpts, environment.json notes, platform info.
+      render: shell
+    validations:
+      required: false

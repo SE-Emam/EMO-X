@@ -25,6 +25,10 @@ All prompts are frozen in `security-bench/run_security.py` (part of
 PROMPT_PACK v1) — any change means a new PROMPT_PACK version + full
 re-baseline, else the round is **void**.
 
+Requires a text-generation model (`--model-type`, default `text`
+modalities). Non-text types (embedding/Jev/image/...) are refused
+pre-call; see `docs/model-onboarding.md`.
+
 ## Layout
 
 ```

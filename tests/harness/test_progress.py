@@ -66,6 +66,25 @@ class ProgressRenderTests(unittest.TestCase):
         self.assertEqual(snap["passed"], 1)
         self.assertEqual(snap["title"], "T1")
 
+    def test_run_level_bar_aggregates_suites(self):
+        p = ProgressReporter(enabled=False)
+        p.start_run(total_suites=2)
+        p.start_suite("s1", total_attempts=2)
+        p.add_suite_total(2)
+        p.finish_attempt("PASS")
+        p.finish_attempt("FAIL")
+        p.start_suite("s2", total_attempts=2)
+        p.add_suite_total(2)
+        p.finish_attempt("PASS")
+        self.assertIn("[run 3/4", p.render())
+        snap = p.snapshot()
+        self.assertEqual((snap["run_done"], snap["run_total"],
+                          snap["run_passed"], snap["run_failed"]),
+                         (3, 4, 2, 1))
+
+    def test_null_add_suite_total_noop(self):
+        NullProgress().add_suite_total(5)
+
     def test_monotonic_done(self):
         seen = []
         p = ProgressReporter(enabled=False,

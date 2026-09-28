@@ -1,91 +1,62 @@
 # EMO-X
 
-![EMO-X banner — Execution · Measurement · Observability](src/emo-x-banner.png)
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="src/emo-x-banner-light.png" />
+  <img alt="EMO-X banner — Execution · Measurement · Observability" src="src/emo-x-banner.png" />
+</picture>
 
-[![Dataset on HF](https://img.shields.io/badge/🤗_Dataset-EMO--X--Core-yellow)](https://huggingface.co/datasets/SE-Emam/EMO-X-Core) [![PyPI](https://img.shields.io/pypi/v/emo-x-eval)](https://pypi.org/project/emo-x-eval/) [![License](https://img.shields.io/badge/License-Apache_2.0-blue)](LICENSE)
-[![Suites](https://img.shields.io/badge/suites-14-blue)](suites/) [![Tests](https://img.shields.io/badge/tests-714-green)](tests/run_all.py) [![Ollama](https://img.shields.io/badge/Ollama-supported-orange)](INSTALL.md) [![Install](https://img.shields.io/badge/pip_install-emo--x--eval-blue)](https://pypi.org/project/emo-x-eval/)
+> HumanEval is dead. EMO-X tests what agents **DO**, not what they **SAY**.
 
-Execution-based benchmark skills for coding models and coding agents — reusable with **any agent, any time**, against models on Kaggle, Colab, or any commercial LLM provider. English docs, English code (Arabic covered in functional test data).
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/SE-Emam/EMO-X/blob/main/notebooks/emo_x_quickstart.ipynb) [![GitHub stars](https://img.shields.io/github/stars/SE-Emam/EMO-X)](https://github.com/SE-Emam/EMO-X/stargazers) [![pip install](https://img.shields.io/badge/pip_install-emo--x--eval-blue)](https://pypi.org/project/emo-x-eval/) [![Dataset on HF](https://img.shields.io/badge/🤗_Dataset-EMO--X--Core-yellow)](https://huggingface.co/datasets/SE-Emam/EMO-X-Core) [![PyPI](https://img.shields.io/pypi/v/emo-x-eval)](https://pypi.org/project/emo-x-eval/) [![License](https://img.shields.io/badge/License-Apache_2.0-blue)](LICENSE)
+[![Suites](https://img.shields.io/badge/suites-13-blue)](suites/) [![Tests](https://img.shields.io/badge/tests-718-green)](tests/run_all.py) [![Ollama](https://img.shields.io/badge/Ollama-supported-orange)](INSTALL.md)
 
-## What it measures (not just pass/fail)
-
-- **code25** — 25 code/tool tests (Python/JS/TS/Rust/SQL/Postgres/Git/Vercel/Supabase/React/HTML, JSON, diffs, math) with **real execution**, incl. Arabic tasks
-- **agent-loop** — a real repo-fixing episode (Batch 4: inspect → locate → patch → test → stop) scored on **efficiency**: tool calls, failures, tokens, latency, clean stop
-- **security** — refusal calibration, prompt-injection (direct + poisoned data, incl. concealment), sandboxed CTF-mini, tool-abuse, self-written skills, dark-web patterns (sandboxed only)
-- **vision** — UI grounding, Arabic-text reading, element counting (needs a multimodal endpoint; skips gracefully otherwise)
-- **issues** — GitHub-issue-style repair tasks (IS1–IS15) with visible + held-out hidden tests; PASS needs both green plus FINAL stop
-- **realworld** — mini-real repo fixtures (pagination, config keys, sort stability) with full agent trajectories
-- **recovery / robustness / calibration / long-horizon / gauntlet** — fault injection, state drift, abstention, chained checkpoints, and compound 9-dimension scenarios
-- **adapters** — drive third-party agents (opencode, pi, hermes) with harness specs recorded; cross-harness rows labeled NON-COMPARABLE
-
-## Features
-
-- **Execution, not eyeballing** — every answer runs in a real toolchain; text similarity never counts.
-- **Dynamic variants** — canonical / perturbed / novel instances from deterministic seeds (contamination-resistant).
-- **Trajectory-aware** — tool calls, recoveries, re-planning, and clean stops are scored, not just final answers.
-- **Failure fingerprints** — every failure gets exactly one primary cause, not a bare zero.
-- **Statistical honesty** — paired bootstrap 95% intervals, no fixed point-gap rules, no "winner" without an interval.
-- **Self-auditing** — the benchmark monitors its own health (saturation, flakiness, contamination) and flags itself.
-- **Sealed provenance** — immutable raw bundles with hashes; any harness change invalidates comparability automatically.
-
-## Why use EMO-X
-
-Single-number leaderboards answer one question ("did it pass?") and hide
-everything that matters in deployment: cost per solved task, recovery
-after failure, safety under attack, calibration under uncertainty, and
-whether success generalizes beyond memorized instances. EMO-X exists
-because **a model that scores 65% cheaply, safely, and robustly is not
-the same system as one that scores 65% expensively and brittlely** —
-and that difference is invisible to pass/fail benchmarks.
-
-## Importance and role
-
-EMO-X is not another leaderboard; it is an **evaluation operating
-system for AI agents** (SPEC §48–49: dynamic, execution-based,
-trajectory-aware, self-auditing, model-agnostic). Its role is
-complementary, not competitive: issue benchmarks (e.g. SWE-bench) ask
-*whether real problems get solved*; EMO-X asks *how reliably,
-efficiently, safely, and robustly they get solved, and whether the
-success generalizes*. Use both: one for ecological validity, one for
-measurement science. What distinguishes EMO-X is that it also evaluates
-itself — a saturated or contaminated task loses ranking weight by rule,
-not by committee.
+![EMO-X self-test demo](src/demo.gif)
 
 ## Quickstart (60 seconds)
 
 ```bash
-git clone https://github.com/SE-Emam/EMO-X-Adaptive-Agent-Evaluation
-cd EMO-X-Adaptive-Agent-Evaluation
+git clone https://github.com/SE-Emam/EMO-X
+cd EMO-X
 python3 shared/run.py --self-test   # must end: RESULT: PASS
 ```
-
-With Ollama (free, local, no API key):
-
-```bash
-ollama pull qwen3:1.7b
-EMOX_ALLOW_LOCAL=1 python3 shared/run.py --backend openai-generic \
-  --base-url http://localhost:11434/v1 --model qwen3:1.7b \
-  --suite code25 --out results/
-```
-
-Or install the CLI:
-
 ```bash
 pip install emo-x-eval
 emo --self-test
 ```
 
-Or run in your browser (no install): [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/SE-Emam/EMO-X-Adaptive-Agent-Evaluation/blob/main/notebooks/emo_x_quickstart.ipynb)
+## What it measures
 
-## البدء السريع (٦٠ ثانية)
+| Suite | What it tests | Why it matters |
+|---|---|---|
+| code25 | 25 real-execution code/tool tests | beyond pass/fail snippets |
+| agent-loop | inspect → locate → patch → test → stop | measures efficiency, not just fixing |
+| security | refusal, injection, sandboxed CTF-mini | safety under attack |
+| vision | UI grounding, Arabic reading, counting | multimodal grounding |
+| issues | IS1–IS15 repair + held-out hidden tests | real-issue repair |
+| realworld | mini-repo fixtures + trajectories | ecological validity |
+| recovery / robustness / calibration / long-horizon / gauntlet | faults, drift, abstention, chains, compounds | deployment behavior |
+| adapters | opencode / pi / hermes drivers | harness+model honesty |
 
-```bash
-git clone https://github.com/SE-Emam/EMO-X-Adaptive-Agent-Evaluation
-cd EMO-X-Adaptive-Agent-Evaluation
-python3 shared/run.py --self-test   # لازم ينتهي بـ RESULT: PASS
-```
+## Features
 
-مع Ollama (مجاني ومحلي، بدون مفاتيح):
+- ⚙️ **Execution, not eyeballing** — real toolchains; text similarity never counts.
+- 🧬 **Dynamic variants** — canonical/perturbed/novel from seeds; contamination-resistant.
+- ⏱️ **Trajectory-aware** — tool calls, recoveries, re-planning, clean stops scored.
+- 🧪 **Failure fingerprints** — one primary cause per failure, not a bare zero.
+- 📊 **Statistical honesty** — bootstrap 95% CIs; no winner without an interval.
+- 🩺 **Self-auditing** — saturation/flakiness/contamination flagged by rule.
+- 🔒 **Sealed provenance** — immutable hashed bundles; changes void comparability.
+
+## Why use EMO-X
+
+Single-number leaderboards hide what matters in deployment: cost per
+solve, recovery, safety, calibration, generalization. **A model that
+scores 65% cheaply, safely, and robustly is not the same system as one
+that scores 65% expensively and brittlely** — EMO-X measures the
+difference. (Deeper framing: `SPEC.md` §48–49; complementary to
+SWE-bench, not competitive.)
+
+## Run your first model
 
 ```bash
 ollama pull qwen3:1.7b
@@ -93,6 +64,9 @@ EMOX_ALLOW_LOCAL=1 python3 shared/run.py --backend openai-generic \
   --base-url http://localhost:11434/v1 --model qwen3:1.7b \
   --suite code25 --out results/
 ```
+
+Any OpenAI-compatible endpoint works the same way (`--base-url` +
+`--model` + key). No install path: open the Colab badge above.
 
 ## Open leaderboard — no official baseline yet
 
@@ -155,7 +129,7 @@ print(render_comparison(comp))"
 |---|---|---|
 | Test suites | 14 | `suites/*/` |
 | Task manifests | 75 | `suites/*/manifests/*.json` |
-| Harness + unit tests | 714 (harness 287, generators 67, scoring 192, golden 30, backends 138) | `tests/run_all.py`, all green |
+| Harness + unit tests | 718 (harness 291, generators 67, scoring 192, golden 30, backends 138) | `tests/run_all.py`, all green |
 | Self-test checks | 14 | `--self-test`, fail-closed |
 | Issue-style families | 15 (IS1–IS15) | vs SWE-bench Lite (300) = **5.0%** |
 

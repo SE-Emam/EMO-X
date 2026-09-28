@@ -829,6 +829,7 @@ def run_suite(suite, chat, model_id="stub-model", backend="stub", seed=0,
             n_variants = 1
         total += max(instances, 1) * n_variants * max(trials, 1)
     prog.start_suite(suite, total_attempts=total)
+    prog.add_suite_total(total)
     attempts, responses = [], []
     # Streaming writer (roadmap Phase 3): lines hit disk per attempt;
     # the bundle is still published atomically at the end. Aborted on

@@ -32,6 +32,11 @@ jobs:
           ! rg -n "shell\s*=\s*True|os\.system|import pickle|[^_.a-zA-Z]eval\(|[^_.a-zA-Z]exec\(" \
             --glob '*.py' shared suites generators judges health mcp-server || exit 1
           echo "dangerous-pattern scan clean"
+      - name: Local-only files guard (never track internal docs)
+        run: |
+          tracked=$(git ls-files AGENTS-X.md FINAL-REPORT.md PLAN-Y.md REVIEW-X.md reports/ | head -5) || true
+          [ -z "$tracked" ] || (echo "FORBIDDEN TRACKED FILES: $tracked (see CONTRIBUTING)"; exit 1)
+          echo "local-only guard clean"
       - name: Install pytest (harness dev extra)
         run: pip install "pytest>=7"
       - name: Harness self-test (SPEC 35, fail-closed)

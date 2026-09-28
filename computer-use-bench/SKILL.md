@@ -31,6 +31,11 @@ efficiency metrics from `agent-loop-bench/SKILL.md` — plus the C
 metrics below. Any loop run here runs under the same `MAX_STEPS=15`
 and `temp=0.4` unless stated otherwise.
 
+Requires a text-generation model (`--model-type agentic/llm/...`;
+see `docs/model-onboarding.md`). GUI grounding is future work: any
+GUI-grounding claim without live screenshots + the vision V1/V2
+judge is VOID.
+
 ## C1 — multi-bug repo (partial credit)
 
 A `multishop/` repo (built by the runner in an isolated tmp, then `git init`):

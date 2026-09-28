@@ -189,7 +189,7 @@
    Copyright 2026 EMO-X contributors
 
    Project: EMO-X — Adaptive Agent Evaluation
-   Repository: https://github.com/SE-Emam/EMO-X-Adaptive-Agent-Evaluation
+   Repository: https://github.com/SE-Emam/EMO-X
    Description: Execution-based, trajectory-aware benchmarking for AI coding
    models and agents — dynamic task families, recovery and calibration metrics,
    and self-auditing benchmark health. Arabic-first docs, English code.

@@ -14,6 +14,17 @@ for _p in (_ROOT, os.path.join(_ROOT, "shared")):
 
 from render_leaderboard import rank_band, render_board  # noqa: E402
 from runner import run_suite, stub_chat_factory  # noqa: E402
+from render_leaderboard import (_line_chart, _model_color,
+                                LINE_COLORS)  # noqa: E402
+
+
+def _prof(**over):
+    base = {"correctness": 0.8, "generalization": 0.7,
+            "tool_discipline": None, "recovery": 0.6,
+            "robustness": 0.5, "safety": 0.9, "calibration": 0.4,
+            "efficiency": 0.75, "long_horizon": None}
+    base.update(over)
+    return base
 
 
 def _keyed(model, key, caps=None, rate=0.9):
@@ -136,6 +147,32 @@ class LeaderboardRenderTests(unittest.TestCase):
         self.assertIn(data["pairwise"][0]["status"],
                       ("significant", "directional", "inconclusive",
                        "non-comparable", "insufficient-data"))
+
+
+class LineChartTests(unittest.TestCase):
+    def test_deterministic_colors_and_names(self):
+        entries = [{"model": "alpha", "profile": _prof(),
+                    "ranked": True},
+                   {"model": "beta", "profile": _prof(correctness=0.5),
+                    "ranked": False}]
+        svg = _line_chart(entries)
+        self.assertIn("<svg", svg)
+        self.assertIn("alpha", svg)
+        self.assertIn("beta", svg)
+        self.assertIn("report-only", svg)
+        self.assertEqual(_model_color("alpha"),
+                         _model_color("alpha"))
+        self.assertIn(LINE_COLORS[_model_color("alpha") % len(
+            LINE_COLORS)], svg)
+
+    def test_gaps_break_lines(self):
+        entries = [{"model": "g", "profile": _prof(), "ranked": True}]
+        full = _line_chart(entries)
+        sparse = _line_chart([{"model": "g",
+                               "profile": {"correctness": 0.8},
+                               "ranked": True}])
+        self.assertLess(sparse.count("<polyline"), 3)
+        self.assertIn("<circle", sparse)
 
 
 if __name__ == "__main__":

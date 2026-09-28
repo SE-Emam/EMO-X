@@ -9,7 +9,7 @@ abstract: >-
 authors:
   - alias: SE-Emam
 license: Apache-2.0
-repository-code: "https://github.com/SE-Emam/EMO-X-Adaptive-Agent-Evaluation"
+repository-code: "https://github.com/SE-Emam/EMO-X"
 keywords:
   - llm-evaluation
   - ai-agents

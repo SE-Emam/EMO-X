@@ -202,6 +202,97 @@ def pairwise(entries, bundles):
     return out
 
 
+#: Colorblind-safe line palette (Okabe-Ito subset + markers).
+LINE_COLORS = ("#0072B2", "#D55E00", "#009E73", "#CC79A7", "#56B4E9",
+               "#E69F00", "#000000")
+LINE_MARKERS = ("o", "s", "^", "D", "v", "p", "x")
+
+
+def _model_color(model):
+    """Deterministic color index per model name (stable across renders)."""
+    import hashlib
+    digest = hashlib.sha256(str(model or "").encode()).hexdigest()
+    return int(digest[:8], 16) % len(LINE_COLORS)
+
+
+def _line_chart(entries):
+    """SVG line chart: capability profile per model across DIMS.
+
+    One polyline per model (deterministic color + marker + legend with
+    the model name); missing dimensions break the line (never invent
+    points). Curves from different comparability classes share the
+    axes but must NOT be read as ranked — the rank table governs.
+    """
+    dims = [d for d in DIMS]
+    w, h, pad = 640, 300, 46
+    parts = ['<svg width="%d" height="%d" role="img">' % (w + 220, h)]
+    parts.append('<text x="10" y="22" font-size="14">Capability profile '
+                 'by model (lines share axes; only bands rank)</text>')
+    for i, d in enumerate(dims):
+        x = pad + i * (w - 2 * pad) / max(1, len(dims) - 1)
+        parts.append('<line x1="%d" y1="%d" x2="%d" y2="%d" '
+                     'stroke="#ddd"/>' % (x, 40, x, h - 30))
+        parts.append('<text x="%d" y="%d" font-size="9" '
+                     'text-anchor="middle">%s</text>'
+                     % (x, h - 12, html.escape(d[:10])))
+    for grid_v in (0.0, 0.5, 1.0):
+        y = (h - 30) - grid_v * (h - 70)
+        parts.append('<line x1="%d" y1="%d" x2="%d" y2="%d" '
+                     'stroke="#eee"/>' % (pad, y, w - pad, y))
+        parts.append('<text x="%d" y="%d" font-size="9">%.0f%%</text>'
+                     % (pad - 34, y + 3, 100 * grid_v))
+
+    def xy(i, v):
+        x = pad + i * (w - 2 * pad) / max(1, len(dims) - 1)
+        y = (h - 30) - max(0.0, min(1.0, v)) * (h - 70)
+        return x, y
+
+    legend_y = 40
+    for e in entries:
+        color = LINE_COLORS[_model_color(e.get("model")) % len(LINE_COLORS)]
+        marker = LINE_MARKERS[_model_color(e.get("model"))
+                              % len(LINE_MARKERS)]
+        profile = e.get("profile") or {}
+        seg, pts = [], []
+        for i, d in enumerate(dims):
+            v = profile.get(d)
+            if v is None:
+                if pts:
+                    seg.append(pts)
+                    pts = []
+                continue
+            pts.append(xy(i, v))
+        if pts:
+            seg.append(pts)
+        for pts in seg:
+            if len(pts) == 1:
+                (x, y), = pts
+                parts.append('<circle cx="%.1f" cy="%.1f" r="3.5" '
+                             'fill="%s"/>' % (x, y, color))
+            else:
+                parts.append('<polyline fill="none" stroke="%s" '
+                             'stroke-width="2" points="%s"/>'
+                             % (color, " ".join("%.1f,%.1f" % p
+                                                for p in pts)))
+                for (x, y) in pts:
+                    if marker == "o":
+                        parts.append('<circle cx="%.1f" cy="%.1f" r="3" '
+                                     'fill="%s"/>' % (x, y, color))
+                    else:
+                        parts.append('<rect x="%.1f" y="%.1f" width="6" '
+                                     'height="6" fill="%s"/>' % (
+                                         x - 3, y - 3, color))
+        name = str(e.get("model") or "?")
+        ranked = "" if e.get("ranked", True) else " (report-only)"
+        parts.append('<text x="%d" y="%d" font-size="11" fill="%s">'
+                     '■ %s%s</text>' % (
+                         w + 6, legend_y, color, html.escape(name),
+                         html.escape(ranked)))
+        legend_y += 16
+    parts.append("</svg>")
+    return "\n".join(parts)
+
+
 def _chart(entries):
     """Grouped SVG bars: pass rate + CI whiskers per model."""
     n = len(entries)
@@ -254,6 +345,7 @@ def render_board(rundirs, outdir):
             "<small>%d run%s</small></h1>" % (
                 len(entries), "" if len(entries) == 1 else "s")]
     rows.append(_chart(entries))
+    rows.append(_line_chart(entries))
     rows.append("<h2>Rank table (bands share overlapping CIs)</h2>")
     rows.append("<table><tr><th>band</th><th>model</th><th>suite</th>"
                 "<th>pass rate</th><th>95% CI</th><th>coverage</th>"

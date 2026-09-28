@@ -29,10 +29,10 @@ docs = ["sphinx"]
 emo = "emox.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/SE-Emam/EMO-X-Adaptive-Agent-Evaluation"
-Documentation = "https://github.com/SE-Emam/EMO-X-Adaptive-Agent-Evaluation/blob/main/SPEC.md"
-Issues = "https://github.com/SE-Emam/EMO-X-Adaptive-Agent-Evaluation/issues"
-Changelog = "https://github.com/SE-Emam/EMO-X-Adaptive-Agent-Evaluation/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/SE-Emam/EMO-X"
+Documentation = "https://github.com/SE-Emam/EMO-X/blob/main/SPEC.md"
+Issues = "https://github.com/SE-Emam/EMO-X/issues"
+Changelog = "https://github.com/SE-Emam/EMO-X/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["src"]

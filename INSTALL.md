@@ -31,7 +31,7 @@ The `emo` entry behaves exactly like `python3 shared/run.py`
 **Track 2 — harness developers (full checkout):**
 
 ```bash
-git clone https://github.com/SE-Emam/EMO-X-Adaptive-Agent-Evaluation.git emo-x
+git clone https://github.com/SE-Emam/EMO-X.git emo-x
 cd emo-x
 python3 shared/run.py --help   # must print usage, no errors
 ```

@@ -53,6 +53,9 @@ class NullProgress(object):
     def set_suite_index(self, *a, **k):
         return None
 
+    def add_suite_total(self, *a, **k):
+        return None
+
     def snapshot(self):
         return {}
 
@@ -92,6 +95,11 @@ class ProgressReporter(object):
         self.t0 = None
         self.suite_t0 = None
         self._durations = []
+        # Run-level aggregation (single operation bar across suites).
+        self.run_total = 0
+        self.run_done = 0
+        self.run_passed = 0
+        self.run_failed = 0
 
     @property
     def _out(self):
@@ -126,6 +134,11 @@ class ProgressReporter(object):
         self._emit()
         return self
 
+    def add_suite_total(self, n):
+        """Add one suite's attempt total to the run-level bar."""
+        self.run_total += max(0, int(n))
+        return self
+
     def finish_attempt(self, status):
         """Record one finished attempt (status = primary_status string)."""
         now = time.time()
@@ -133,10 +146,13 @@ class ProgressReporter(object):
             self._durations.append(now - self.suite_t0)
             self.suite_t0 = now
         self.done += 1
+        self.run_done += 1
         if status == "PASS":
             self.passed += 1
+            self.run_passed += 1
         else:
             self.failed += 1
+            self.run_failed += 1
         self._emit()
         return self
 
@@ -184,6 +200,10 @@ class ProgressReporter(object):
             "total_suites": self.total_suites,
             "done": self.done,
             "total": self.suite_total,
+            "run_done": self.run_done,
+            "run_total": self.run_total,
+            "run_passed": self.run_passed,
+            "run_failed": self.run_failed,
             "title": self.title,
             "passed": self.passed,
             "failed": self.failed,
@@ -192,12 +212,19 @@ class ProgressReporter(object):
         }
 
     def render(self):
-        """One status line: scopes + bar + title + tallies + timing."""
+        """One status line: run bar + suite detail + title + tallies."""
         frac = self.fraction()
         filled = int(round(frac * self.bar_width))
         bar = "█" * filled + "░" * (self.bar_width - filled)
         head = ""
-        if self.total_suites > 1:
+        if self.run_total > 0:
+            # Single operation bar across all suites (run-level).
+            rfrac = min(1.0, self.run_done / float(self.run_total))
+            rfilled = int(round(rfrac * self.bar_width))
+            rbar = "█" * rfilled + "░" * (self.bar_width - rfilled)
+            head = "[run %d/%d %s] " % (self.run_done, self.run_total,
+                                        rbar)
+        elif self.total_suites > 1:
             head = "[profile %d/%d] " % (self.suite_idx,
                                          self.total_suites)
         scope = ""

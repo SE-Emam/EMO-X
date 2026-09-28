@@ -64,6 +64,19 @@ prompt/harness changes + mandatory re-baseline).
   why baselines depend on EMO-X by design, and the 8 reliability
   proofs a final report must carry.
 
+### Changed (product + plan consolidation)
+- Repository renamed `EMO-X-Adaptive-Agent-Evaluation` → **`EMO-X`**
+  (redirects preserved); all clone/badge/Colab/docs references updated.
+- Internal docs (`FINAL-REPORT`, `REVIEW-X`, `PLAN-Y`, `AGENTS-X`,
+  `reports/*.md`) untracked from GitHub (kept locally, CI-guarded);
+  `PLAN-X.md` remains the Master Plan with roadmap folded in as
+  Phase 2.1 (WP16–WP25), not addenda.
+- README restructured as product page (hook + badges + GIF + table;
+  theory moved down); light-mode banner + `src/demo.gif` (real
+  self-test frames) + 1280×640 social preview asset.
+- Unified run-level progress bar (+ per-suite detail) and multi-model
+  SVG profile chart (deterministic colors, report-only legend).
+
 ### Added (model capability gating — the missing modality layer)
 - `--model-modalities` (default text-only): `safety.parse_model_modalities`,
   `require_model_modality`, `ModelCapabilityDenied` — suites declare needs
@@ -214,7 +227,7 @@ prompt/harness changes + mandatory re-baseline).
   calibration, long-horizon, gauntlet, vision (real executor over
   vision-bench fixtures), realworld (RW1–RW3 mini-real repos),
   computer-use (PILOT).
-- `tests/`: 714 tests (harness 287, generators 67, scoring 192,
+- `tests/`: 718 tests (harness 291, generators 67, scoring 192,
   golden 30, backends 138) + `tests/run_all.py` unified runner.
 - CLI: `--suite dynamic-code|recovery|gauntlet|profile`,
   `--instances`, `--seed`, `--fault-rate`, `--self-test`, `--health`.

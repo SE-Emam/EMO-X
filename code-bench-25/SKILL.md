@@ -67,6 +67,15 @@ python shared/run.py --suite code25 --only T5,R7,H3 --trials 3 --out results/
 python shared/run.py --backend openai-generic --suite code25 --out results/
 ```
 
+## Model capability (who may run this)
+
+Text-generation models only (`--model-type llm/chat/code/reasoning/
+math/agentic`, default modalities `text`). Embedding, decision (Jev),
+image, video, audio, CNN, or RL types are **refused before the first
+call** (`ModelCapabilityDenied`) — scored zeros from an incapable
+model are inadmissible. See `docs/model-onboarding.md` for the
+19-type matrix and external-standard pointers (MTEB, TypeSafe, ...).
+
 ## Verification
 
 ```python

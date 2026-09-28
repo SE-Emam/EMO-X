@@ -96,6 +96,25 @@ Binding migration map:
 | WP14 | Gauntlet (§28) | `suites/gauntlet/` | compound scenario with ≥7 entangled dimensions |
 | WP15 | Official 3-trial baseline + public validation | `docs/`, official report | Coverage≥95% + `n≥3` + safety gate (§B56) |
 
+### Phase 2.1 — conformance era (v2.0.0-rc1, core plan — not addenda)
+
+Roadmap items discovered mid-build are folded here as first-class
+phases (a comprehensive study would have placed them upfront; they
+are recorded as plan, not patches):
+
+| WP | Pack | Outputs | Acceptance |
+|---|---|---|---|
+| WP16 | Version/uncertainty conformance | `BOOTSTRAP_RESAMPLES`, `invariants.py`, report gate | B=10k everywhere; malformed raw rejected |
+| WP17 | Tool/robustness wiring | canonical components + `robustness_signals` | NA never 0; signals exposed |
+| WP18 | Runner unification | standalone wrappers, `force=` | one contract, all bundles sealed |
+| WP19 | Bootstrap/pairing/leaderboard | canonical builders, instance pairing, comparability gate | conditional never ranked |
+| WP20 | Agent scenarios + clean stop | AG2 ledger, `terminal_state`/A14 | shop frozen byte-identical |
+| WP21 | Integrity + aging + multimodal | HH4–HH6 + canary, health wiring + board, V6 | hidden doubled, rotation flags |
+| WP22 | Hardening + community | run-id entropy, redaction, atomicity, SSRF, H3-exp, constants, templates, R3 script | auditor PASS |
+| WP23 | Model types + modalities | `MODEL_TYPES` (13→19), stages, `--model-type`, onboarding | out-of-scope refused with pointer |
+| WP24 | Agent frameworks | generic CLI adapter, framework matrix | probe-gated, NON-COMPARABLE |
+| WP25 | Product UX | README fold, GIF, unified progress + SVG chart | 60-second trial, single bar |
+
 ---
 
 ## 4. Global acceptance criteria (apply to every WP)

@@ -703,7 +703,8 @@ def main(argv=None):
     configure()
     ap = argparse.ArgumentParser(description="EMO-X runner (PROMPT_PACK v1)")
     ap.add_argument("--backend", default=os.environ.get("BACKEND", "kaggle"),
-                    help="kaggle | colab | openai-generic")
+                    help="kaggle | colab | openai-generic | cli (local agent "
+                         "CLI via --base-url binary + --model route)")
     ap.add_argument("--provider-profile", default=None,
                     help="openai-generic provider: unknown (default, "
                          "conservative) | openai | openrouter | deepseek | "
@@ -730,6 +731,11 @@ def main(argv=None):
                     help="deterministic instance seed (new suites)")
     ap.add_argument("--fault-rate", type=float, default=0.25,
                     help="recovery-suite injection rate (new suites)")
+    ap.add_argument("--model-modalities", default=None,
+                    help="declared model capabilities, e.g. text,vision "
+                         "(default text-only). Suites require a modality; "
+                         "mismatch refuses BEFORE any model call — scored "
+                         "zeros from an incapable model are inadmissible.")
     ap.add_argument("--hidden-ok", action="store_true",
                     help="opt in to the hidden validation suite "
                          "(HIDDEN-VALIDATION claim tier, never public)")
@@ -811,7 +817,8 @@ def main(argv=None):
                 _chat, _model, args.backend, args.seed, args.instances,
                 max(args.trials, 1), args.fault_rate, _raw_root(args.out),
                 provider_profile=args.provider_profile,
-                scope=_scope, sampling=_sampling, progress=_prog)
+                scope=_scope, sampling=_sampling, progress=_prog,
+                model_modalities=args.model_modalities)
             for s in runs:
                 log.info("suite=%s attempts=%d pass=%d dir=%s"
                          % (s["suite"], s["n_attempts"], s["n_pass"],
@@ -828,10 +835,13 @@ def main(argv=None):
                 args.suite, _chat, _model, args.backend, args.seed,
                 args.instances, max(args.trials, 1), args.fault_rate,
                 _raw_root(args.out), provider_profile=args.provider_profile,
-                scope=_scope, sampling=_sampling, progress=_prog)
+                scope=_scope, sampling=_sampling, progress=_prog,
+                model_modalities=args.model_modalities)
         except Exception as e:
-            # Hidden/scope refusals surface cleanly before any model call.
-            if "hidden-ok" in str(e) or "Scope" in type(e).__name__:
+            # Hidden/scope/capability refusals surface cleanly before
+            # any model call.
+            if "hidden-ok" in str(e) or "Scope" in type(e).__name__ \
+                    or "Capability" in type(e).__name__:
                 log.warning("REFUSED: %s" % e)
                 return 2
             raise
@@ -869,6 +879,30 @@ def main(argv=None):
     chat = make_chat(args.backend, args.base_url, args.model)
     only = _parse_only(args.only)
     suites = ["code25", "agent-loop"] if args.suite == "all" else [args.suite]
+    # Model-capability gate on the legacy path too (same rule as the
+    # runner path: scored zeros from an incapable model are
+    # inadmissible). Refuses BEFORE any model call, no output file.
+    try:
+        import runner as _runner_mod
+    except ImportError:
+        from shared import runner as _runner_mod
+    try:
+        from safety import (parse_model_modalities,
+                            require_model_modality)
+    except ImportError:
+        from shared.safety import (parse_model_modalities,
+                                   require_model_modality)
+    _declared = parse_model_modalities(args.model_modalities)
+    for _s in suites:
+        try:
+            require_model_modality(
+                _s, _runner_mod.SUITE_MODALITIES.get(
+                    _s, _runner_mod.DEFAULT_SUITE_MODALITY), _declared)
+        except Exception as e:
+            if "Capability" in type(e).__name__:
+                log.warning("REFUSED: %s" % e)
+                return 2
+            raise
 
     stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     model_slug = re.sub(r"[^A-Za-z0-9_.-]+", "_",

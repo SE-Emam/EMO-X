@@ -105,6 +105,12 @@ def validate_run_manifest(record):
         for field in ("backend", "provider_profile"):
             if field in caps and not isinstance(caps[field], str):
                 raise _err("backend_capabilities.%s must be a string" % field)
+    if "model_modalities" in record:  # model-level capabilities
+        mods = record["model_modalities"]
+        if (not isinstance(mods, list) or not mods
+                or any(not isinstance(m, str) or not m.strip()
+                       for m in mods)):
+            raise _err("model_modalities must be a non-empty string list")
     for field in ("temperature", "top_p"):
         if field in record and record[field] is not None:
             val = record[field]

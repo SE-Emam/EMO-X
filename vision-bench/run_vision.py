@@ -305,7 +305,11 @@ def _run_via_runner(args):
     rundir, summary = runner.run_suite(
         "vision", chat, model_id, args.backend, 0, 1,
         max(args.trials, 1), 0.25, args.out, families=families,
-        force=bool(args.force))
+        force=bool(args.force),
+        # This entry IS the vision suite: running it asserts a
+        # vision-capable model (the live image probe still gates
+        # per-family VOIDs at execution time).
+        model_modalities="text,vision")
     print("vision: suite=%s attempts=%d pass=%d"
           % (summary["suite"], summary["n_attempts"], summary["n_pass"]))
     print("saved", rundir)

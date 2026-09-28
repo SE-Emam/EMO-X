@@ -62,6 +62,16 @@ SUITE_DIRS = {
 SUITE_CLAIM_TIER = {"code25-hidden": "HIDDEN-VALIDATION"}
 DEFAULT_CLAIM_TIER = "PUBLIC-BENCHMARK"
 
+#: Required model modality per suite (model-level capability gate).
+#: Every suite today needs text generation except vision (image input).
+#: An embedding-only (or audio-only) model run against any suite below
+#: is REFUSED before the first model call — scored zeros from an
+#: incapable model are inadmissible, never measured.
+SUITE_MODALITIES = {
+    "vision": "vision",
+}
+DEFAULT_SUITE_MODALITY = "text"
+
 #: Full capability profile (SPEC 42 --suite profile).
 PROFILE_SUITES = ("code25", "dynamic-code", "recovery", "robustness",
                   "calibration", "long-horizon", "gauntlet")
@@ -175,12 +185,17 @@ def make_run_id(prefix="RUN"):
 def build_manifest(suite, prompt_sha256, harness_sha256, model, backend,
                    seed, trials, run_id, extra=None, provider_profile=None,
                    backend_capabilities=None, sampling=None,
-                   timestamp_utc=None):
+                   timestamp_utc=None, model_modalities=None):
     """SPEC 32 run manifest (validated; B58 hashes are real, not stubbed).
 
     SPEC 36: the backend capability manifest is recorded on every run so
     API differences can never be mistaken for model differences. Resolved
     lazily via backends.get_capability_manifest() unless explicitly given.
+
+    Model modalities (model-level capabilities, distinct from backend
+    capabilities) are recorded from model_modalities ("text,vision" or
+    list; default text-only) so a reader can verify the model was
+    capable of the suite at all.
 
     Rebuild rule: the manifest must contain everything needed to recreate
     the run except the model weights themselves (sampling params, seeds,
@@ -235,6 +250,7 @@ def build_manifest(suite, prompt_sha256, harness_sha256, model, backend,
         "trials": trials,
         "run_id": run_id,
         "hardware": _device_class_value,
+        "model_modalities": _manifest_modalities(model_modalities),
         "timestamp_utc": (timestamp_utc or datetime.datetime.now(
             datetime.timezone.utc).isoformat()),
         "runner_version": RUNNER_VERSION,
@@ -250,6 +266,18 @@ def build_manifest(suite, prompt_sha256, harness_sha256, model, backend,
                 and extra["hardware"].strip()):
             manifest["hardware"] = extra["hardware"].strip()
     return validate_run_manifest(manifest)
+
+
+def _manifest_modalities(spec):
+    """Sorted modality list for the manifest; default text-only."""
+    try:
+        from safety import parse_model_modalities
+    except ImportError:
+        from shared.safety import parse_model_modalities
+    try:
+        return sorted(parse_model_modalities(spec))
+    except ValueError:
+        return ["text"]
 
 
 def _git_sha():
@@ -694,9 +722,16 @@ def _run_suite_loop(executor, suite, chat, model_id, backend, seed,
                         if type(e).__name__ in ("ScopeRequiredError",
                                                 "ScopeDenied"):
                             raise
+                        # Unsupported variant => NA (DEN): absent, not an
+                        # attempt. Emitting VOID here would corrupt the
+                        # coverage denominator with non-attempts.
+                        msg = str(e)
+                        if type(e).__name__ == "TypeError" and \
+                                "not supported for family" in msg:
+                            prog.finish_attempt("SKIPPED-NA")
+                            continue
                         # Fail-open rounds are forbidden: record VOID and
                         # continue (Y-1 cause table decides VOID vs ERROR).
-                        msg = str(e)
                         cause = ("backend-unavailable"
                                  if "chat" in type(e).__name__.lower()
                                  or "urlopen" in msg or "URLError" in msg
@@ -725,7 +760,8 @@ def _run_suite_loop(executor, suite, chat, model_id, backend, seed,
 def run_suite(suite, chat, model_id="stub-model", backend="stub", seed=0,
               instances=1, trials=1, fault_rate=0.25, out_root=None,
               families=None, run_id=None, provider_profile=None,
-              scope=None, sampling=None, progress=None, force=False):
+              scope=None, sampling=None, progress=None, force=False,
+              model_modalities=None):
     """Run one suite end-to-end and write the raw bundle. SPEC 32-33, 42.
 
     instances: canonical instances per family (index 1..N).
@@ -734,6 +770,11 @@ def run_suite(suite, chat, model_id="stub-model", backend="stub", seed=0,
     scope: forwarded to scope-gated executors (hidden/security).
       Hidden suites refuse without scope "hidden-ok" BEFORE any model
       call (Y-4); the refusal surfaces as a clean error, not a bundle.
+    model_modalities: declared model capabilities ("text,vision" or
+      list; default text-only). Suites require a modality
+      (SUITE_MODALITIES, default text); mismatch raises
+      ModelCapabilityDenied BEFORE any model call, with no bundle —
+      scored zeros from an incapable model are inadmissible.
     Returns (run_dir, summary_dict).
 
     Failure contract (Y-1): unexpected per-attempt exceptions become VOID
@@ -742,6 +783,17 @@ def run_suite(suite, chat, model_id="stub-model", backend="stub", seed=0,
     the whole round as VOID with no partial bundle.
     """
     executor = load_executor(suite)
+    try:
+        from safety import (parse_model_modalities,
+                            require_model_modality, ModelCapabilityDenied)
+    except ImportError:
+        from shared.safety import (parse_model_modalities,
+                                   require_model_modality,
+                                   ModelCapabilityDenied)
+    declared = parse_model_modalities(model_modalities)
+    require_model_modality(
+        suite, SUITE_MODALITIES.get(suite, DEFAULT_SUITE_MODALITY),
+        declared)
     pack = SUITE_PROMPT_PACK.get(suite)
     if pack is not None:
         try:
@@ -788,7 +840,7 @@ def run_suite(suite, chat, model_id="stub-model", backend="stub", seed=0,
         suite, executor.prompt_pack_sha256(),
         executor.harness_sha256(), model_id, backend, seed,
         max(trials, 1), run_id, provider_profile=provider_profile,
-        sampling=sampling,
+        sampling=sampling, model_modalities=model_modalities,
         extra={"claim_tier": SUITE_CLAIM_TIER.get(
             suite, DEFAULT_CLAIM_TIER),
                "reasoning_conditions": conditions})
@@ -805,7 +857,7 @@ def run_suite(suite, chat, model_id="stub-model", backend="stub", seed=0,
 def run_profile(chat, model_id="stub-model", backend="stub", seed=0,
                 instances=1, trials=1, fault_rate=0.25, out_root=None,
                 provider_profile=None, scope=None, sampling=None,
-                progress=None):
+                progress=None, model_modalities=None):
     """SPEC 42 --suite profile: every suite once + v2 roll-up report."""
     try:
         from report_v2 import build_v2_report
@@ -824,7 +876,8 @@ def run_profile(chat, model_id="stub-model", backend="stub", seed=0,
                                instances, trials, fault_rate, out_root,
                                provider_profile=provider_profile,
                                scope=scope, sampling=sampling,
-                               progress=prog)
+                               progress=prog,
+                               model_modalities=model_modalities)
         runs.append(summary)
     for summary in runs:
         rundir = summary["run_dir"]

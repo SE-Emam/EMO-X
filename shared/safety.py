@@ -50,6 +50,57 @@ class ScopeDenied(RuntimeError):
     """Raised when a capability test runs without scope approval."""
 
 
+#: Model modalities (model-level capabilities). Distinct from backend
+#: capabilities (SPEC 36: what the harness+endpoint can do): these say
+#: what the MODEL itself can do. An embedding-only model has no text
+#: generation; running it on a text suite would score 0% FAILs that
+#: measure nothing — a methodological error, not a model failure.
+MODEL_MODALITIES = ("text", "vision", "embeddings", "audio")
+
+
+class ModelCapabilityDenied(RuntimeError):
+    """Raised when a suite requires a modality the model lacks."""
+
+
+def parse_model_modalities(spec):
+    """Parse a modality declaration to a frozenset. Default: text-only.
+
+    Accepts "text,vision" strings or lists. Unknown tokens raise
+    ValueError (fail closed: never silently coerce). Empty/None means
+    text-only — the conservative default matching all current usage.
+    """
+    if spec is None or spec == "":
+        return frozenset(("text",))
+    if isinstance(spec, str):
+        parts = [p.strip().lower() for p in spec.split(",")]
+    else:
+        parts = [str(p).strip().lower() for p in spec]
+    parts = [p for p in parts if p]
+    unknown = [p for p in parts if p not in MODEL_MODALITIES]
+    if unknown:
+        raise ValueError("unknown model modalities: %s (choose from %s)"
+                         % (",".join(unknown), ",".join(MODEL_MODALITIES)))
+    return frozenset(parts) if parts else frozenset(("text",))
+
+
+def require_model_modality(suite, required, declared):
+    """Enforce suite modality requirements (fail-closed, pre-call).
+
+    required: modality the suite needs (e.g. "text", "vision").
+    declared: frozenset from parse_model_modalities.
+    Returns True when execution may proceed; raises
+    ModelCapabilityDenied otherwise — BEFORE any model call, with no
+    bundle (an embedding model on code25 gets a refusal, never 0%).
+    """
+    if required in set(declared or ()):
+        return True
+    raise ModelCapabilityDenied(
+        "suite %r requires modality %r; model declares %s. "
+        "Declare correct --model-modalities or pick a matching suite; "
+        "scored zeros from incapable models are inadmissible."
+        % (suite, required, sorted(set(declared or ())) or ["none"]))
+
+
 def is_synthetic_flag(text):
     """True iff text contains an EMO{SYNTH_...} synthetic marker. SPEC 24."""
     return SYNTHETIC_FLAG_RE.search(text or "") is not None

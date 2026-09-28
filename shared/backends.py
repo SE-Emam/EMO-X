@@ -108,8 +108,16 @@ def resolve_config(backend="kaggle", base_url=None, model=None, api_key=None):
         key = (api_key or os.environ.get("OPENAI_API_KEY")
                or os.environ.get("OPENAI_KEY") or os.environ.get("KEY"))
         backend = "openai-generic"
+    elif backend == "cli":
+        # Local CLI harness: base doubles as the binary (path or PATH
+        # name), model is the CLI route id (e.g. opencode/<route>).
+        base = (base_url or os.environ.get("CLI_BIN")
+                or os.environ.get("BASE_URL") or "opencode")
+        mod = (model or os.environ.get("CLI_MODEL")
+               or os.environ.get("MODEL"))
+        key = None  # auth lives in the CLI's own config, never here
     else:
-        raise ValueError("unknown backend: %r (kaggle|colab|openai-generic)" % backend)
+        raise ValueError("unknown backend: %r (kaggle|colab|openai-generic|cli)" % backend)
     if not base:
         raise ValueError("missing base URL (pass --base-url or set BASE_URL)")
     if not mod:
@@ -169,6 +177,49 @@ def chat_native(messages, base_url, model, temp=0.4, num_predict=600,
     return text, secs, {"eval": body.get("eval_count")}
 
 
+def chat_cli(messages, cli_bin, model, timeout=TIMEOUT):
+    """Single-turn chat via a local agent CLI subprocess. No shell.
+
+    Builds `[bin, "run", "--model", route, prompt]` as an argv list
+    (never a shell string). Strips ANSI codes and `>` status lines the
+    CLI prints around the reply. Returns (text, secs, {}). Usage is
+    unknown on this path (SPEC 36 conservative manifest).
+    Raises RuntimeError on timeout / spawn failure / nonzero exit.
+    """
+    import re
+    import shutil
+    import subprocess
+    exe = cli_bin if os.path.isfile(str(cli_bin)) \
+        else shutil.which(str(cli_bin))
+    if not exe:
+        raise RuntimeError("cli backend binary not found: %r" % (cli_bin,))
+    prompt = "\n".join(
+        "%s: %s" % (m.get("role", "user"), m.get("content", ""))
+        for m in (messages or []))
+    argv = [exe, "run", "--model", model, prompt]
+    try:
+        timeout = int(os.environ.get("CLI_TIMEOUT", str(timeout)))
+    except ValueError:
+        pass
+    t0 = time.time()
+    try:
+        p = subprocess.run(argv, capture_output=True, text=True,
+                           timeout=timeout)
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError("cli backend timeout after %ds: %s"
+                           % (timeout, model)) from e
+    except OSError as e:
+        raise RuntimeError("cli backend spawn failed: %s" % e) from e
+    if p.returncode != 0:
+        tail = ((p.stdout or "") + (p.stderr or ""))[-300:]
+        raise RuntimeError("cli backend exit %d: %s"
+                           % (p.returncode, tail))
+    text = re.sub(r"\x1b\[[0-9;]*m", "", p.stdout or "")
+    lines = [ln for ln in text.splitlines()
+             if ln.strip() and not ln.strip().startswith(">")]
+    return "\n".join(lines).strip(), round(time.time() - t0, 1), {}
+
+
 def make_chat(backend="kaggle", base_url=None, model=None, api_key=None,
               default_max_tokens=512, default_num_predict=600):
     """Build one chat() callable hiding backend differences.
@@ -182,6 +233,8 @@ def make_chat(backend="kaggle", base_url=None, model=None, api_key=None,
     def chat(messages, temp=0.4, max_tokens=None, think=None,
              num_predict=None):
         mt = max_tokens if max_tokens is not None else default_max_tokens
+        if name == "cli":
+            return chat_cli(messages, base, mod)
         if think is None and num_predict is None:
             kw = {} if name == "openai-generic" else {}
             return chat_openai_compatible(messages, base, mod, key,
@@ -244,6 +297,20 @@ _OLLAMA_TUNNEL = {
 BACKEND_CAPABILITIES = {
     "kaggle": dict(_OLLAMA_TUNNEL),
     "colab": dict(_OLLAMA_TUNNEL),
+    # cli: local agent-CLI subprocess (e.g. `opencode run --model ROUTE`).
+    # Conservative: no seed passthrough, no usage accounting, single-turn
+    # text only. Equal routes on different CLIs are NOT equal backends.
+    "cli": {
+        "chat": "supported",
+        "streaming": "unsupported",
+        "tool_calls": "unsupported",
+        "reasoning_tokens": "unknown",
+        "seed": "unsupported",  # harness never sends seed on this path
+        "token_usage": "unknown",
+        "vision": "unsupported",
+        "stop_behavior": "unknown",
+        "max_tokens": "approximate",
+    },
 }
 
 # openai-generic covers many providers behind one path. Default is the

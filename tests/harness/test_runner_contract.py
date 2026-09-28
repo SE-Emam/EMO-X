@@ -106,5 +106,22 @@ class StreamingBundleTests(unittest.TestCase):
                 out, self._manifest("RUN-mm"), [self._attempt(1)], [])
 
 
+class UnsupportedVariantNATests(unittest.TestCase):
+    def test_unsupported_variants_skipped_not_void(self):
+        # code25 T5 supports canonical only: perturbed/novel must be
+        # absent (NA per DEN), never VOID attempts corrupting coverage.
+        out = "/tmp/emox_na_test"
+        shutil.rmtree(out, ignore_errors=True)
+        rundir, s = runner.run_suite(
+            "code25", runner.stub_chat_factory("na-test"), "m", "stub",
+            0, 1, 1, 0.25, out, families=["T5"])
+        events = [json.loads(line) for line in open(
+            os.path.join(rundir, "events.jsonl")) if line.strip()]
+        self.assertTrue(events)
+        for e in events:
+            self.assertEqual(e["variant_class"], "canonical")
+            self.assertNotEqual(e["primary_status"], "VOID")
+        shutil.rmtree(out, ignore_errors=True)
+
 if __name__ == "__main__":
     unittest.main()

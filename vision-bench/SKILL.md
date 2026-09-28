@@ -105,6 +105,12 @@ OpenAI-style messages (`content: [{type: text}, {type: image_url,
 data-URL}]`) via `chat()` from `shared/backends.py` (stdlib + urllib
 only, no network except model calls and the `/models` gate check).
 
+Capability note: `shared/run.py --suite vision` requires
+`--model-modalities text,vision` (a text-only declaration is refused
+before any call — scored zeros from an image-blind model are
+inadmissible). The standalone `run_vision.py` wrapper declares this
+itself; the live image probe still gates per-family VOIDs.
+
 ## Verification (judge examples — English frozen)
 
 ```python

@@ -50,6 +50,15 @@ prompt/harness changes + mandatory re-baseline).
   `SUITE_DIRS`; manifests `AG.json` + `AG2.json`.
 - `runner.run_suite` forwards `force=` to supporting executors.
 
+### Added (model capability gating — the missing modality layer)
+- `--model-modalities` (default text-only): `safety.parse_model_modalities`,
+  `require_model_modality`, `ModelCapabilityDenied` — suites declare needs
+  via `SUITE_MODALITIES` (vision requires vision); mismatch refuses BEFORE
+  any model call with no bundle (embedding models can no longer score
+  silent 0%). Recorded in `manifest.json`, validated by schemas.
+- `docs/model-onboarding.md`: onboarding checklist for new models
+  (declare → match → trial → baseline; hidden never runs third-party).
+
 ### Added (P2 — external review: integrity, aging, multimodal)
 - Hidden suite doubled: HH4 (lcm), HH5 (base digit-sum), HH6
   (multiples sum) with manifests; every hidden prompt carries a
@@ -191,8 +200,8 @@ prompt/harness changes + mandatory re-baseline).
   calibration, long-horizon, gauntlet, vision (real executor over
   vision-bench fixtures), realworld (RW1–RW3 mini-real repos),
   computer-use (PILOT).
-- `tests/`: 680 tests (harness 260, generators 67, scoring 192,
-  golden 30, backends 131) + `tests/run_all.py` unified runner.
+- `tests/`: 698 tests (harness 271, generators 67, scoring 192,
+  golden 30, backends 138) + `tests/run_all.py` unified runner.
 - CLI: `--suite dynamic-code|recovery|gauntlet|profile`,
   `--instances`, `--seed`, `--fault-rate`, `--self-test`, `--health`.
 - `docs/`: architecture, task-dsl, metrics, backend-contract,

@@ -41,6 +41,7 @@ class TestHorizon(unittest.TestCase):
                  {"human_minutes": 30, "n_attempts": 10, "n_success": 1}]
         out = scoring.time_horizon_fit(tasks)
         self.assertTrue(out["valid"])
+        self.assertTrue(out["converged"])
         self.assertLess(out["beta"], 0)
         self.assertGreater(out["h50"], 0)
         # decreasing curve: higher reliability => shorter (easier) horizon
@@ -61,6 +62,19 @@ class TestHorizon(unittest.TestCase):
                  {"human_minutes": 5, "n_attempts": 0, "n_success": 0}]
         out = scoring.time_horizon_fit(tasks)
         self.assertFalse(out["valid"])  # C64: nothing eligible
+        self.assertFalse(out["converged"])
+
+    def test_non_convergent_fit_is_invalid(self):
+        # starving the solver of iterations must fail closed, never
+        # read as a valid fit (auditor P1-15).
+        tasks = [{"human_minutes": 1, "n_attempts": 10, "n_success": 9},
+                 {"human_minutes": 2, "n_attempts": 10, "n_success": 8},
+                 {"human_minutes": 10, "n_attempts": 10, "n_success": 3},
+                 {"human_minutes": 30, "n_attempts": 10, "n_success": 1}]
+        out = scoring.time_horizon_fit(tasks, max_iter=1)
+        self.assertFalse(out["converged"])
+        self.assertFalse(out["valid"])
+        self.assertEqual(out["reason"], "non-convergent")
 
     def test_scaffold_gain(self):
         g = scoring.scaffold_gain(0.5, 0.7)

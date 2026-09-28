@@ -1007,13 +1007,16 @@ def _sigmoid(z):
     return e / (1.0 + e)
 
 
-def time_horizon_fit(tasks: Any) -> Dict[str, Any]:
+def time_horizon_fit(tasks: Any, max_iter: int = 100) -> Dict[str, Any]:
     """Logistic fit logit(p) = a + b ln(t); H_q horizons. B46/C64.
 
     tasks: dicts with human_minutes, n_attempts, n_success.
     Eligible only with valid human-time + >=1 scored attempt (C64).
     beta >= 0 => invalid (B46). Returns dict with alpha, beta,
-    h50, h80, valid, reason.
+    h50, h80, valid, converged, reason. converged=False (with
+    valid=False, reason non-convergent) when Newton-Raphson exhausts
+    max_iter without meeting tolerance — a silent non-converged fit
+    must never read as valid (auditor P1-15).
     """
     rows = []
     for t in tasks:
@@ -1025,14 +1028,17 @@ def time_horizon_fit(tasks: Any) -> Dict[str, Any]:
         rows.append((math.log(float(h)), int(n), int(c)))
     if len(rows) < 2:
         return {"alpha": None, "beta": None, "h50": None, "h80": None,
-                "valid": False, "reason": "insufficient-eligible-tasks"}
+                "valid": False, "converged": False,
+                "reason": "insufficient-eligible-tasks"}
     tot_c = sum(c for _, _, c in rows)
     tot_n = sum(n for _, n, _ in rows)
     if tot_c == 0 or tot_c == tot_n:
         return {"alpha": None, "beta": None, "h50": None, "h80": None,
-                "valid": False, "reason": "no-outcome-variation"}
+                "valid": False, "converged": False,
+                "reason": "no-outcome-variation"}
     a, b = 0.0, -1.0
-    for _ in range(100):
+    converged = False
+    for _ in range(max(1, int(max_iter))):
         g0 = g1 = h00 = h01 = h11 = 0.0
         for x, n, c in rows:
             p = min(1 - 1e-9, max(1e-9, _sigmoid(a + b * x)))
@@ -1046,22 +1052,27 @@ def time_horizon_fit(tasks: Any) -> Dict[str, Any]:
         det = h00 * h11 - h01 * h01
         if abs(det) < 1e-12:
             return {"alpha": None, "beta": None, "h50": None,
-                    "h80": None, "valid": False,
+                    "h80": None, "valid": False, "converged": False,
                     "reason": "singular-fit"}
         d0 = (h11 * g0 - h01 * g1) / det
         d1 = (-h01 * g0 + h00 * g1) / det
         a += d0
         b += d1
         if abs(d0) < 1e-8 and abs(d1) < 1e-8:
+            converged = True
             break
+    if not converged:
+        return {"alpha": None, "beta": None, "h50": None, "h80": None,
+                "valid": False, "converged": False,
+                "reason": "non-convergent"}
     if b >= 0:
         return {"alpha": a, "beta": b, "h50": None, "h80": None,
-                "valid": False,
+                "valid": False, "converged": True,
                 "reason": "beta>=0-not-decreasing (B46)"}
     h50 = math.exp((0.0 - a) / b)
     h80 = math.exp((math.log(4.0) - a) / b)
     return {"alpha": a, "beta": b, "h50": h50, "h80": h80,
-            "valid": True, "reason": None}
+            "valid": True, "converged": True, "reason": None}
 
 
 # ---------------------------------------------------------------------------

@@ -137,44 +137,14 @@ def harness_spec(model_id, task_dir, timeout_s=TIMEOUT_S):
 def _normalize_events(stdout):
     """Best-effort conversion of `opencode run --format json` events to steps.
 
-    The JSON event schema is version-dependent, so parse defensively: any
-    line that decodes to a dict with tool-ish keys becomes a step; anything
-    else accumulates into a trailing raw-output step (never drop evidence).
-    NOTE: parallel implementation of pi_adapter._normalize_events.
+    Delegates to the canonical adapters.event_steps implementation
+    (auditor P1-17: single source, no silent drift).
     """
-    steps = []
-    raw = []
-    for line in (stdout or "").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            ev = json.loads(line)
-        except ValueError:
-            raw.append(line)
-            continue
-        if not isinstance(ev, dict):
-            raw.append(line)
-            continue
-        tool = (ev.get("tool") or ev.get("function") or ev.get("name")
-                or ev.get("type") or "event")
-        args = ev.get("args") or ev.get("input") or ev.get("params") or {}
-        result = ev.get("result") or ev.get("output") or ev.get("text") or ev
-        if isinstance(result, (dict, list)):
-            result = json.dumps(result, ensure_ascii=False)[:TRUNC_STEP]
-        steps.append({"tool": str(tool)[:80],
-                      "args": args if isinstance(args, dict) else {"value": str(args)[:TRUNC_STEP]},
-                      "result": str(result)[:TRUNC_STEP]})
-    if raw:
-        steps.append({"tool": "raw_output",
-                      "args": {},
-                      "result": "\n".join(raw)[-TRUNC_STEP:]})
-    if not steps:
-        steps.append({"tool": "raw_output", "args": {},
-                      "result": (stdout or "")[-TRUNC_STEP:] or "(empty CLI output)"})
-    for i, s in enumerate(steps, 1):
-        s["index"] = i
-    return steps
+    try:
+        from event_steps import normalize_jsonl_events
+    except ImportError:
+        from adapters.event_steps import normalize_jsonl_events
+    return normalize_jsonl_events(stdout, trunc=TRUNC_STEP)
 
 
 def _final_diff(task_dir):

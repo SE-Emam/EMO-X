@@ -185,19 +185,12 @@ def _normalize_events(stdout):
 
 
 def _final_diff(task_dir):
+    """Git-diff evidence via the canonical adapters._base helper."""
     try:
-        p = subprocess.run(["git", "diff"], cwd=task_dir, capture_output=True,
-                           text=True, timeout=60)
-        diff = (p.stdout or "")[:TRUNC_DIFF]
-    except Exception as e:  # noqa: BLE001 - diff is best-effort evidence
-        return "", [], "git diff failed: %s" % e
-    try:
-        q = subprocess.run(["git", "diff", "--name-only"], cwd=task_dir,
-                           capture_output=True, text=True, timeout=60)
-        files = [ln for ln in (q.stdout or "").splitlines() if ln.strip()]
-    except Exception:  # noqa: BLE001 - files list is auxiliary
-        files = []
-    return diff, files, None
+        from _base import final_diff
+    except ImportError:
+        from adapters._base import final_diff
+    return final_diff(task_dir, trunc_diff=TRUNC_DIFF)
 
 
 def run_episode(task_dir, model_id, timeout_s=TIMEOUT_S):
@@ -224,23 +217,18 @@ def run_episode(task_dir, model_id, timeout_s=TIMEOUT_S):
         p = subprocess.run(argv, cwd=task_dir, capture_output=True,
                            text=True, timeout=timeout_s)
     except subprocess.TimeoutExpired as e:
-        out = ((e.stdout or b"").decode("utf-8", "replace")
-               if isinstance(e.stdout, bytes) else (e.stdout or ""))
-        err = ((e.stderr or b"").decode("utf-8", "replace")
-               if isinstance(e.stderr, bytes) else (e.stderr or ""))
+        try:
+            from _base import decode_bytes, timeout_trace
+        except ImportError:
+            from adapters._base import decode_bytes, timeout_trace
+        out = decode_bytes(e.stdout)
+        err = decode_bytes(e.stderr)
         steps = _normalize_events(out)
-        steps.append({"tool": "timeout", "args": {"timeout_s": timeout_s},
-                      "result": (err[-500:] or "wall-clock budget exhausted")})
-        for i, s in enumerate(steps, 1):
-            s["index"] = i
         diff, files, _ = _final_diff(task_dir)
-        return {"adapter": ADAPTER_NAME, "model_id": model_id,
-                "task_dir": task_dir,
-                "harness": harness_spec(model_id, task_dir, timeout_s),
-                "steps": steps, "final_diff": diff, "diff_files": files,
-                "stopped_cleanly": False, "timed_out": True,
-                "exit_code": None, "stderr_tail": err[-500:],
-                "comparability": COMPARABILITY}
+        return timeout_trace(
+            ADAPTER_NAME, model_id, task_dir, steps, err, timeout_s,
+            harness_spec(model_id, task_dir, timeout_s), COMPARABILITY,
+            diff=diff, files=files)
 
     steps = _normalize_events(p.stdout)
     diff, files, _ = _final_diff(task_dir)

@@ -31,6 +31,8 @@ from typing import Any, Dict, List, Optional, Tuple
 # Official reports MUST use this value (10,000). Dev/test callers may
 # pass an explicit smaller B; never hardcode a different default.
 BOOTSTRAP_RESAMPLES = 10_000
+#: Upper bound for B (roadmap 1.2, DoS guard on resample loops).
+BOOTSTRAP_MAX = 100_000
 
 import math
 import random
@@ -1223,7 +1225,13 @@ def bootstrap_ci(family_groups: Any, stat: Any = None,
     mean of family means). B small allowed for tests. Returns dict
     with mean, se, ci_low, ci_high, B, low_sample flag (C66:
     <LOW_SAMPLE_FAMILY_THRESHOLD families => LOW-SAMPLE UNCERTAINTY).
+    B is bounded (roadmap 1.2): positive int, capped at
+    BOOTSTRAP_MAX (DoS guard); out-of-range raises ValueError.
     """
+    if isinstance(B, bool) or not isinstance(B, int) or B < 1:
+        raise ValueError("bootstrap B must be a positive int, got %r" % (B,))
+    if B > BOOTSTRAP_MAX:
+        raise ValueError("bootstrap B=%d exceeds cap %d" % (B, BOOTSTRAP_MAX))
     groups = [list(g) for g in family_groups if g]
     if not groups:
         return {"mean": None, "se": None, "ci_low": None,

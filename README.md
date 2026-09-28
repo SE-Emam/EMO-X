@@ -3,7 +3,7 @@
 ![EMO-X banner — Execution · Measurement · Observability](src/emo-x-banner.png)
 
 [![Dataset on HF](https://img.shields.io/badge/🤗_Dataset-EMO--X--Core-yellow)](https://huggingface.co/datasets/SE-Emam/EMO-X-Core) [![PyPI](https://img.shields.io/pypi/v/emo-x-eval)](https://pypi.org/project/emo-x-eval/) [![License](https://img.shields.io/badge/License-Apache_2.0-blue)](LICENSE)
-[![Suites](https://img.shields.io/badge/suites-14-blue)](suites/) [![Tests](https://img.shields.io/badge/tests-666-green)](tests/run_all.py) [![Ollama](https://img.shields.io/badge/Ollama-supported-orange)](INSTALL.md) [![Install](https://img.shields.io/badge/pip_install-emo--x--eval-blue)](https://pypi.org/project/emo-x-eval/)
+[![Suites](https://img.shields.io/badge/suites-14-blue)](suites/) [![Tests](https://img.shields.io/badge/tests-680-green)](tests/run_all.py) [![Ollama](https://img.shields.io/badge/Ollama-supported-orange)](INSTALL.md) [![Install](https://img.shields.io/badge/pip_install-emo--x--eval-blue)](https://pypi.org/project/emo-x-eval/)
 
 Execution-based benchmark skills for coding models and coding agents — reusable with **any agent, any time**, against models on Kaggle, Colab, or any commercial LLM provider. English docs, English code (Arabic covered in functional test data).
 
@@ -155,7 +155,7 @@ print(render_comparison(comp))"
 |---|---|---|
 | Test suites | 14 | `suites/*/` |
 | Task manifests | 75 | `suites/*/manifests/*.json` |
-| Harness + unit tests | 666 (harness 254, generators 67, scoring 184, golden 30, backends 131) | `tests/run_all.py`, all green |
+| Harness + unit tests | 680 (harness 260, generators 67, scoring 192, golden 30, backends 131) | `tests/run_all.py`, all green |
 | Self-test checks | 14 | `--self-test`, fail-closed |
 | Issue-style families | 15 (IS1–IS15) | vs SWE-bench Lite (300) = **5.0%** |
 

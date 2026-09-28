@@ -74,5 +74,37 @@ class RunnerContractTests(unittest.TestCase):
         self.assertEqual(ctx.exception.code, 0)
 
 
+class StreamingBundleTests(unittest.TestCase):
+    def _manifest(self, run_id):
+        return {"run_id": run_id, "suite": "s", "prompt_pack": "v1",
+                "prompt_sha256": "a" * 64, "harness_sha256": "b" * 64,
+                "model": "m", "backend": "stub", "seed": 0, "trials": 1}
+
+    def _attempt(self, trial):
+        return {"run_id": "r", "model_id": "m", "task_family_id": "T",
+                "instance_id": "T-1", "variant_class": "canonical",
+                "trial_id": trial, "primary_status": "FAIL", "score": 0.0,
+                "primary_failure": "WRONG_RESULT"}
+
+    def test_crash_leaves_no_partial_run_dir(self):
+        out = "/tmp/emox_stream_test"
+        shutil.rmtree(out, ignore_errors=True)
+        os.makedirs(out)
+        stream = runner.BundleStream(out, "RUN-crash")
+        stream.append(self._attempt(1), {"reply": "x"})
+        stream.abort()
+        self.assertFalse(os.path.exists(os.path.join(out, "RUN-crash")))
+        leftovers = [d for d in os.listdir(out) if "staging" in d]
+        self.assertEqual(leftovers, [])
+
+    def test_mismatch_fails_closed(self):
+        out = "/tmp/emox_stream_test2"
+        shutil.rmtree(out, ignore_errors=True)
+        os.makedirs(out)
+        with self.assertRaises(ValueError):
+            runner.write_raw_bundle(
+                out, self._manifest("RUN-mm"), [self._attempt(1)], [])
+
+
 if __name__ == "__main__":
     unittest.main()

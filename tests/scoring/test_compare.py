@@ -213,6 +213,26 @@ def _inst_attempt(family, inst, passed):
     return rec
 
 
+class NumericGuardTests(unittest.TestCase):
+    def test_antisymmetric_pairing(self):
+        ga = {"t1": [1.0, 1.0, 0.0], "t2": [0.5]}
+        gb = {"t1": [0.0, 1.0, 0.0], "t2": [0.5]}
+        fwd = scoring.paired_bootstrap_diff(ga, gb, B=2000, seed=7)
+        rev = scoring.paired_bootstrap_diff(gb, ga, B=2000, seed=7)
+        self.assertAlmostEqual(fwd["mean"], -rev["mean"])
+        self.assertAlmostEqual(fwd["ci_low"], -rev["ci_high"])
+        self.assertAlmostEqual(fwd["ci_high"], -rev["ci_low"])
+
+    def test_bootstrap_b_bounds(self):
+        for bad in (0, -5, True, "100"):
+            with self.assertRaises(ValueError):
+                scoring.bootstrap_ci([[1.0]], B=bad)
+        with self.assertRaises(ValueError):
+            scoring.bootstrap_ci([[1.0]], B=scoring.BOOTSTRAP_MAX + 1)
+        out = scoring.bootstrap_ci([[1.0, 0.0]], B=200, seed=1)
+        self.assertEqual(out["B"], 200)
+
+
 class InstancePairingTests(unittest.TestCase):
     def test_shared_instances_pair_at_instance_level(self):
         att_a = [_inst_attempt("t1", "t1-0", True),

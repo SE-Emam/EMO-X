@@ -244,12 +244,32 @@ class WriteRawBundleTests(unittest.TestCase):
             out = os.path.join(tmp, "raw")
             os.makedirs(out)
             run_id = "RUN-crash-1"
-            # Unserializable response forces json.dump to fail mid-write.
+            # Unserializable response forces json.dump to fail mid-write
+            # (lengths match so the mismatch guard does not fire first).
+            bad = runner._void_attempt(
+                "RUN-crash-1", "m", "T", "T-1", "canonical", 1,
+                "harness-bug", "x")
             with self.assertRaises(TypeError):
                 runner.write_raw_bundle(out, self._manifest(run_id),
-                                        [], [object()], {})
+                                        [bad], [object()], {})
             self.assertFalse(os.path.lexists(os.path.join(out, run_id)),
                              "partial run dir left behind after failure")
+            leftovers = [d for d in os.listdir(out)]
+            self.assertEqual(leftovers, [], leftovers)
+
+    def test_length_mismatch_fails_closed(self):
+        # Attempts/responses must pair 1:1 (roadmap Phase 3: the
+        # streaming writer rejects mismatched lengths loudly instead
+        # of silently truncating via zip).
+        with tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, "raw")
+            os.makedirs(out)
+            with self.assertRaises(ValueError):
+                runner.write_raw_bundle(
+                    out, self._manifest("RUN-mm-1"),
+                    [runner._void_attempt(
+                        "RUN-mm-1", "m", "T", "T-1", "canonical", 1,
+                        "harness-bug", "x")], [])
             leftovers = [d for d in os.listdir(out)]
             self.assertEqual(leftovers, [], leftovers)
 

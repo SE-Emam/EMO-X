@@ -471,6 +471,88 @@ def collect_environment():
     }
 
 
+class BundleStream:
+    """Incremental raw-bundle writer (roadmap Phase 3: streaming).
+
+    Each attempt/response hits disk immediately (a crash leaves
+    inspectable staging evidence), while the atomic rename + seal
+    still happen exactly once at close: no partial RUN dir is ever
+    published. write_raw_bundle() is implemented on top of this class
+    with byte-identical output.
+    """
+
+    def __init__(self, out_root, run_id):
+        try:
+            from seal import refuse_overwrite, seal_bundle
+        except ImportError:  # pragma: no cover - path fallback (X-2)
+            from shared.seal import refuse_overwrite, seal_bundle
+        self._seal_bundle = seal_bundle
+        self.rundir = refuse_overwrite(out_root, run_id)
+        self.staging = "%s.staging-%d-%s" % (
+            self.rundir, os.getpid(), hashlib.sha256(
+                os.urandom(16)).hexdigest()[:8])
+        if os.path.lexists(self.staging):
+            raise FileExistsError(
+                "staging dir already exists: %s" % self.staging)
+        os.makedirs(self.staging, exist_ok=False)
+        self._events = open(os.path.join(self.staging, "events.jsonl"),
+                            "w", encoding="utf-8")
+        self._responses = open(
+            os.path.join(self.staging, "responses.jsonl"), "w",
+            encoding="utf-8")
+        self._closed = False
+
+    def append(self, attempt, response):
+        """Validate + stream one pair to disk (flushed)."""
+        self._events.write(json.dumps(validate_attempt(attempt),
+                                      ensure_ascii=False) + "\n")
+        self._events.flush()
+        self._responses.write(json.dumps(response, ensure_ascii=False)
+                              + "\n")
+        self._responses.flush()
+
+    def close(self, manifest, environment=None):
+        """Write manifest/env, atomically publish, seal. Returns rundir."""
+        self._events.close()
+        self._responses.close()
+        with open(os.path.join(self.staging, "manifest.json"), "w",
+                  encoding="utf-8") as f:
+            json.dump(manifest, f, ensure_ascii=False, indent=1)
+        env = dict(environment or {})
+        env.setdefault("written_utc", datetime.datetime.now(
+            datetime.timezone.utc).isoformat())
+        with open(os.path.join(self.staging, "environment.json"), "w",
+                  encoding="utf-8") as f:
+            json.dump(env, f, ensure_ascii=False, indent=1)
+        try:
+            os.rename(self.staging, self.rundir)
+        except BaseException:
+            import shutil
+            try:
+                if os.path.isdir(self.staging) \
+                        and not os.path.lexists(self.rundir):
+                    shutil.rmtree(self.staging, ignore_errors=True)
+            finally:
+                raise
+        self._closed = True
+        self._seal_bundle(self.rundir)  # raw -> immutable (Y-3)
+        return self.rundir
+
+    def abort(self):
+        """Discard an unpublished staging dir (round-level failure)."""
+        import shutil
+        try:
+            self._events.close()
+        except Exception:
+            pass
+        try:
+            self._responses.close()
+        except Exception:
+            pass
+        if not self._closed:
+            shutil.rmtree(self.staging, ignore_errors=True)
+
+
 def write_raw_bundle(out_root, manifest, attempts, responses,
                      environment=None):
     """Write results/raw/RUN-ID/ layout (SPEC 33). Returns run dir.
@@ -482,49 +564,24 @@ def write_raw_bundle(out_root, manifest, attempts, responses,
     Crash safety: files are written into a sibling staging directory and
     the staging directory is os.renamed to the final RUN_ID path, so a
     mid-write crash never leaves a partial run directory behind.
+    Implemented over BundleStream (streaming writer, same bytes).
     """
-    run_id = manifest["run_id"]
+    stream = BundleStream(out_root, manifest["run_id"])
     try:
-        from seal import refuse_overwrite, seal_bundle
-    except ImportError:  # pragma: no cover - path fallback (X-2 pattern)
-        from shared.seal import refuse_overwrite, seal_bundle
-    rundir = refuse_overwrite(out_root, run_id)
-    staging = "%s.staging-%d-%s" % (
-        rundir, os.getpid(), hashlib.sha256(
-            os.urandom(16)).hexdigest()[:8])
-    if os.path.lexists(staging):
-        raise FileExistsError(
-            "staging dir already exists: %s" % staging)
-    os.makedirs(staging, exist_ok=False)
+        n_attempts, n_responses = len(attempts), len(responses)
+    except TypeError:
+        n_attempts = n_responses = None
+    if n_attempts is not None and n_attempts != n_responses:
+        stream.abort()
+        raise ValueError("attempts/responses length mismatch: %d != %d"
+                         % (n_attempts, n_responses))
     try:
-        with open(os.path.join(staging, "manifest.json"), "w",
-                  encoding="utf-8") as f:
-            json.dump(manifest, f, ensure_ascii=False, indent=1)
-        with open(os.path.join(staging, "events.jsonl"), "w",
-                  encoding="utf-8") as f:
-            for a in attempts:
-                f.write(json.dumps(validate_attempt(a), ensure_ascii=False)
-                        + "\n")
-        with open(os.path.join(staging, "responses.jsonl"), "w",
-                  encoding="utf-8") as f:
-            for r in responses:
-                f.write(json.dumps(r, ensure_ascii=False) + "\n")
-        env = dict(environment or {})
-        env.setdefault("written_utc", datetime.datetime.now(
-            datetime.timezone.utc).isoformat())
-        with open(os.path.join(staging, "environment.json"), "w",
-                  encoding="utf-8") as f:
-            json.dump(env, f, ensure_ascii=False, indent=1)
-        os.rename(staging, rundir)
+        for attempt, response in zip(attempts, responses):
+            stream.append(attempt, response)
+        return stream.close(manifest, environment)
     except BaseException:
-        import shutil
-        try:
-            if os.path.isdir(staging) and not os.path.lexists(rundir):
-                shutil.rmtree(staging, ignore_errors=True)
-        finally:
-            raise
-    seal_bundle(rundir)  # raw -> immutable: hash-sealed, read-only (Y-3)
-    return rundir
+        stream.abort()
+        raise
 
 
 def _void_attempt(run_id, model_id, family, instance_id, variant,
@@ -582,53 +639,11 @@ def _family_variants(executor, family):
     return list(variants)
 
 
-def run_suite(suite, chat, model_id="stub-model", backend="stub", seed=0,
-              instances=1, trials=1, fault_rate=0.25, out_root=None,
-              families=None, run_id=None, provider_profile=None,
-              scope=None, sampling=None, progress=None, force=False):
-    """Run one suite end-to-end and write the raw bundle. SPEC 32-33, 42.
-
-    instances: canonical instances per family (index 1..N).
-    trials: repeated trials per instance (trial_id 1..N).
-    fault_rate: recovery-suite injection rate (ignored elsewhere).
-    scope: forwarded to scope-gated executors (hidden/security).
-      Hidden suites refuse without scope "hidden-ok" BEFORE any model
-      call (Y-4); the refusal surfaces as a clean error, not a bundle.
-    Returns (run_dir, summary_dict).
-
-    Failure contract (Y-1): unexpected per-attempt exceptions become VOID
-    attempts (backend-unavailable for chat errors, harness-bug for glue
-    errors) and the round continues; a tampered frozen prompt pack aborts
-    the whole round as VOID with no partial bundle.
-    """
-    executor = load_executor(suite)
-    pack = SUITE_PROMPT_PACK.get(suite)
-    if pack is not None:
-        try:
-            verify_prompt_pack(pack)  # prompt-tamper => VOID, never scored
-        except VoidRun as e:
-            raise VoidRun("round VOID: %s" % e)
-    # Hidden suites refuse BEFORE any model call, with no bundle (Y-4).
-    hidden_gate = getattr(executor, "require_hidden_scope", None)
-    if hidden_gate is not None and scope != getattr(
-            executor, "HIDDEN_SCOPE", "hidden-ok"):
-        hidden_gate(scope)
-    fams = list(families) if families else suite_families(suite, executor)
-    run_id = run_id or make_run_id("RUN-%s" % suite.replace("-", ""))
-    try:
-        from progress import ProgressReporter, NullProgress
-    except ImportError:
-        from shared.progress import ProgressReporter, NullProgress
-    prog = progress if progress is not None else NullProgress()
-    total = 0
-    for _family in fams:
-        try:
-            n_variants = len(_family_variants(executor, _family))
-        except Exception:
-            n_variants = 1
-        total += max(instances, 1) * n_variants * max(trials, 1)
-    prog.start_suite(suite, total_attempts=total)
-    attempts, responses = [], []
+def _run_suite_loop(executor, suite, chat, model_id, backend, seed,
+                        instances, trials, fault_rate, fams, run_id,
+                        provider_profile, scope, sampling, prog, attempts,
+                        responses, stream):
+    """Attempt loop with per-attempt streaming (Phase 3)."""
     for index in range(1, max(instances, 1) + 1):
         for family in fams:
             variants = _family_variants(executor, family)
@@ -704,6 +719,69 @@ def run_suite(suite, chat, model_id="stub-model", backend="stub", seed=0,
                         if mins is not None:
                             response["human_minutes"] = mins
                     responses.append(response)
+                    stream.append(attempt, response)
+
+
+def run_suite(suite, chat, model_id="stub-model", backend="stub", seed=0,
+              instances=1, trials=1, fault_rate=0.25, out_root=None,
+              families=None, run_id=None, provider_profile=None,
+              scope=None, sampling=None, progress=None, force=False):
+    """Run one suite end-to-end and write the raw bundle. SPEC 32-33, 42.
+
+    instances: canonical instances per family (index 1..N).
+    trials: repeated trials per instance (trial_id 1..N).
+    fault_rate: recovery-suite injection rate (ignored elsewhere).
+    scope: forwarded to scope-gated executors (hidden/security).
+      Hidden suites refuse without scope "hidden-ok" BEFORE any model
+      call (Y-4); the refusal surfaces as a clean error, not a bundle.
+    Returns (run_dir, summary_dict).
+
+    Failure contract (Y-1): unexpected per-attempt exceptions become VOID
+    attempts (backend-unavailable for chat errors, harness-bug for glue
+    errors) and the round continues; a tampered frozen prompt pack aborts
+    the whole round as VOID with no partial bundle.
+    """
+    executor = load_executor(suite)
+    pack = SUITE_PROMPT_PACK.get(suite)
+    if pack is not None:
+        try:
+            verify_prompt_pack(pack)  # prompt-tamper => VOID, never scored
+        except VoidRun as e:
+            raise VoidRun("round VOID: %s" % e)
+    # Hidden suites refuse BEFORE any model call, with no bundle (Y-4).
+    hidden_gate = getattr(executor, "require_hidden_scope", None)
+    if hidden_gate is not None and scope != getattr(
+            executor, "HIDDEN_SCOPE", "hidden-ok"):
+        hidden_gate(scope)
+    fams = list(families) if families else suite_families(suite, executor)
+    run_id = run_id or make_run_id("RUN-%s" % suite.replace("-", ""))
+    try:
+        from progress import ProgressReporter, NullProgress
+    except ImportError:
+        from shared.progress import ProgressReporter, NullProgress
+    prog = progress if progress is not None else NullProgress()
+    total = 0
+    for _family in fams:
+        try:
+            n_variants = len(_family_variants(executor, _family))
+        except Exception:
+            n_variants = 1
+        total += max(instances, 1) * n_variants * max(trials, 1)
+    prog.start_suite(suite, total_attempts=total)
+    attempts, responses = [], []
+    # Streaming writer (roadmap Phase 3): lines hit disk per attempt;
+    # the bundle is still published atomically at the end. Aborted on
+    # round-level failure (scope denial etc.): no partial RUN dir.
+    out_root = out_root or os.path.join(ROOT, "results", "raw")
+    stream = BundleStream(out_root, run_id)
+    try:
+        _run_suite_loop(executor, suite, chat, model_id, backend, seed,
+                        instances, trials, fault_rate, fams, run_id,
+                        provider_profile, scope, sampling, prog, attempts,
+                        responses, stream)
+    except BaseException:
+        stream.abort()
+        raise
     conditions = sorted({a.get("reasoning_mode", "unknown")
                          for a in attempts})
     manifest = build_manifest(
@@ -714,9 +792,7 @@ def run_suite(suite, chat, model_id="stub-model", backend="stub", seed=0,
         extra={"claim_tier": SUITE_CLAIM_TIER.get(
             suite, DEFAULT_CLAIM_TIER),
                "reasoning_conditions": conditions})
-    out_root = out_root or os.path.join(ROOT, "results", "raw")
-    rundir = write_raw_bundle(out_root, manifest, attempts, responses,
-                              collect_environment())
+    rundir = stream.close(manifest, collect_environment())
     n_pass = sum(1 for a in attempts if a["primary_status"] == "PASS")
     prog.finish_suite()
     summary = {"run_id": run_id, "suite": suite, "n_attempts": len(attempts),

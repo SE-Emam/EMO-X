@@ -27,3 +27,19 @@ and do not delete them as "legacy".
 Full tree: `SPEC.md` section 41 ("Proposed Repository").
 Shared engine: `shared/scoring.py` (pure scoring),
 `shared/denominators.py`, `shared/manifests.py`, `shared/runner.py`.
+
+## Deliberately rejected (roadmap review, with reasons)
+
+- **Manifest validation "unification" (2.3)** — already single: every
+  manifest passes `manifests.validate_task_manifest`, pinned by
+  `test_all_manifests_validate` over all 40+ files. Nothing to merge.
+- **ScoringContext DI (2.4)** — rejected: scoring functions are pure by
+  contract and `shared/constants.py` IS the shared context. Threading
+  a config object through ~80 pure functions adds coupling for zero
+  behavioral gain.
+- **Parallel model calls** — rejected: deterministic sequential
+  execution is a reproducibility feature (SPEC 42 seed schedule).
+  Parallelism belongs to a future distributed runner, not this one.
+- **SQLite results index** — deferred (roadmap marks it optional):
+  JSONL bundles + file layout serve current dashboards; revisit when
+  a query pattern needs it.

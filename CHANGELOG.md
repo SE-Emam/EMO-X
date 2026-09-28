@@ -71,6 +71,19 @@ prompt/harness changes + mandatory re-baseline).
 - `adapters/event_steps.py`: single canonical JSONL event normalizer
   behind opencode/pi adapters (equivalence-pinned, standalone-safe).
 
+### Added (engineering roadmap: numeric, contracts, DX, adapters, perf)
+- `BOOTSTRAP_MAX = 100_000` DoS cap with `ValueError` on bad B;
+  antisymmetric pairing pinned by property test.
+- `tests/scoring/test_api_contract.py`: public surface, stdlib-purity,
+  determinism, NA-convention pins.
+- `Makefile` (`gate/selftest/suites/scans/clean`) + `.pre-commit-config.yaml`.
+- `adapters/_base.py`: shared `final_diff`/timeout/decode helpers;
+  opencode/pi delegate (probe/argv/prompts stay per-adapter by design).
+- Streaming bundles: `BundleStream` writes per-attempt lines, publishes
+  once (rename+seal); length-mismatch fails closed; crash leaves no
+  partial RUN dir. Rejected with reasons in ARCHITECTURE.md: parallel
+  calls, ScoringContext DI, SQLite index.
+
 ### Fixed (Scoring/Reporting Conformance Pass — external review P0)
 - Version synchronized to `2.0.0-rc1` (single source
   `shared/runner.py`; pyproject, emox, MCP server, SKILL frontmatter,
@@ -178,7 +191,7 @@ prompt/harness changes + mandatory re-baseline).
   calibration, long-horizon, gauntlet, vision (real executor over
   vision-bench fixtures), realworld (RW1–RW3 mini-real repos),
   computer-use (PILOT).
-- `tests/`: 666 tests (harness 254, generators 67, scoring 184,
+- `tests/`: 680 tests (harness 260, generators 67, scoring 192,
   golden 30, backends 131) + `tests/run_all.py` unified runner.
 - CLI: `--suite dynamic-code|recovery|gauntlet|profile`,
   `--instances`, `--seed`, `--fault-rate`, `--self-test`, `--health`.

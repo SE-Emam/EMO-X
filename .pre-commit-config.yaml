@@ -1,0 +1,21 @@
+# EMO-X pre-commit (roadmap: DX). Mirrors `make gate` minus the slow suites.
+# Install: pip install pre-commit && pre-commit install
+# CI remains the authority; hooks are a fast local tripwire only.
+repos:
+  - repo: local
+    hooks:
+      - id: emox-compile
+        name: emox compileall
+        entry: python3 -m compileall -q shared suites generators judges health mcp-server
+        language: system
+        pass_filenames: false
+      - id: emox-secrets
+        name: emox secrets scan
+        entry: bash -c '! rg -n --pcre2 "(sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16})" --glob "!suites/security/fixtures/*" --glob "!security-bench/fixtures/*" --glob "!shared/PROMPT_PACK_v1.md" --glob "!reports/*" shared suites generators judges health mcp-server adapters tests prompts'
+        language: system
+        pass_filenames: false
+      - id: emox-patterns
+        name: emox dangerous-pattern guard
+        entry: bash -c '! rg -n "shell\\s*=\\s*True|os\\.system|import pickle|[^_.a-zA-Z]eval\\(|[^_.a-zA-Z]exec\\(" --glob "*.py" shared suites generators judges health mcp-server'
+        language: system
+        pass_filenames: false

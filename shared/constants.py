@@ -31,9 +31,10 @@ SATURATION_TAU = 0.95
 HARMONIC_K = 3.0
 
 try:
-    from scoring import BOOTSTRAP_RESAMPLES
+    from scoring import BOOTSTRAP_MAX, BOOTSTRAP_RESAMPLES
 except ImportError:  # package-style import (repo root on sys.path)
     try:
-        from shared.scoring import BOOTSTRAP_RESAMPLES
+        from shared.scoring import BOOTSTRAP_MAX, BOOTSTRAP_RESAMPLES
     except ImportError:  # standalone tooling without the package path
         BOOTSTRAP_RESAMPLES = 10_000
+        BOOTSTRAP_MAX = 100_000

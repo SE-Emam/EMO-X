@@ -12,6 +12,12 @@
 
 ![EMO-X self-test demo](src/demo.gif)
 
+## Live model run (splash → progress → profile chart)
+
+Real runs, real numbers (DC1 subset, 2026-09-28 UTC):
+
+![muse-spark-1.3 across two providers](src/demo-run.gif)
+
 ## Quickstart (60 seconds)
 
 ```bash

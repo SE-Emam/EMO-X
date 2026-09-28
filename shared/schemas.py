@@ -111,6 +111,10 @@ def validate_run_manifest(record):
                 or any(not isinstance(m, str) or not m.strip()
                        for m in mods)):
             raise _err("model_modalities must be a non-empty string list")
+    if "model_type" in record and record["model_type"] is not None:
+        if (not isinstance(record["model_type"], str)
+                or not record["model_type"].strip()):
+            raise _err("model_type must be a non-empty string or null")
     for field in ("temperature", "top_p"):
         if field in record and record[field] is not None:
             val = record[field]

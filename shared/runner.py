@@ -185,7 +185,8 @@ def make_run_id(prefix="RUN"):
 def build_manifest(suite, prompt_sha256, harness_sha256, model, backend,
                    seed, trials, run_id, extra=None, provider_profile=None,
                    backend_capabilities=None, sampling=None,
-                   timestamp_utc=None, model_modalities=None):
+                   timestamp_utc=None, model_modalities=None,
+                   model_type=None):
     """SPEC 32 run manifest (validated; B58 hashes are real, not stubbed).
 
     SPEC 36: the backend capability manifest is recorded on every run so
@@ -251,6 +252,8 @@ def build_manifest(suite, prompt_sha256, harness_sha256, model, backend,
         "run_id": run_id,
         "hardware": _device_class_value,
         "model_modalities": _manifest_modalities(model_modalities),
+        "model_type": (str(model_type).strip().lower()
+                       if model_type else None),
         "timestamp_utc": (timestamp_utc or datetime.datetime.now(
             datetime.timezone.utc).isoformat()),
         "runner_version": RUNNER_VERSION,
@@ -761,7 +764,7 @@ def run_suite(suite, chat, model_id="stub-model", backend="stub", seed=0,
               instances=1, trials=1, fault_rate=0.25, out_root=None,
               families=None, run_id=None, provider_profile=None,
               scope=None, sampling=None, progress=None, force=False,
-              model_modalities=None):
+              model_modalities=None, model_type=None):
     """Run one suite end-to-end and write the raw bundle. SPEC 32-33, 42.
 
     instances: canonical instances per family (index 1..N).
@@ -794,6 +797,12 @@ def run_suite(suite, chat, model_id="stub-model", backend="stub", seed=0,
     require_model_modality(
         suite, SUITE_MODALITIES.get(suite, DEFAULT_SUITE_MODALITY),
         declared)
+    if model_type is not None:
+        try:
+            from safety import stages_for_type
+        except ImportError:
+            from shared.safety import stages_for_type
+        stages_for_type(model_type)  # unknown/out-of-scope raises here
     pack = SUITE_PROMPT_PACK.get(suite)
     if pack is not None:
         try:
@@ -841,6 +850,7 @@ def run_suite(suite, chat, model_id="stub-model", backend="stub", seed=0,
         executor.harness_sha256(), model_id, backend, seed,
         max(trials, 1), run_id, provider_profile=provider_profile,
         sampling=sampling, model_modalities=model_modalities,
+        model_type=model_type,
         extra={"claim_tier": SUITE_CLAIM_TIER.get(
             suite, DEFAULT_CLAIM_TIER),
                "reasoning_conditions": conditions})
@@ -857,7 +867,7 @@ def run_suite(suite, chat, model_id="stub-model", backend="stub", seed=0,
 def run_profile(chat, model_id="stub-model", backend="stub", seed=0,
                 instances=1, trials=1, fault_rate=0.25, out_root=None,
                 provider_profile=None, scope=None, sampling=None,
-                progress=None, model_modalities=None):
+                progress=None, model_modalities=None, model_type=None):
     """SPEC 42 --suite profile: every suite once + v2 roll-up report."""
     try:
         from report_v2 import build_v2_report
@@ -877,7 +887,8 @@ def run_profile(chat, model_id="stub-model", backend="stub", seed=0,
                                provider_profile=provider_profile,
                                scope=scope, sampling=sampling,
                                progress=prog,
-                               model_modalities=model_modalities)
+                               model_modalities=model_modalities,
+                               model_type=model_type)
         runs.append(summary)
     for summary in runs:
         rundir = summary["run_dir"]

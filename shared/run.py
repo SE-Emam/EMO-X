@@ -736,6 +736,13 @@ def main(argv=None):
                          "(default text-only). Suites require a modality; "
                          "mismatch refuses BEFORE any model call — scored "
                          "zeros from an incapable model are inadmissible.")
+    ap.add_argument("--model-type", default=None,
+                    help="semantic model type (llm/chat/code/reasoning/"
+                         "math/agentic/multimodal/embedding/jev-decision/"
+                         "image/video/audio/cnn/rl). Selects the test "
+                         "stages and must cover --model-modalities; "
+                         "out-of-scope types (embedding/jev/...) refuse "
+                         "with their external standard pointer.")
     ap.add_argument("--hidden-ok", action="store_true",
                     help="opt in to the hidden validation suite "
                          "(HIDDEN-VALIDATION claim tier, never public)")
@@ -765,6 +772,35 @@ def main(argv=None):
                          "on stderr (machine mode; stdout stays clean either "
                          "way)")
     args = ap.parse_args(argv)
+
+    # Model-type gate FIRST (before splash-exempt paths that call models
+    # is unnecessary; self-test/health never call models and skip it).
+    # Out-of-scope types (embedding/jev-decision/...) refuse here with
+    # their external-standard pointer — no trial, no bundle.
+    if args.model_type and not args.self_test and not args.health:
+        try:
+            from safety import (stages_for_type, parse_model_modalities,
+                                MODEL_TYPES)
+        except ImportError:
+            from shared.safety import (stages_for_type,
+                                       parse_model_modalities, MODEL_TYPES)
+        try:
+            _stages = stages_for_type(args.model_type)
+        except Exception as e:
+            if "Capability" in type(e).__name__:
+                log.warning("REFUSED: %s" % e)
+                return 2
+            raise
+        _type_modes = set(MODEL_TYPES[str(args.model_type).strip().lower()]
+                          ["modalities"] or ())
+        _decl_modes = set(parse_model_modalities(args.model_modalities))
+        if not _decl_modes <= _type_modes and _type_modes:
+            log.warning("REFUSED: declared modalities %s exceed model "
+                        "type %r capabilities %s"
+                        % (sorted(_decl_modes), args.model_type,
+                           sorted(_type_modes)))
+            return 2
+        log.info("model type %s: stages %s" % (args.model_type, _stages))
 
     # Hero splash: stderr only, every run unless --quiet.
     if not args.quiet:
@@ -818,7 +854,8 @@ def main(argv=None):
                 max(args.trials, 1), args.fault_rate, _raw_root(args.out),
                 provider_profile=args.provider_profile,
                 scope=_scope, sampling=_sampling, progress=_prog,
-                model_modalities=args.model_modalities)
+                model_modalities=args.model_modalities,
+                model_type=args.model_type)
             for s in runs:
                 log.info("suite=%s attempts=%d pass=%d dir=%s"
                          % (s["suite"], s["n_attempts"], s["n_pass"],
@@ -836,7 +873,8 @@ def main(argv=None):
                 args.instances, max(args.trials, 1), args.fault_rate,
                 _raw_root(args.out), provider_profile=args.provider_profile,
                 scope=_scope, sampling=_sampling, progress=_prog,
-                model_modalities=args.model_modalities)
+                model_modalities=args.model_modalities,
+                model_type=args.model_type)
         except Exception as e:
             # Hidden/scope/capability refusals surface cleanly before
             # any model call.

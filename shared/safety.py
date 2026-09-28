@@ -218,3 +218,79 @@ def verify_fixture_dir(fixture_dir):
         if digest != expected:
             raise ValueError("fixture tamper detected: %s" % name)
     return True
+
+
+#: Model-type registry: semantic type -> test stages + modalities.
+#: There is NO single global performance standard (282-447 benchmarks
+#: worldwide across modalities); EMO-X covers execution/trajectory/
+#: health for code+agent work, and REFUSES other types with a pointer
+#: to their external standard instead of scoring meaningless zeros.
+#: Types follow the maintainer's models taxonomy (19 types).
+MODEL_TYPES = {
+    # Generative text family: full EMO-X scope.
+    "llm": {"modalities": ("text",), "emo_suites": "all-text",
+            "external": None},
+    "chat": {"modalities": ("text",), "emo_suites": "all-text",
+             "external": None},
+    "code": {"modalities": ("text",), "emo_suites": "all-text",
+             "external": "HumanEval/SWE-bench (complementary)"},
+    "reasoning": {"modalities": ("text",), "emo_suites": "all-text",
+                  "external": "GPQA/FrontierMath (complementary)"},
+    "math": {"modalities": ("text",), "emo_suites": "all-text",
+             "external": "MATH-500/AIME (complementary)"},
+    "agentic": {"modalities": ("text",), "emo_suites": "all-text",
+                "external": "Terminal-Bench/OSWorld (complementary)"},
+    # Multimodal: text stages + vision stage.
+    "multimodal": {"modalities": ("text", "vision"),
+                   "emo_suites": "all-text+vision", "external": None},
+    # Out of EMO-X scope: refused with external pointer, never scored.
+    "embedding": {"modalities": ("embeddings",), "emo_suites": None,
+                  "external": "MTEB/BEIR/MIRACL"},
+    "jev-decision": {"modalities": (), "emo_suites": None,
+                     "external": "TypeSafe internal benchmarks "
+                     "(Choice/Score/Noul need typed-probability "
+                     "oracles EMO-X does not implement)"},
+    "image": {"modalities": (), "emo_suites": None,
+              "external": "FID/DreamBench++"},
+    "video": {"modalities": (), "emo_suites": None,
+              "external": "VBench"},
+    "audio": {"modalities": ("audio",), "emo_suites": None,
+              "external": "LibriSpeech/Common Voice (WER)"},
+    "cnn": {"modalities": (), "emo_suites": None,
+            "external": "ImageNet/COCO"},
+    "rl": {"modalities": (), "emo_suites": None,
+           "external": "Atari/MuJoCo/RLBench"},
+}
+
+#: Ordered test stages per in-scope type (stage = suite group).
+TYPE_STAGES = {
+    "smoke": ["self-test"],
+    "code": ["code25", "dynamic-code"],
+    "agent": ["agent-loop", "recovery", "robustness"],
+    "assurance": ["security", "calibration"],
+    "horizon": ["long-horizon", "gauntlet"],
+    "eyes": ["vision"],
+}
+
+
+def stages_for_type(model_type):
+    """Ordered stage plan for a model type. Raises ValueError if unknown.
+
+    Out-of-scope types (emo_suites None) raise ModelCapabilityDenied
+    with the external-standard pointer — the refusal IS the result.
+    """
+    entry = MODEL_TYPES.get(str(model_type or "").strip().lower())
+    if entry is None:
+        raise ValueError(
+            "unknown model type: %r (choose from %s)"
+            % (model_type, ",".join(sorted(MODEL_TYPES))))
+    if entry["emo_suites"] is None:
+        raise ModelCapabilityDenied(
+            "model type %r is outside EMO-X scope (no text generation "
+            "to measure); use the external standard instead: %s. "
+            "Scored zeros would be inadmissible."
+            % (model_type, entry["external"]))
+    stages = ["smoke", "code", "agent", "assurance", "horizon"]
+    if "vision" in (entry["modalities"] or ()):
+        stages.append("eyes")
+    return stages

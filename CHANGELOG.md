@@ -50,6 +50,20 @@ prompt/harness changes + mandatory re-baseline).
   `SUITE_DIRS`; manifests `AG.json` + `AG2.json`.
 - `runner.run_suite` forwards `force=` to supporting executors.
 
+### Added (model types + stages, agent frameworks, scope proofs)
+- `safety.MODEL_TYPES` (13 types from the maintainer taxonomy) +
+  `stages_for_type()` (smoke→code→agent→assurance→horizon[→eyes]);
+  out-of-scope types (embedding→MTEB, jev-decision→TypeSafe,
+  image/video/audio/cnn/rl→their standards) refuse with pointer.
+- CLI `--model-type` (validated pre-dispatch, consistency-checked
+  against `--model-modalities`, recorded in manifest).
+- `adapters/generic_cli_adapter.py`: template-driven CLI agents
+  (shlex, no shell, fail-closed probe) + `docs/agent-frameworks.md`
+  matrix (integrated/generic-ready/roadmap).
+- `docs/standards-scope.md`: why no unified global standard exists,
+  why baselines depend on EMO-X by design, and the 8 reliability
+  proofs a final report must carry.
+
 ### Added (model capability gating — the missing modality layer)
 - `--model-modalities` (default text-only): `safety.parse_model_modalities`,
   `require_model_modality`, `ModelCapabilityDenied` — suites declare needs
@@ -200,7 +214,7 @@ prompt/harness changes + mandatory re-baseline).
   calibration, long-horizon, gauntlet, vision (real executor over
   vision-bench fixtures), realworld (RW1–RW3 mini-real repos),
   computer-use (PILOT).
-- `tests/`: 698 tests (harness 271, generators 67, scoring 192,
+- `tests/`: 714 tests (harness 287, generators 67, scoring 192,
   golden 30, backends 138) + `tests/run_all.py` unified runner.
 - CLI: `--suite dynamic-code|recovery|gauntlet|profile`,
   `--instances`, `--seed`, `--fault-rate`, `--self-test`, `--health`.

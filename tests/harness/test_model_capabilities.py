@@ -18,7 +18,8 @@ if SHARED not in sys.path:
 import runner  # noqa: E402
 import schemas  # noqa: E402
 from safety import (ModelCapabilityDenied, parse_model_modalities,
-                    require_model_modality)  # noqa: E402
+                    require_model_modality, stages_for_type,
+                    MODEL_TYPES)  # noqa: E402
 
 
 def _stub_chat(messages, **kw):
@@ -92,6 +93,61 @@ class RunnerGateTests(unittest.TestCase):
                "model_modalities": []}
         with self.assertRaises(ValueError):
             schemas.validate_run_manifest(bad)
+
+
+class ModelTypeTests(unittest.TestCase):
+    def test_registry_covers_generative_family(self):
+        for t in ("llm", "chat", "code", "reasoning", "math", "agentic"):
+            self.assertIn("text", MODEL_TYPES[t]["modalities"], t)
+
+    def test_stages_text_types(self):
+        self.assertEqual(stages_for_type("code"),
+                         ["smoke", "code", "agent", "assurance", "horizon"])
+
+    def test_multimodal_adds_eyes(self):
+        self.assertIn("eyes", stages_for_type("multimodal"))
+
+    def test_embedding_refused_with_pointer(self):
+        with self.assertRaises(ModelCapabilityDenied) as ctx:
+            stages_for_type("embedding")
+        self.assertIn("MTEB", str(ctx.exception))
+
+    def test_jev_refused_with_pointer(self):
+        with self.assertRaises(ModelCapabilityDenied) as ctx:
+            stages_for_type("jev-decision")
+        self.assertIn("TypeSafe", str(ctx.exception))
+
+    def test_unknown_type_rejected(self):
+        with self.assertRaises(ValueError):
+            stages_for_type("telepathy")
+
+    def test_run_suite_rejects_bad_type(self):
+        with self.assertRaises(ValueError):
+            runner.run_suite(
+                "dynamic-code", _stub_chat, "m", "stub", 0, 1, 1,
+                0.0, "/tmp/emox_modcap", families=["DC1"],
+                model_type="telepathy")
+
+    def test_run_suite_rejects_out_of_scope_type(self):
+        with self.assertRaises(ModelCapabilityDenied):
+            runner.run_suite(
+                "dynamic-code", _stub_chat, "m", "stub", 0, 1, 1,
+                0.0, "/tmp/emox_modcap", families=["DC1"],
+                model_type="embedding")
+
+    def test_manifest_records_type(self):
+        import json
+        import shutil
+        out = "/tmp/emox_modcap_type"
+        shutil.rmtree(out, ignore_errors=True)
+        rundir, _ = runner.run_suite(
+            "dynamic-code", runner.stub_chat_factory("t"), "m", "stub",
+            0, 1, 1, 0.0, out, families=["DC1"], model_type="code")
+        manifest = json.load(
+            open(os.path.join(rundir, "manifest.json")))
+        self.assertEqual(manifest["model_type"], "code")
+        self.assertEqual(manifest["model_modalities"], ["text"])
+        shutil.rmtree(out, ignore_errors=True)
 
 
 if __name__ == "__main__":

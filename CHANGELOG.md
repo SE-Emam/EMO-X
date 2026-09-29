@@ -66,6 +66,12 @@ prompt/harness changes + mandatory re-baseline).
   report `safety.asr_matrix` (ASR vs safe-utility tradeoff).
 - `scoring.passk_summary` (tau pass^k over instances) wired into
   `uncertainty_95.consistency`.
+- Fixed: comparison per-leg CIs drew leg B from bootstrap seed+1 while
+  the leaderboard printed the same leg from seed 0, so the two surfaces
+  disagreed (kio 91.1% vs 90.7% upper) by pure resampling noise. Both
+  legs now share one stream; regression test spies the seeds. A purely
+  numeric version of that test was vacuous (lattice-valued bootstrap
+  percentiles coincide across seeds) — recorded in the test docstring.
 
 ### Added (model types + stages, agent frameworks, scope proofs)
 - `safety.MODEL_TYPES` (13 types from the maintainer taxonomy) +

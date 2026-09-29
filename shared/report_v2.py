@@ -724,12 +724,16 @@ def compare_models(attempts_a, attempts_b, model_a="A", model_b="B",
     ra, rb = scoring.pass_rate(attempts_a), scoring.pass_rate(attempts_b)
     out["pass_rate_a"] = ra
     out["pass_rate_b"] = rb
+    # Common random numbers: both legs resample with the SAME stream so the
+    # two per-leg intervals are on one footing (and match the per-run
+    # uncertainty_95 the leaderboard prints). An offset seed made ci_b
+    # disagree with the same leg's leaderboard CI by resampling noise.
     out["ci_a"] = scoring.bootstrap_ci(
         list(scoring.family_strict_lists(attempts_a).values()),
         B=B, seed=seed)
     out["ci_b"] = scoring.bootstrap_ci(
         list(scoring.family_strict_lists(attempts_b).values()),
-        B=B, seed=seed + 1)
+        B=B, seed=seed)
     # Instance-level pairing first (P1-8); family fallback when runs
     # share no instance (ad-hoc/dynamic), flagged in pairing_level.
     diff = scoring.instance_paired_bootstrap(

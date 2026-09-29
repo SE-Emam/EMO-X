@@ -133,6 +133,67 @@ class TestCompareModels(unittest.TestCase):
                 for field in ("ci_low", "ci_high", "se"):
                     self.assertIsNotNone(comp[key][field])
 
+    def test_leg_cis_use_one_bootstrap_stream(self):
+        """ci_a and ci_b must come from the SAME resampling stream, and
+        must equal what the per-run report prints for the same leg.
+
+        An offset seed (seed+1) for leg B made the comparison's interval
+        disagree with the leaderboard's uncertainty_95 for the identical
+        leg by pure resampling noise: two surfaces, two numbers.
+
+        The legs here are deliberately high-variance (3 trials/family,
+        mixed outcomes) so the assertion actually discriminates seeds --
+        a near-degenerate leg makes the test pass either way.
+        """
+        def _noisy(offset):
+            out = []
+            for i in range(25):
+                for t in range(1, 4):
+                    ok = (i * 7 + t * 3 + offset) % 5 != 0
+                    out.append({
+                        "run_id": "leg", "model_id": "m",
+                        "task_family_id": "fam%02d" % i,
+                        "instance_id": "fam%02d" % i,
+                        "variant_class": "canonical", "trial_id": t,
+                        "primary_status": "PASS" if ok else "FAIL",
+                        "primary_failure": None if ok else "ASSERTION_FAILED",
+                        "score": 1.0 if ok else 0.0,
+                    })
+            return out
+
+        att_a, att_b = _noisy(0), _noisy(1)
+        man_a, man_b = _matching_manifests()
+
+        # Contract check by spy: both per-leg intervals must be drawn from
+        # ONE resampling stream. Percentile equality cannot prove this --
+        # the bootstrap stat is lattice-valued, so two seeds routinely
+        # return bit-identical endpoints and a numeric test passes either
+        # way (verified: a numeric version of this test was vacuous).
+        seeds = []
+        real_ci = scoring.bootstrap_ci
+
+        def spy(groups, stat=None, B=scoring.BOOTSTRAP_RESAMPLES, seed=0):
+            seeds.append(seed)
+            return real_ci(groups, stat=stat, B=B, seed=seed)
+
+        scoring.bootstrap_ci = spy
+        try:
+            comp = report_v2.compare_models(
+                att_a, att_b, "model-a", "model-b",
+                manifest_a=man_a, manifest_b=man_b, B=2000, seed=0)
+        finally:
+            scoring.bootstrap_ci = real_ci
+        self.assertGreaterEqual(len(seeds), 2)
+        self.assertEqual(set(seeds), {0},
+                         "all bootstrap intervals in one comparison must "
+                         "share one stream; got seeds %r" % (seeds,))
+
+        # Cross-surface agreement: comparison CI == per-run report CI.
+        for attempts, key in ((att_a, "ci_a"), (att_b, "ci_b")):
+            unc = report_v2.build_v2_report(attempts, [], model_id="m")["uncertainty_95"]
+            self.assertAlmostEqual(comp[key]["ci_low"], unc["low"], places=12)
+            self.assertAlmostEqual(comp[key]["ci_high"], unc["high"], places=12)
+
     def test_mismatched_manifests_non_comparable(self):
         att_a, att_b = _close_call_attempts()
         man_a, man_b = _mismatched_manifests()

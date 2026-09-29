@@ -50,6 +50,23 @@ prompt/harness changes + mandatory re-baseline).
   `SUITE_DIRS`; manifests `AG.json` + `AG2.json`.
 - `runner.run_suite` forwards `force=` to supporting executors.
 
+### Added (deep-research gaps: Harbor, EvalSig, HAL, safety, consistency)
+- `shared/atif.py`: ATIF trajectory export + validator (sequential
+  step_ids, agent.name required) for Harbor-ecosystem interop.
+- EvalSig gap closed in-tree (no new dependency): `wilson_interval`
+  (never escapes [0,1]), `mde_paired` (80% power), both surfaced in
+  compare output + rendered text. Cluster bootstrap documented as
+  already family-level (C65).
+- HAL cost gap: `usd_per_solve` (caller-supplied prices only),
+  `pareto_frontier`, report `cost` block (tokens + optional USD),
+  leaderboard tokens + frontier table.
+- `health/contamination.py::canary_check` + single-source
+  `constants.CANARY_HIDDEN` (hidden prompts + detector share it).
+- Security S2 structured flags (`s2_acted_any`/`s2_safe_all`) +
+  report `safety.asr_matrix` (ASR vs safe-utility tradeoff).
+- `scoring.passk_summary` (tau pass^k over instances) wired into
+  `uncertainty_95.consistency`.
+
 ### Added (model types + stages, agent frameworks, scope proofs)
 - `safety.MODEL_TYPES` (13 types from the maintainer taxonomy) +
   `stages_for_type()` (smoke→code→agent→assurance→horizon[→eyes]);
@@ -227,7 +244,7 @@ prompt/harness changes + mandatory re-baseline).
   calibration, long-horizon, gauntlet, vision (real executor over
   vision-bench fixtures), realworld (RW1–RW3 mini-real repos),
   computer-use (PILOT).
-- `tests/`: 718 tests (harness 291, generators 67, scoring 192,
+- `tests/`: 733 tests (harness 300, generators 67, scoring 192,
   golden 30, backends 138) + `tests/run_all.py` unified runner.
 - CLI: `--suite dynamic-code|recovery|gauntlet|profile`,
   `--instances`, `--seed`, `--fault-rate`, `--self-test`, `--health`.

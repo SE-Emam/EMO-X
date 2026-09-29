@@ -324,6 +324,30 @@ def consistency_at_k(n: int, c: int, k: int) -> Optional[float]:
     return math.comb(c, k) / math.comb(n, k)
 
 
+def passk_summary(events: Any, k: int = 3) -> Dict[str, Any]:
+    """Tau-style pass^k over instances (consistency across retries).
+
+    Fraction of instances with >=k scored trials where ALL scored
+    trials PASS. Instances with fewer trials are excluded (never
+    penalized for missing data). Returns {pass_k, n_instances,
+    n_eligible, k}. None pass_k when no instance qualifies.
+    """
+    by_instance: Dict[Any, list] = {}
+    for e in eligible_attempts(list(events or [])):
+        key = (e.get("task_family_id"), e.get("instance_id"))
+        by_instance.setdefault(key, []).append(
+            strict_pass_from_status(e.get("primary_status")))
+    eligible = {key: vals for key, vals in by_instance.items()
+                if len(vals) >= k}
+    if not eligible:
+        return {"pass_k": None, "n_instances": len(by_instance),
+                "n_eligible": 0, "k": k}
+    full = sum(1 for vals in eligible.values() if all(vals))
+    return {"pass_k": full / len(eligible),
+            "n_instances": len(by_instance),
+            "n_eligible": len(eligible), "k": k}
+
+
 # ---------------------------------------------------------------------------
 # Generalization (see B12/C47 resolution in module docstring)
 # ---------------------------------------------------------------------------
@@ -693,6 +717,54 @@ def cost_per_solve(events: Any, cost_key: str = "cost") -> Optional[float]:
     n_pass = sum(1 for e in scored
                  if strict_pass_from_status(e["primary_status"]))
     return _per_solve(total, n_pass)
+
+
+def usd_per_solve(tokens_in: float, tokens_out: float,
+                  price_in_m: float, price_out_m: float,
+                  n_solved: int) -> Optional[float]:
+    """USD per solved task (HAL cost gap). None when n_solved is 0.
+
+    Prices are per-million tokens, supplied by the CALLER (price list,
+    manifest, or CLI) — scoring never invents prices. Token counts come
+    from attempt/response usage records.
+    """
+    if n_solved is None or n_solved <= 0:
+        return None
+    for v in (tokens_in, tokens_out, price_in_m, price_out_m):
+        if v is None or (isinstance(v, float) and not math.isfinite(v)):
+            return None
+        if v < 0:
+            raise ValueError("cost inputs must be >= 0")
+    return (tokens_in * price_in_m + tokens_out * price_out_m) / 1e6 / n_solved
+
+
+def pareto_frontier(points: Any) -> List[Dict[str, Any]]:
+    """Nondominated (cost, accuracy) set (HAL cost gap).
+
+    points: dicts with label/cost/accuracy (None entries skipped).
+    A point is dominated when another has <= cost AND >= accuracy with
+    at least one strict. Returns frontier sorted by cost ascending.
+    Cost = USD-per-solve when prices known, else tokens-per-solve —
+    the caller states which in "cost_unit".
+    """
+    clean = [dict(p) for p in (points or [])
+             if p.get("cost") is not None and p.get("accuracy") is not None]
+    out = []
+    for cand in clean:
+        dominated = False
+        for other in clean:
+            if other is cand:
+                continue
+            if other["cost"] <= cand["cost"] \
+                    and other["accuracy"] >= cand["accuracy"] \
+                    and (other["cost"] < cand["cost"]
+                         or other["accuracy"] > cand["accuracy"]):
+                dominated = True
+                break
+        if not dominated:
+            out.append(cand)
+    out.sort(key=lambda p: (p["cost"], -p["accuracy"]))
+    return out
 
 
 def budget_compliance(used: float, budget: float, eps: float = EPS) -> float:
@@ -1281,6 +1353,43 @@ def bootstrap_ci(family_groups: Any, stat: Any = None,
             "note": ("LOW-SAMPLE UNCERTAINTY"
                      if len(groups) < LOW_SAMPLE_FAMILY_THRESHOLD
                      else None)}
+
+
+#: Normal quantiles (fixed constants, documented): z=1.96 for 95% two-sided,
+#: z=0.84 for 80% power. No scipy (stdlib-only).
+_Z_95 = 1.96
+_Z_POWER_80 = 0.84
+
+
+def wilson_interval(k: int, n: int,
+                    z: float = _Z_95) -> Dict[str, Optional[float]]:
+    """Wilson score interval for a binomial rate (roadmap: EvalSig gap).
+
+    Unlike the Wald interval it never escapes [0,1] and stays valid at
+    n=1 and p in {0,1}. k successes of n trials; None bounds when n==0.
+    """
+    if n is None or n <= 0:
+        return {"low": None, "high": None}
+    k = max(0, min(int(n), int(k)))
+    p = k / n
+    denom = 1.0 + z * z / n
+    center = (p + z * z / (2 * n)) / denom
+    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / denom
+    return {"low": max(0.0, center - half),
+            "high": min(1.0, center + half)}
+
+
+def mde_paired(se: Optional[float], alpha_z: float = _Z_95,
+               power_z: float = _Z_POWER_80) -> Optional[float]:
+    """Minimum detectable effect for a paired difference (EvalSig gap).
+
+    MDE = (z_alpha + z_power) * se using the bootstrap SE of the paired
+    difference. Answers "how large must the true gap be for this
+    comparison to have 80% power?" None when se is unknown.
+    """
+    if se is None or not math.isfinite(se) or se < 0:
+        return None
+    return (alpha_z + power_z) * se
 
 
 def family_value_lists(events: Any,

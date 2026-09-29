@@ -65,6 +65,7 @@ def _entry(manifest, events, responses):
     profile = report.get("capability_profile") or {}
     if not isinstance(profile, dict):
         profile = {}
+    cost = report.get("cost") or {}
     return {
         "run_id": manifest.get("run_id"),
         "model": manifest.get("model"),
@@ -84,6 +85,8 @@ def _entry(manifest, events, responses):
         "eligibility": report.get("eligibility"),
         "profile": {d: profile.get(d) for d in DIMS},
         "fingerprint": report.get("failure_fingerprint") or {},
+        "tokens_total": cost.get("tokens_total"),
+        "tokens_per_solve": cost.get("tokens_per_solve"),
     }
 
 
@@ -336,10 +339,15 @@ def render_board(rundirs, outdir):
         entries.append(_entry(manifest, events, responses))
     entries = rank_band(entries)
     pairs = pairwise(entries, bundles)
+    frontier = scoring.pareto_frontier([
+        {"label": e.get("model"), "cost": e.get("tokens_per_solve"),
+         "accuracy": e.get("pass_rate"), "cost_unit": "tokens-per-solve"}
+        for e in entries])
     os.makedirs(outdir, exist_ok=True)
     with open(os.path.join(outdir, "leaderboard.json"), "w",
               encoding="utf-8") as f:
-        json.dump({"entries": entries, "pairwise": pairs}, f,
+        json.dump({"entries": entries, "pairwise": pairs,
+                   "pareto_frontier": frontier}, f,
                   ensure_ascii=False, indent=1)
     rows = ["<h1>EMO-X leaderboard "
             "<small>%d run%s</small></h1>" % (
@@ -378,6 +386,22 @@ def render_board(rundirs, outdir):
                         html.escape(str(p[k])) for k in
                         ("a", "b", "difference_pp", "status", "reason")))
     rows.append("</table>")
+    rows.append("<h2>Cost frontier (tokens-per-solve vs pass rate)</h2>")
+    if frontier:
+        rows.append("<p>Nondominated runs (HAL cost gap): cheaper is "
+                    "better at equal accuracy; entries without token "
+                    "accounting are excluded, never zero-filled.</p>"
+                    "<table><tr><th>model</th><th>tokens/solve</th>"
+                    "<th>pass rate</th></tr>")
+        for point in frontier:
+            rows.append("<tr><td>%s</td><td>%s</td><td>%s</td></tr>" % (
+                html.escape(str(point.get("label"))),
+                html.escape(str(point.get("cost"))),
+                html.escape(str(point.get("accuracy")))))
+        rows.append("</table>")
+    else:
+        rows.append("<p>No frontier: no entries with both token "
+                    "accounting and pass rate.</p>")
     page = (
         "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">"
         "<title>EMO-X leaderboard</title><style>"

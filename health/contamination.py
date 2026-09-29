@@ -102,3 +102,19 @@ def abstention_snapshot(n_answered, correct_answers, n_abstained,
     """Abstention arms with per-arm NA denominators. DEN C53."""
     return abstention_metrics(n_answered, correct_answers, n_abstained,
                               correct_abstentions)
+
+
+def canary_check(text):
+    """Detect hidden-prompt canary regurgitation (contamination proof).
+
+    Returns True iff the digit-free hidden canary tag appears in model
+    output: the tag exists ONLY in runtime hidden prompts (never stored,
+    never published), so its presence in a reply proves the model saw
+    leaked hidden material. Same tag as hidden suite prompts
+    (shared.constants.CANARY_HIDDEN, single source).
+    """
+    try:
+        from constants import CANARY_HIDDEN
+    except ImportError:
+        from shared.constants import CANARY_HIDDEN
+    return CANARY_HIDDEN in (text or "")

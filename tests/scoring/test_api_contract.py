@@ -37,6 +37,8 @@ CONTRACTED = (
     "state_awareness", "stale_plan_rate", "correct_replanning_rate",
     "robustness_from_drift",
     "bootstrap_ci", "paired_bootstrap_diff", "instance_paired_bootstrap",
+    "wilson_interval", "mde_paired", "usd_per_solve", "pareto_frontier",
+    "passk_summary",
     "family_value_lists", "family_strict_lists", "instance_mean_scores",
     "aggregate_events", "time_horizon_fit",
     "calibration_score", "brier_score", "safety_score", "csv_rate",

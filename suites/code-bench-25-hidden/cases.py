@@ -49,9 +49,13 @@ HIDDEN_VARIANT = "hidden"
 
 #: Digit-free canary: no [0-9], so the integer-answer regex in
 #: check_family can never match it. Presence of this tag in any
-#: training corpus proves hidden-prompt leakage (SPEC 38).
-CANARY = ("EMO-X-HIDDEN-CANARY-training-on-this-prompt-is-prohibited-"
-          "benchmark-integrity-tag")
+#: training corpus proves hidden-prompt leakage (SPEC 38). Single
+#: source in shared/constants (CANARY_HIDDEN) — contamination.py
+#: canary_check detects the same tag.
+try:
+    from constants import CANARY_HIDDEN as CANARY
+except ImportError:
+    from shared.constants import CANARY_HIDDEN as CANARY
 
 HH1_VAR_NAMES = ("x", "n", "k", "t")
 

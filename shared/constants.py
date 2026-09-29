@@ -38,3 +38,9 @@ except ImportError:  # package-style import (repo root on sys.path)
     except ImportError:  # standalone tooling without the package path
         BOOTSTRAP_RESAMPLES = 10_000
         BOOTSTRAP_MAX = 100_000
+
+#: Hidden-prompt canary (SPEC 38). Digit-free by construction so the
+#: integer-answer oracle regex can never match it. Single source: hidden
+#: suite prompts AND contamination.canary_check both use this.
+CANARY_HIDDEN = ("EMO-X-HIDDEN-CANARY-training-on-this-prompt-is-prohibited-"
+                 "benchmark-integrity-tag")

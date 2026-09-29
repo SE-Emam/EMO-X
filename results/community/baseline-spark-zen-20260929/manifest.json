@@ -1,0 +1,44 @@
+{
+ "benchmark_version": "2.0.0-rc1",
+ "suite": "code25",
+ "prompt_pack": "PROMPT_PACK_v1",
+ "prompt_sha256": "47386395952437f51a27650e398c984dd669cfc232e3e0cf146927bd0a7a5260",
+ "harness_sha256": "d920734068b85af5c66c1f3e8e7119dfca297cf7aa8319843f8cb04c7c97184b",
+ "harness_git_sha": "690a1ad4adb0af0610d492b5c8f771e20d03a065",
+ "backend": "cli",
+ "provider_profile": "native",
+ "backend_capabilities": {
+  "chat": "supported",
+  "streaming": "unsupported",
+  "tool_calls": "unsupported",
+  "reasoning_tokens": "unknown",
+  "seed": "unsupported",
+  "token_usage": "unknown",
+  "vision": "unsupported",
+  "stop_behavior": "unknown",
+  "max_tokens": "approximate",
+  "backend": "cli",
+  "provider_profile": "native"
+ },
+ "model": "muse-spark-1.3-zen",
+ "model_sha256": "2685e57d6fb6999895341f53f99bbdd0660796239c5c9562e9a1b8a6e5b354f9",
+ "temperature": 0.4,
+ "top_p": null,
+ "top_k": null,
+ "context": null,
+ "seed": 0,
+ "trials": 3,
+ "run_id": "RUN-code25-20260929T205451.318412Z-9f9a9e3575-p68645",
+ "hardware": "laptop-arm64-8gb",
+ "model_modalities": [
+  "text"
+ ],
+ "model_type": null,
+ "timestamp_utc": "2026-09-29T21:06:18.971156+00:00",
+ "runner_version": "2.0.0-rc1",
+ "claim_tier": "PUBLIC-BENCHMARK",
+ "reasoning_conditions": [
+  "disabled",
+  "provider_default"
+ ]
+}

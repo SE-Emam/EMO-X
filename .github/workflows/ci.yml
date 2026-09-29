@@ -34,9 +34,11 @@ jobs:
           echo "dangerous-pattern scan clean"
       - name: Local-only files guard (never track internal docs)
         run: |
-          tracked=$(git ls-files AGENTS-X.md FINAL-REPORT.md PLAN-Y.md REVIEW-X.md reports/ | head -5) || true
+          tracked=$(git ls-files AGENTS-X.md FINAL-REPORT.md PLAN-Y.md REVIEW-X.md | head -5) || true
+          tracked="$tracked $(git ls-files 'reports/*' ':!reports/BASELINE_*' | head -5)" || true
+          tracked=$(echo "$tracked" | tr -s ' ' | sed 's/^ *//')
           [ -z "$tracked" ] || (echo "FORBIDDEN TRACKED FILES: $tracked (see CONTRIBUTING)"; exit 1)
-          echo "local-only guard clean"
+          echo "local-only guard clean (reports/BASELINE_* explicitly allowed)"
       - name: Install pytest (harness dev extra)
         run: pip install "pytest>=7"
       - name: Harness self-test (SPEC 35, fail-closed)

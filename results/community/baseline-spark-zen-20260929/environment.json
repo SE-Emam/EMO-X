@@ -1,0 +1,24 @@
+{
+ "benchmark_version": "2.0.0-rc1",
+ "runner_version": "2.0.0-rc1",
+ "python": "3.14.5",
+ "platform": "macOS-26.3-arm64-arm-64bit-Mach-O",
+ "architecture": "arm64",
+ "toolchain": {
+  "python": "3.14.5",
+  "node": "v26.7.0",
+  "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)",
+  "tsc": "Version 7.0.2",
+  "sqlite": "3.53.1",
+  "postgres": "psql (PostgreSQL) 16.14 (Homebrew)"
+ },
+ "hardware": {
+  "cpu": "arm",
+  "cpu_count": "8",
+  "ram_gb": "8",
+  "gpu": "Apple M1",
+  "device_class": "laptop-arm64-8gb"
+ },
+ "harness_git_sha": "690a1ad4adb0af0610d492b5c8f771e20d03a065",
+ "written_utc": "2026-09-29T21:06:19.235980+00:00"
+}

@@ -51,7 +51,8 @@ Discussions before large PRs.
 ## Local-only files (never push these)
 
 `AGENTS-X.md`, `FINAL-REPORT.md`, `PLAN-Y.md`, `REVIEW-X.md`, and
-`reports/*.md` are **maintainer-local working documents**: they live in
+`reports/*.md` (except `reports/BASELINE_*.md`, the published
+baselines) are **maintainer-local working documents**: they live in
 your checkout via `.git/info/exclude` but must NEVER be tracked. CI
 fails any PR that tracks them. `PLAN-X.md` (Master Plan) is the only
 internal doc that ships with the repo.

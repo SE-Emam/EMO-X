@@ -1,0 +1,11 @@
+{
+ "run_id": "RUN-code25-20260929T205451.318412Z-9f9a9e3575-p68645",
+ "files": {
+  "manifest.json": "ef01d25380083bd3af06db7ffeae041ed252979e2ed9c8625036c665be92e258",
+  "events.jsonl": "b44c3814188017e92a5fa05adb083acace6bb30274eabea8c38fab1c7ade6952",
+  "responses.jsonl": "f3655675d4175f35b0300b0121b0d129f28eb7b5282ebaeab5e203bdf684ec6d",
+  "environment.json": "710bc8db382b9a9831123fca3f2eeaec0827fba1f0594d4bbbf5bacc981e03c4"
+ },
+ "sealed_utc": "2026-09-29T21:06:19.237378+00:00",
+ "sealer": "emo-x seal 1.0"
+}

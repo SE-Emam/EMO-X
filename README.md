@@ -49,7 +49,7 @@ emo --self-test
 - 🧬 **Dynamic variants** — canonical/perturbed/novel from seeds; contamination-resistant.
 - ⏱️ **Trajectory-aware** — tool calls, recoveries, re-planning, clean stops scored.
 - 🧪 **Failure fingerprints** — one primary cause per failure, not a bare zero.
-- 📊 **Statistical honesty** — bootstrap 95% CIs; no winner without an interval.
+- 📊 **Statistical honesty** — bootstrap 95% CIs (SPEC §B54); no winner without an interval.
 - 🩺 **Self-auditing** — saturation/flakiness/contamination flagged by rule.
 - 🔒 **Sealed provenance** — immutable hashed bundles; changes void comparability.
 

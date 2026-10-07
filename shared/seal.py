@@ -131,6 +131,20 @@ def verify_bundle_seal(rundir):
     return True, "ok"
 
 
+def require_seal(rundir):
+    """Fail-closed gate: refuse to render/compare an unsealed bundle (P0-6).
+
+    Returns the rundir unchanged when verify_bundle_seal passes, else
+    raises ValueError naming the reason. Callers must never emit stats,
+    tables, or comparisons from a bundle that fails this gate: any
+    number without a sealed results/raw/RUN-ID/ bundle is inadmissible.
+    """
+    ok, reason = verify_bundle_seal(rundir)
+    if not ok:
+        raise ValueError("refusing unsealed bundle %r: %s" % (rundir, reason))
+    return rundir
+
+
 def _check_seal_struct(seal):
     """Return an error string if seal is not verifiable, else None."""
     if not isinstance(seal, dict):

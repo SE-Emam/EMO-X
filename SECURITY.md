@@ -11,6 +11,13 @@ sandboxed, offline, non-deployable, scope-gated (`docs/security-model.md`,
   There are no real targets, no real secrets, no network execution.
 - The executor runs untrusted model output in sandbox-only temp dirs
   with forbidden-path checks and timeouts (`shared/sandbox.py`).
+  Hardening is proxy-strip + cwd-confinement + timeouts only — NOT
+  full network/syscall isolation. Operators must not expose the
+  harness or MCP server to untrusted networks without OS-level
+  isolation. Model-driven toolchains (patch/tsc/psql) run with
+  strict timeouts and best-effort CPU/memory caps
+  (`_limit_resources` in `suites/code-bench-25/executor.py`); patch
+  diffs are path-validated before application (`_validate_diff_paths`).
 
 ## Reporting a vulnerability
 

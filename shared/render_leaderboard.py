@@ -32,6 +32,10 @@ try:
     import scoring
 except ImportError:
     from shared import scoring
+try:
+    from seal import require_seal
+except ImportError:
+    from shared.seal import require_seal
 
 DIMS = ("correctness", "generalization", "tool_discipline", "recovery",
         "robustness", "safety", "calibration", "efficiency",
@@ -334,6 +338,7 @@ def render_board(rundirs, outdir):
     """Build leaderboard.json + leaderboard.html. Returns outdir."""
     bundles, entries = {}, []
     for rundir in rundirs:
+        require_seal(rundir)  # P0-6 fail-closed: unsealed runs excluded.
         manifest, events, responses = _load_bundle(rundir)
         bundles[manifest.get("run_id")] = (manifest, events, responses)
         entries.append(_entry(manifest, events, responses))

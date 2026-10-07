@@ -12,7 +12,6 @@ audit fix D1); _safe uses os.path.commonpath (audit fix D2).
 """
 
 import os
-import subprocess
 import tempfile
 
 
@@ -33,30 +32,62 @@ def _safe(p, ctx):
     # merely shares the prefix (e.g. /tmp/sbx_evil vs /tmp/sbx) must fail.
     # The root is rstripped so a trailing slash on ctx.root cannot cause
     # a false escape (commonpath never returns a trailing slash).
+    # P0-4: resolve symlinks too — a planted symlink inside the root must
+    # not let reads/writes escape; containment is checked on realpath.
     root = (ctx.root or "").rstrip(os.sep) or os.sep
+    root_real = os.path.realpath(root)
     try:
         if os.path.commonpath([full, root]) != root:
+            raise ValueError("path escape")
+        resolved = os.path.realpath(full)
+        if (resolved != root_real
+                and os.path.commonpath([resolved, root_real]) != root_real):
             raise ValueError("path escape")
     except ValueError:
         raise ValueError("path escape")
     return full
 
 
+def _refuse_symlink(path):
+    if os.path.islink(path):
+        raise ValueError("symlink refused: %r" % (path,))
+
+
 def tool_ls(p, ctx):
     d = _safe(p or ".", ctx)
+    _refuse_symlink(d)
     if not os.path.isdir(d):
         return False, "ERROR: not a directory: %s" % p
-    return True, "\n".join(sorted(os.listdir(d)))
+    # Audit M: open the directory TOCTOU-safe (refuse symlinks at use
+    # time, not only at check time).
+    try:
+        fd = os.open(d, os.O_RDONLY | os.O_NOFOLLOW)
+    except OSError:
+        return False, "ERROR: symlink refused: %s" % p
+    try:
+        return True, "\n".join(sorted(os.listdir(fd)))
+    finally:
+        os.close(fd)
 
 
 def tool_read(p, ctx):
     f = _safe(p, ctx)
+    _refuse_symlink(f)
     if not os.path.isfile(f):
         ctx.nonexistent += 1
         return False, "ERROR: no such file: %s" % p
     ctx.reads.append(p)
-    with open(f) as fh:
-        data = fh.read()
+    # Audit M: O_NOFOLLOW at use time closes the check/use race that a
+    # pre-open islink check alone leaves open.
+    try:
+        fd = os.open(f, os.O_RDONLY | os.O_NOFOLLOW)
+    except OSError:
+        return False, "ERROR: symlink refused: %s" % p
+    try:
+        with os.fdopen(fd) as fh:
+            data = fh.read()
+    except OSError:
+        return False, "ERROR: cannot read: %s" % p
     return True, data[:6000] + ("...[truncated]" if len(data) > 6000 else "")
 
 
@@ -84,8 +115,9 @@ def tool_edit(path, old, new, ctx):
         data = fh.read()
     if old not in data:
         return False, "ERROR: `old` block not found verbatim (check whitespace)"
-    new_data = data.replace(old, new, 1)
-    # Re-read at write time: refuse if the file changed under us.
+    # Best-effort freshness check (non-atomic): re-read and refuse if the
+    # file changed under us. Audit SEC-3: removed the dead first
+    # new_data assignment; the post-reread value is the one written.
     with open(f) as fh:
         fresh = fh.read()
     if fresh != data:

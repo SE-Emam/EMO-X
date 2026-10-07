@@ -6,16 +6,18 @@ repos:
     hooks:
       - id: emox-compile
         name: emox compileall
-        entry: python3 -m compileall -q shared suites generators judges health mcp-server
+        entry: python3 -m compileall -q shared suites generators judges health mcp-server adapters tests
         language: system
         pass_filenames: false
       - id: emox-secrets
         name: emox secrets scan
-        entry: bash -c '! rg -n --pcre2 "(sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16})" --glob "!suites/security/fixtures/*" --glob "!security-bench/fixtures/*" --glob "!shared/PROMPT_PACK_v1.md" --glob "!reports/*" shared suites generators judges health mcp-server adapters tests prompts'
+        # Parity with .github/workflows/ci.yml (audit SEC-4): same regex
+        # and globs, so a leak fails locally, not only in CI.
+        entry: bash -c '! rg -n --pcre2 "(sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|(?i:api[_-]?key\s*[:=]\s*['"][^'"]{8,}|password\s*[:=]\s*['"][^'"]{6,}|bearer\s+[A-Za-z0-9\-_.]{16,}))" --glob "!suites/security/fixtures/*" --glob "!security-bench/fixtures/*" --glob "!shared/PROMPT_PACK_v1.md" --glob "!reports/*" shared suites generators judges health mcp-server adapters tests prompts'
         language: system
         pass_filenames: false
       - id: emox-patterns
         name: emox dangerous-pattern guard
-        entry: bash -c '! rg -n "shell\\s*=\\s*True|os\\.system|import pickle|[^_.a-zA-Z]eval\\(|[^_.a-zA-Z]exec\\(" --glob "*.py" shared suites generators judges health mcp-server'
+        entry: bash -c '! rg -n "shell\\s*=\\s*True|os\\.system|import pickle|[^_.a-zA-Z]eval\\(|[^_.a-zA-Z]exec\\(" --glob "*.py" shared suites generators judges health mcp-server adapters tests'
         language: system
         pass_filenames: false

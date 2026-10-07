@@ -1,5 +1,13 @@
 """EMO-X unified runner (PROMPT_PACK v1).
 
+DEPRECATED legacy path: the flat-JSON branch at the end of main()
+(--suite code25/agent-loop/all with a real backend) is frozen and
+NON-COMPARABLE with sealed bundles under results/raw/RUN-ID/
+(SPEC 33). New work must go through runner.run_suite (the
+_NEW_SUITES/stub branch above), which is the single source of truth.
+The legacy branch emits a DEPRECATED warning and tags its output
+accordingly; removal is scheduled (see Technical Debt Register).
+
 Suites: code25 | agent-loop | all.  Prompts are FROZEN — byte-identical for
 every contender (see shared/PROMPT_PACK_v1.md). Any prompt change = new
 PROMPT_PACK version + full re-baseline, else the round is void.
@@ -951,7 +959,14 @@ def main(argv=None):
             "timestamp": stamp,
             "trials": args.trials,
             "suites": suites,
-            "only": only}
+            "only": only,
+            "compatibility": "LEGACY-FLAT-JSON DEPRECATED: "
+                             "NON-COMPARABLE with results/raw/RUN-ID "
+                             "sealed bundles (SPEC 33). Use "
+                             "runner.run_suite for official runs."}
+    log.warning("DEPRECATED legacy flat-JSON path: output is "
+                "NON-COMPARABLE with sealed RUN-ID bundles; "
+                "use runner.run_suite for official runs.")
     for s in suites:
         if s == "code25":
             full["code25"] = run_code25(chat, only, max(args.trials, 1))

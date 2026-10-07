@@ -78,7 +78,11 @@ def _finite(name, value):
                          % (name, value))
     return value
 
-__all__ = ["comparison_key", "is_directly_comparable"]
+
+# NOTE (audit L): no module-level __all__ by design — this module
+# exposes ~70 public scoring helpers and any short allow-list would
+# lie to consumers. `from scoring import *` is not used anywhere
+# (verified); import names explicitly.
 
 # ---------------------------------------------------------------------------
 # B4/B5. Task-level partial credit + mandatory gates

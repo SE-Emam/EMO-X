@@ -23,6 +23,10 @@ try:
     from report_v2 import build_v2_report
 except ImportError:
     from shared.report_v2 import build_v2_report
+try:
+    from seal import require_seal
+except ImportError:
+    from shared.seal import require_seal
 
 
 def _load(name, rundir):
@@ -46,6 +50,7 @@ def _bar(label, value, color="#2c7be5"):
 
 def render(rundir, outdir):
     """Build report.json + report.html from a raw bundle. Returns outdir."""
+    require_seal(rundir)  # P0-6 fail-closed: no stats without a valid seal.
     manifest = _load("manifest.json", rundir)
     attempts = _load("events.jsonl", rundir)
     responses = _load("responses.jsonl", rundir)

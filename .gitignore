@@ -18,3 +18,10 @@ reports/*.md
 .env
 .venv/
 venv/
+
+# Agent/CLI run artifacts accidentally written to repo root (audit QUAL-1)
+/aggregate.py
+/calc.py
+/longest_pal.py
+/اجمع.py
+results/official/*.json

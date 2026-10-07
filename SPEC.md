@@ -949,6 +949,14 @@ scope-gated
 
 Security execution must never require real credentials, real targets, or external infrastructure.
 
+> **Isolation scope (binding, audit H5):** sandbox isolation is
+> proxy-strip + cwd-confinement + timeouts ONLY — NOT full network or
+> syscall isolation; direct sockets from model code remain possible
+> without OS-level net namespaces (see `docs/security-model.md`,
+> `shared/sandbox.py::_clean_env`). Operators must not expose the
+> harness or MCP server to untrusted networks without OS-level
+> isolation.
+
 ---
 
 # 25. Long-Horizon Evaluation

@@ -1,5 +1,9 @@
 name: ci
 
+# Least privilege: the harness job only checks out and runs tests.
+permissions:
+  contents: read
+
 on:
   push:
     branches: [master, main]
@@ -14,7 +18,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Static syntax check (compileall)
-        run: python3 -m compileall -q shared suites generators judges health mcp-server tests
+        run: python3 -m compileall -q shared suites generators judges health mcp-server adapters tests
       - name: Secrets scan (fail on real credentials)
         # Synthetic markers (FAKE-, EMO{SYNTH_) are expected fixtures.
         # Exclude: fixtures, security-bench fixtures, PROMPT_PACK (Arabic
@@ -30,7 +34,7 @@ jobs:
       - name: Dangerous-pattern guard (no shell/eval/exec/pickle)
         run: |
           ! rg -n "shell\s*=\s*True|os\.system|import pickle|[^_.a-zA-Z]eval\(|[^_.a-zA-Z]exec\(" \
-            --glob '*.py' shared suites generators judges health mcp-server || exit 1
+            --glob '*.py' shared suites generators judges health mcp-server adapters tests || exit 1
           echo "dangerous-pattern scan clean"
       - name: Local-only files guard (never track internal docs)
         run: |

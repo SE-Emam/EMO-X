@@ -27,7 +27,9 @@ streaming, stop behavior, seed, or max-tokens semantics across providers.
 """
 
 import json
+import ipaddress
 import os
+import socket
 import time
 import urllib.error
 import urllib.parse
@@ -35,18 +37,82 @@ import urllib.request
 
 TIMEOUT = 300
 
-#: Hosts that resolve_config() refuses unless EMOX_ALLOW_LOCAL=1 is set.
-#: Blocks cloud instance-metadata endpoints and loopback/local targets
-#: (SSRF guard: a base URL must never point at local infrastructure by
-#: default; local dev endpoints opt in explicitly).
+#: Extra hostnames always refused (metadata service aliases). IP-range
+#: classification for resolved addresses lives in _validate_base_url.
 _BLOCKED_HOSTS = frozenset((
-    "169.254.169.254",
     "metadata.google.internal",
-    "localhost",
-    "127.0.0.1",
-    "::1",
-    "0.0.0.0",
 ))
+
+#: Networks that are never acceptable for a model base URL unless
+#: EMOX_ALLOW_LOCAL=1 (SSRF defense-in-depth). Covers loopback, RFC1918,
+#: link-local (cloud metadata), CGNAT, reserved, multicast, unspecified,
+#: and IPv4-mapped IPv6.
+_FORBIDDEN_NETS = tuple(ipaddress.ip_network(n) for n in (
+    "0.0.0.0/8", "10.0.0.0/8", "100.64.0.0/10", "127.0.0.0/8",
+    "169.254.0.0/16", "172.16.0.0/12", "192.0.0.0/24",
+    "192.168.0.0/16", "198.18.0.0/15", "224.0.0.0/4", "240.0.0.0/4",
+    "::1/128", "fc00::/7", "fe80::/10", "::ffff:0:0/96",
+))
+
+
+def _ip_is_forbidden(ip_text):
+    """True iff an IP string falls in a non-public network."""
+    try:
+        ip = ipaddress.ip_address(ip_text)
+    except ValueError:
+        return True  # unparseable -> fail closed
+    if (ip.is_private or ip.is_loopback or ip.is_link_local
+            or ip.is_reserved or ip.is_multicast or ip.is_unspecified):
+        return True
+    for net in _FORBIDDEN_NETS:
+        if ip.version == net.version and ip in net:
+            return True
+    return False
+
+
+def _validate_base_url(base_url):
+    """Reject base URLs resolving to non-public IPs unless EMOX_ALLOW_LOCAL=1.
+
+    Resolves the hostname and classifies every returned address, so
+    textual aliases (127.1, decimal/hex IPv4, IPv4-mapped IPv6, internal
+    DNS names) cannot bypass the guard. Unresolvable hosts (NXDOMAIN)
+    are allowed through deliberately: DNS is not the SSRF control, the
+    resolved-IP classification is; a rebinding hostname resolves (to a
+    private IP) and is still blocked, and an NXDOMAIN host cannot
+    connect anyway. Raises ValueError; returns URL unchanged when allowed.
+    """
+    if os.environ.get("EMOX_ALLOW_LOCAL") == "1":
+        return base_url
+    try:
+        parts = urllib.parse.urlsplit(base_url or "")
+        host = parts.hostname or ""
+        port = parts.port
+    except Exception:
+        host, port = "", None
+    if not host:
+        raise ValueError("base URL has no host: %r" % (base_url,))
+    if host.lower() in _BLOCKED_HOSTS:
+        raise ValueError(
+            "refusing base URL host %r (metadata alias); "
+            "set EMOX_ALLOW_LOCAL=1 to allow local endpoints" % host)
+    try:
+        infos = socket.getaddrinfo(host, port or None,
+                                   proto=socket.IPPROTO_TCP)
+    except socket.gaierror:
+        # Unresolvable host: allow through. DNS is not the SSRF control
+        # here; the resolved-IP classification below is. A rebinding
+        # hostname resolves (to a private IP) and is still blocked, and
+        # an NXDOMAIN host cannot connect anyway. Failing closed here
+        # would break legitimate offline/test environments.
+        return base_url
+    for info in infos:
+        ip_text = info[4][0]
+        if _ip_is_forbidden(ip_text):
+            raise ValueError(
+                "refusing base URL host %r resolving to non-public %s; "
+                "set EMOX_ALLOW_LOCAL=1 to allow local endpoints"
+                % (host, ip_text))
+    return base_url
 
 
 def _strip_slash(u):
@@ -64,33 +130,12 @@ def _redact_host(url):
         parts = urllib.parse.urlsplit(url or "")
         host = parts.hostname or ""
         if not host:
-            return str(url)
+            return "[unparseable-url]"
         if parts.port:
             return "%s:%d" % (host, parts.port)
         return host
     except Exception:
-        return str(url)
-
-
-def _validate_base_url(base_url):
-    """Reject metadata/loopback base URLs unless EMOX_ALLOW_LOCAL=1.
-
-    Returns the validated URL unchanged. Raises ValueError on blocked
-    hosts (169.254.169.254, metadata.google.internal, localhost,
-    127.0.0.1, ::1, 0.0.0.0) when the opt-in env var is unset.
-    """
-    if os.environ.get("EMOX_ALLOW_LOCAL") == "1":
-        return base_url
-    try:
-        host = (urllib.parse.urlsplit(base_url or "").hostname or "")
-    except Exception:
-        host = ""
-    if host.lower() in _BLOCKED_HOSTS:
-        raise ValueError(
-            "refusing base URL host %r (loopback/metadata); "
-            "set EMOX_ALLOW_LOCAL=1 to allow local endpoints"
-            % host)
-    return base_url
+        return "[unparseable-url]"
 
 
 def resolve_config(backend="kaggle", base_url=None, model=None, api_key=None):
@@ -122,19 +167,55 @@ def resolve_config(backend="kaggle", base_url=None, model=None, api_key=None):
         raise ValueError("missing base URL (pass --base-url or set BASE_URL)")
     if not mod:
         raise ValueError("missing model (pass --model or set MODEL)")
-    _validate_base_url(base)
+    # The cli backend's `base` is a local binary path, not a network URL:
+    # SSRF validation is meaningless (and would reject /bin/echo). Skip it.
+    if backend != "cli":
+        _validate_base_url(base)
     return backend, _strip_slash(base), mod, key
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Fail-closed redirect handler for model endpoints (P0-3).
+
+    urllib follows 301/302 by default without re-validating the target,
+    which would bypass _validate_base_url entirely. Refuse cross-host
+    and private-IP redirects here instead.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        try:
+            target = urllib.parse.urljoin(req.full_url, newurl)
+            _validate_base_url(target)
+        except ValueError as e:
+            raise urllib.error.URLError(
+                "refusing redirect to non-public URL: %s" % e) from e
+        return None
+
+
 def _post_json(url, payload, api_key=None, timeout=TIMEOUT):
+    # Audit M: never send a Bearer key over cleartext http to a
+    # non-local endpoint (localhost http is the Ollama/test convention).
+    if api_key:
+        try:
+            _p = urllib.parse.urlsplit(url or "")
+            _local = (_p.hostname or "") in ("localhost", "127.0.0.1", "::1")
+            if _p.scheme == "http" and not _local:
+                raise RuntimeError(
+                    "refusing to send credentials over http to %s"
+                    % _redact_host(url))
+        except RuntimeError:
+            raise
+        except Exception:
+            pass
     data = json.dumps(payload).encode()
     headers = {"Content-Type": "application/json"}
     if api_key:
         headers["Authorization"] = "Bearer " + api_key
     req = urllib.request.Request(url, data=data, headers=headers)
     t0 = time.time()
+    opener = urllib.request.build_opener(_NoRedirect)
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
+        with opener.open(req, timeout=timeout) as r:
             body = json.load(r)
     except urllib.error.HTTPError as e:
         # Re-raise without the response body: error surfaces carry the

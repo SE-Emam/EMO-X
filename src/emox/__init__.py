@@ -17,12 +17,19 @@ import sys
 
 __version__ = "2.0.0-rc1"
 
-_TREE_DIRS = ("shared", "suites")
+#: Runtime tree dirs. Single source of truth mirrored in setup.py TREE_DIRS:
+#: the wheel ships these verbatim under emox/data/. Keep both in sync.
+_TREE_DIRS = ("shared", "suites", "prompts", "generators", "judges",
+              "health", "adapters", "mcp-server", "commands")
 
 
 def _is_tree(root):
-    return bool(root) and os.path.isfile(
-        os.path.join(root, "shared", "run.py"))
+    if not (root and os.path.isfile(
+            os.path.join(root, "shared", "run.py"))):
+        return False
+    # Strict check: every shipped dir must be present so a partial wheel
+    # or checkout fails fast here instead of mid-benchmark.
+    return all(os.path.isdir(os.path.join(root, d)) for d in _TREE_DIRS)
 
 
 def tree_root():
@@ -50,6 +57,9 @@ def tree_root():
 def _boot():
     """Put the tree on sys.path. Idempotent. Returns the tree root."""
     root = tree_root()
+    # shared/ first for the harness's bare imports (runner, backends,
+    # scoring, ...); root itself so generators/judges/health/adapters
+    # resolve as packages (from generators.task_dsl import ...).
     for sub in ("shared", ""):
         path = os.path.join(root, sub) if sub else root
         if path not in sys.path:

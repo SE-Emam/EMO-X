@@ -14,10 +14,16 @@ reasoning.
 
 ## Sandbox
 
-`shared/sandbox.py`: sandbox-only temp dirs, path-escape rejection,
-forbidden prefixes (`/etc`, `/root`, `/home`, `/var/run/secrets`),
-proxy-stripped offline environment, hard timeouts
-(`SandboxTimeout`). Scope gates fail closed: missing or ambiguous
+`shared/sandbox.py`: sandbox-only temp dirs, realpath-based path-escape
+rejection (symlinks resolved, `commonpath` confinement, symlink reads
+and writes refused via `O_NOFOLLOW`), forbidden prefixes (`/etc`,
+`/root`, `/home`, `/var/run/secrets`, `/proc`, `/sys`, `/dev`,
+`/var/run/docker.sock`, plus `~/.aws`/`~/.ssh`), proxy-stripped
+environment (**proxy-strip only — NOT full network isolation; direct
+sockets from model code remain possible without OS-level net
+namespaces**), hard timeouts (`SandboxTimeout`). All model-code
+execution is routed through `run_in_sandbox` (cwd-confined +
+proxy-stripped env). Scope gates fail closed: missing or ambiguous
 authorization is denied.
 
 ## Safety gate (non-compensatory)

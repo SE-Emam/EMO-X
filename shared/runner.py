@@ -673,7 +673,7 @@ def _family_variants(executor, family):
 def _run_suite_loop(executor, suite, chat, model_id, backend, seed,
                         instances, trials, fault_rate, fams, run_id,
                         provider_profile, scope, sampling, prog, attempts,
-                        responses, stream):
+                        responses, stream, force=False):
     """Attempt loop with per-attempt streaming (Phase 3)."""
     for index in range(1, max(instances, 1) + 1):
         for family in fams:
@@ -840,7 +840,7 @@ def run_suite(suite, chat, model_id="stub-model", backend="stub", seed=0,
         _run_suite_loop(executor, suite, chat, model_id, backend, seed,
                         instances, trials, fault_rate, fams, run_id,
                         provider_profile, scope, sampling, prog, attempts,
-                        responses, stream)
+                        responses, stream, force=force)
     except BaseException:
         stream.abort()
         raise

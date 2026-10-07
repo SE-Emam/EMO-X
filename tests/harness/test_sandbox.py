@@ -55,6 +55,62 @@ class TestSandbox(unittest.TestCase):
         self.assertTrue(ok)
 
 
+class TestSandboxP04(unittest.TestCase):
+    """P0-4: symlink/realpath/denylist hardening (fail-closed)."""
+
+    def test_proc_sys_dev_forbidden(self):
+        root = sandbox.create_sandbox()
+        try:
+            for p in ("/proc/self/environ", "/sys/kernel",
+                      "/dev/null", "/var/run/docker.sock"):
+                with self.assertRaises(sandbox.SandboxPathEscape, msg=p):
+                    sandbox.resolve_sandbox_path(root, p)
+        finally:
+            sandbox.destroy_sandbox(root)
+
+    def test_symlink_inside_root_cannot_escape(self):
+        root = sandbox.create_sandbox()
+        try:
+            outside = os.path.join(root, "outside.txt")
+            with open(outside, "w") as f:
+                f.write("secret")
+            link = os.path.join(root, "link.txt")
+            os.symlink(outside, link)
+            # Resolved path stays inside root (no escape), but direct
+            # symlink read/write is refused at the call sites.
+            with self.assertRaises(sandbox.SandboxPathEscape):
+                sandbox.write_sandbox_file(root, "link.txt", "evil")
+        finally:
+            sandbox.destroy_sandbox(root)
+
+    def test_write_refuses_symlink_target(self):
+        root = sandbox.create_sandbox()
+        try:
+            real = os.path.join(root, "real.txt")
+            with open(real, "w") as f:
+                f.write("orig")
+            link = os.path.join(root, "w.txt")
+            os.symlink(real, link)
+            with self.assertRaises(sandbox.SandboxPathEscape):
+                sandbox.write_sandbox_file(root, "w.txt", "evil")
+            with open(real) as f:
+                self.assertEqual(f.read(), "orig")
+        finally:
+            sandbox.destroy_sandbox(root)
+
+    def test_clean_env_strips_proxy_and_local_bypass(self):
+        os.environ["EMOX_ALLOW_LOCAL"] = "1"
+        os.environ["http_proxy"] = "http://proxy/x"
+        try:
+            env = sandbox._clean_env()
+        finally:
+            del os.environ["EMOX_ALLOW_LOCAL"]
+            del os.environ["http_proxy"]
+        self.assertNotIn("EMOX_ALLOW_LOCAL", env)
+        self.assertNotIn("http_proxy", env)
+        self.assertEqual(env.get("EMOX_SANDBOX"), "1")
+
+
 class TestSafety(unittest.TestCase):
     def test_synthetic_flag(self):
         self.assertTrue(safety.is_synthetic_flag("flag EMO{SYNTH_x-1} here"))

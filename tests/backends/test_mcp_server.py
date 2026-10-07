@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import unittest
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -63,7 +64,10 @@ class MCPToolTests(unittest.TestCase):
             self.assertIn(key, body)
 
     def test_run_suite_stub_sealed(self):
-        out = "/tmp/emox_mcp_test"
+        # P0-2: out_root must satisfy MCP confinement — build it under
+        # the resolved tempdir, never a hardcoded /tmp path (a symlink
+        # on some platforms).
+        out = os.path.join(tempfile.gettempdir(), "emox_mcp_test")
         r = call("run_suite", {"suite": "dynamic-code", "backend": "stub",
                                "families": ["DC1"], "out_root": out})
         try:

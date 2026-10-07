@@ -146,14 +146,19 @@ class SafeTrailingSlashTests(unittest.TestCase):
 
 
 class PostJsonTests(unittest.TestCase):
+    def _opener_side_effect(self, exc):
+        from unittest import mock
+        opener = mock.Mock()
+        opener.open.side_effect = exc
+        return mock.patch("urllib.request.build_opener", return_value=opener)
+
     def test_http_error_raised_without_body(self):
         import io
         import urllib.error
-        from unittest import mock
         fp = io.BytesIO(b"secret-body-marker-sensitive-payload")
         err = urllib.error.HTTPError(
             "http://example.com/x", 500, "Internal", {}, fp)  # type: ignore[arg-type]
-        with mock.patch("urllib.request.urlopen", side_effect=err):
+        with self._opener_side_effect(err):
             with self.assertRaises(RuntimeError) as ctx:
                 backends._post_json("http://example.com/x", {"a": 1})
         msg = str(ctx.exception)
@@ -163,12 +168,21 @@ class PostJsonTests(unittest.TestCase):
 
     def test_url_error_wrapped_with_host(self):
         import urllib.error
-        from unittest import mock
         err = urllib.error.URLError("boom")
-        with mock.patch("urllib.request.urlopen", side_effect=err):
+        with self._opener_side_effect(err):
             with self.assertRaises(RuntimeError) as ctx:
                 backends._post_json("http://example.com/y", {})
         self.assertIn("example.com", str(ctx.exception))
+
+    def test_redirect_to_private_refused(self):
+        """P0-3: a 302 to a non-public URL must not be followed."""
+        import urllib.request
+        req = urllib.request.Request("http://example.com/chat",
+                                     data=b"{}")
+        handler = backends._NoRedirect()
+        with self.assertRaises(urllib.error.URLError):
+            handler.redirect_request(req, None, 302, "Found", {},
+                                     "http://169.254.169.254/latest")
 
     def test_redact_host_strips_userinfo(self):
         host = backends._redact_host("http://user:pass@example.com:8080/v1")
@@ -199,6 +213,41 @@ class ValidateBaseUrlTests(unittest.TestCase):
         for url in self.BLOCKED:
             with self.assertRaises(ValueError, msg=url):
                 backends._validate_base_url(url)
+
+    def test_ssrf_alias_bypasses_denied(self):
+        """Audit SEC-1: textual aliases of loopback/private must fail.
+
+        Regression guard for the string-comparison SSRF weakness: every
+        one of these resolves to a non-public IP but escaped the old
+        frozenset check.
+        """
+        aliases = (
+            "http://127.0.0.2:8000/v1",
+            "http://127.1:8000/v1",
+            "http://2130706433:8000/v1",
+            "http://0x7f000001:8000/v1",
+            "http://017700000001:8000/v1",
+            "http://[::ffff:127.0.0.1]:8000/v1",
+            "http://10.0.0.1:8000/v1",
+            "http://192.168.1.1:8000/v1",
+            "http://172.16.0.1:8000/v1",
+        )
+        for url in aliases:
+            with self.assertRaises(ValueError, msg=url):
+                backends._validate_base_url(url)
+
+    def test_private_ip_helper(self):
+        for ip in ("127.0.0.1", "127.0.0.2", "10.1.2.3", "192.168.0.1",
+                   "169.254.169.254", "::1", "::ffff:10.0.0.1", "garbage"):
+            self.assertTrue(backends._ip_is_forbidden(ip), msg=ip)
+        self.assertFalse(backends._ip_is_forbidden("93.184.216.34"))
+
+    def test_cli_backend_skips_ssrf_guard(self):
+        """The cli backend's base is a local binary path, not a URL."""
+        name, base, mod, _ = backends.resolve_config(
+            "cli", "/bin/echo", "opencode/m", None)
+        self.assertEqual(name, "cli")
+        self.assertEqual(base, "/bin/echo")
 
     def test_public_host_allowed(self):
         out = backends._validate_base_url("https://api.example.com/v1")
@@ -283,6 +332,88 @@ class WriteRawBundleTests(unittest.TestCase):
             with self.assertRaises(FileExistsError):
                 runner.write_raw_bundle(out, self._manifest(run_id), [],
                                         [], {})
+
+
+class McpCliGateTests(unittest.TestCase):
+    """P0-1: cli backend over MCP is opt-in + allowlisted (fail-closed)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.srv = _load_mcp_server()
+
+    def setUp(self):
+        self._prev_opt = os.environ.get("EMOX_MCP_ALLOW_CLI")
+        self._prev_list = os.environ.get("EMOX_MCP_CLI_ALLOWLIST")
+        os.environ.pop("EMOX_MCP_ALLOW_CLI", None)
+        os.environ.pop("EMOX_MCP_CLI_ALLOWLIST", None)
+
+    def tearDown(self):
+        if self._prev_opt is None:
+            os.environ.pop("EMOX_MCP_ALLOW_CLI", None)
+        else:
+            os.environ["EMOX_MCP_ALLOW_CLI"] = self._prev_opt
+        if self._prev_list is None:
+            os.environ.pop("EMOX_MCP_CLI_ALLOWLIST", None)
+        else:
+            os.environ["EMOX_MCP_CLI_ALLOWLIST"] = self._prev_list
+
+    def test_cli_denied_by_default(self):
+        with self.assertRaises(PermissionError):
+            self.srv._chat_from_params(
+                {"backend": "cli", "base_url": "/bin/echo",
+                 "model": "opencode/m"})
+
+    def test_cli_relative_path_denied_even_opted_in(self):
+        os.environ["EMOX_MCP_ALLOW_CLI"] = "1"
+        os.environ["EMOX_MCP_CLI_ALLOWLIST"] = "/bin/echo"
+        with self.assertRaises(PermissionError):
+            self.srv._chat_from_params(
+                {"backend": "cli", "base_url": "opencode",
+                 "model": "opencode/m"})
+
+    def test_cli_non_allowlisted_absolute_denied(self):
+        os.environ["EMOX_MCP_ALLOW_CLI"] = "1"
+        os.environ["EMOX_MCP_CLI_ALLOWLIST"] = "/bin/echo"
+        with self.assertRaises(PermissionError):
+            self.srv._chat_from_params(
+                {"backend": "cli", "base_url": "/bin/sh",
+                 "model": "opencode/m"})
+
+    def test_unknown_backend_denied(self):
+        with self.assertRaises(ValueError):
+            self.srv._chat_from_params(
+                {"backend": "evil", "base_url": "https://x/v1",
+                 "model": "m"})
+
+
+class McpConfineTests(unittest.TestCase):
+    """P0-2: every MCP path input is confined; repo root is not a root."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.srv = _load_mcp_server()
+
+    def test_repo_root_itself_refused(self):
+        with self.assertRaises(PermissionError):
+            self.srv._confine(self.srv.ROOT)
+
+    def test_etc_and_ssh_refused(self):
+        for p in ("/etc", "/etc/passwd",
+                  os.path.expanduser("~/.ssh")):
+            with self.assertRaises(PermissionError, msg=p):
+                self.srv._confine(p)
+
+    def test_out_root_none_passthrough(self):
+        self.assertIsNone(self.srv._confine_out_root(None))
+
+    def test_out_root_outside_refused(self):
+        with self.assertRaises(PermissionError):
+            self.srv._confine_out_root("/etc")
+
+    def test_out_root_inside_results_allowed(self):
+        target = os.path.join(self.srv.ROOT, "results", "raw")
+        self.assertEqual(self.srv._confine_out_root(target),
+                         os.path.realpath(target))
 
 
 if __name__ == "__main__":

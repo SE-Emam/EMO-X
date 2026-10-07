@@ -14,6 +14,8 @@ from setuptools.command.build_py import build_py
 
 TREE_DIRS = ("shared", "suites", "prompts", "generators", "judges",
              "health", "adapters", "mcp-server", "commands")
+# NOTE: keep in sync with src/emox/__init__.py _TREE_DIRS (single source
+# of truth for the runtime tree; _is_tree() validates all of these).
 TREE_FILES = ("SKILL.md", "LICENSE", "README.md", "SPEC.md",
               "DENOMINATORS.md", "REPORT_TEMPLATE.md")
 IGNORE = shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo",

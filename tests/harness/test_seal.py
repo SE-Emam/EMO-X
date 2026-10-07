@@ -197,5 +197,34 @@ class TestDerivedBundle(unittest.TestCase):
                                           raw_rundir=rawdir)
 
 
+class TestRequireSeal(unittest.TestCase):
+    """P0-6: fail-closed gate — no stats without a valid seal."""
+
+    def test_require_seal_passes_when_valid(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rundir = make_raw(tmp)
+            seal.seal_bundle(rundir)
+            self.assertEqual(seal.require_seal(rundir), rundir)
+
+    def test_require_seal_refuses_unsealed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rundir = make_raw(tmp)
+            with self.assertRaises(ValueError) as ctx:
+                seal.require_seal(rundir)
+            self.assertIn("unsealed", str(ctx.exception))
+
+    def test_require_seal_refuses_tampered(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rundir = make_raw(tmp)
+            seal.seal_bundle(rundir)
+            target = os.path.join(rundir, "manifest.json")
+            make_writable(target)
+            with open(target, "ab") as f:
+                f.write(b"X")
+            with self.assertRaises(ValueError) as ctx:
+                seal.require_seal(rundir)
+            self.assertIn("tampered", str(ctx.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

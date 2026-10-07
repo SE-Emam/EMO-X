@@ -18,6 +18,10 @@ resolve and duplicate basenames never share a process.
 Usage:
   python3 tests/run_all.py            # all suites, table + exit code
   python3 tests/run_all.py --suite scoring   # one suite only
+  python3 tests/run_all.py --count    # print test-function counts only
+
+  --count is the single source of truth for test totals quoted in
+  README/CHANGELOG (never hand-copy a number into docs).
 
 Exit code: 0 iff every selected suite passes.
 """
@@ -76,8 +80,40 @@ def run_suite(name):
                                           last[:220])
 
 
+def count_suite(name):
+    """Count test cases in one directory without running them.
+
+    Runs in an isolated subprocess with the same PYTHONPATH as
+    run_suite(), so package imports resolve identically (in-process
+    counting would undercount when `generators` is not importable).
+    """
+    target = os.path.join(HERE, name)
+    cmd = [sys.executable, "-c",
+           "import unittest; print(unittest.TestLoader()"
+           ".discover(%r).countTestCases())" % target]
+    try:
+        proc = subprocess.run(cmd, cwd=ROOT, env=suite_env(),
+                              capture_output=True, text=True, timeout=120)
+    except subprocess.TimeoutExpired:
+        return -1
+    if proc.returncode != 0:
+        return -1
+    try:
+        return int(proc.stdout.strip().splitlines()[-1])
+    except (ValueError, IndexError):
+        return -1
+
+
 def main(argv=None):
     argv = list(argv or [])
+    if "--count" in argv:
+        total = 0
+        for name in SUITES:
+            n = count_suite(name)
+            total += n
+            print("%-10s %d" % (name, n))
+        print("%-10s %d" % ("total", total))
+        return 0
     only = None
     if "--suite" in argv:
         idx = argv.index("--suite")

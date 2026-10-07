@@ -21,7 +21,16 @@ class SandboxTimeout(TimeoutError):
     """Raised when a sandboxed command exceeds its timeout."""
 
 
-FORBIDDEN_PREFIXES = ("/etc", "/root", "/home", "/var/run/secrets")
+FORBIDDEN_PREFIXES = ("/etc", "/root", "/home", "/var/run/secrets",
+                       "/proc", "/sys", "/dev", "/var/run/docker.sock")
+
+
+def _forbidden_dynamic():
+    """Per-user secret dirs (fail-closed even when $HOME is unusual)."""
+    home = os.path.expanduser("~")
+    if not home or home == "~":
+        return (os.path.expanduser("~/.aws"), os.path.expanduser("~/.ssh"))
+    return (os.path.join(home, ".aws"), os.path.join(home, ".ssh"))
 
 
 def create_sandbox(prefix="emox_sandbox_"):
@@ -37,42 +46,90 @@ def destroy_sandbox(path):
 def resolve_sandbox_path(root, relpath):
     """Resolve relpath inside root; raise SandboxPathEscape on escape. SPEC 35.
 
-    Also blocks absolute paths and configured forbidden prefixes.
+    Canonicalizes via realpath (symlinks resolved) and confines with
+    commonpath (not startswith), then enforces the forbidden-prefix
+    denylist on the RESOLVED path. Absolute inputs are only allowed when
+    already inside root.
     """
     if relpath is None:
         raise SandboxPathEscape("empty path")
     rel = str(relpath)
+    if not rel.strip():
+        raise SandboxPathEscape("empty path")
+    root_real = os.path.realpath(root)
     if os.path.isabs(rel):
         # Absolute paths are only allowed if already inside root.
-        full = os.path.normpath(rel)
+        full = os.path.realpath(os.path.normpath(rel))
     else:
-        full = os.path.normpath(os.path.join(root, rel.lstrip("/")))
-    if full != root and not full.startswith(root + os.sep):
+        full = os.path.realpath(
+            os.path.normpath(os.path.join(root_real, rel.lstrip("/"))))
+    try:
+        inside = (full == root_real
+                  or os.path.commonpath([full, root_real]) == root_real)
+    except ValueError:
         raise SandboxPathEscape("path escape: %r" % (relpath,))
-    for prefix in FORBIDDEN_PREFIXES:
-        if full == prefix or full.startswith(prefix + os.sep):
+    if not inside:
+        raise SandboxPathEscape("path escape: %r" % (relpath,))
+    for prefix in list(FORBIDDEN_PREFIXES) + list(_forbidden_dynamic()):
+        resolved_prefix = os.path.realpath(prefix)
+        if full == resolved_prefix or full.startswith(resolved_prefix + os.sep):
             raise SandboxPathEscape("forbidden path: %r" % (relpath,))
     return full
 
 
+def _refuse_symlink(path, relpath):
+    """Raise SandboxPathEscape if a lexical path is (or traverses) a symlink."""
+    if os.path.islink(path):
+        raise SandboxPathEscape("symlink refused: %r" % (relpath,))
+
+
 def write_sandbox_file(root, relpath, content):
-    """Write text content to a file inside the sandbox. SPEC 35."""
+    """Write text content to a file inside the sandbox. SPEC 35.
+
+    Refuses symlinked targets (O_NOFOLLOW) so a model-planted
+    symlink can never redirect the write outside the sandbox.
+    """
     full = resolve_sandbox_path(root, relpath)
-    os.makedirs(os.path.dirname(full) or root, exist_ok=True)
-    with open(full, "w", encoding="utf-8") as f:
-        f.write(content)
+    # Refuse symlinks on BOTH the lexical path (planted link name) and
+    # the resolved path, before O_NOFOLLOW enforces it at open(2).
+    root_real = os.path.realpath(root)
+    lexical = os.path.normpath(os.path.join(
+        root_real, str(relpath).lstrip("/")))
+    _refuse_symlink(lexical, relpath)
+    _refuse_symlink(full, relpath)
+    parent = os.path.dirname(full) or root
+    os.makedirs(parent, exist_ok=True)
+    fd = os.open(full, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW,
+                 0o600)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(content)
+    except BaseException:
+        try:
+            os.unlink(full)
+        except OSError:
+            pass
+        raise
     return full
 
 
 def _clean_env():
-    """Environment for sandboxed procs: network-off by construction. SPEC 24.
+    """Environment for sandboxed procs: proxy-strip only (NOT net isolation).
 
-    No socket/proxy helpers are provided; proxy vars are stripped so a
-    child cannot reach the network via ambient proxy config.
+    Strips proxy vars (plus EMOX_ALLOW_LOCAL, audit SEC-5) so a child
+    cannot reach the network via ambient proxy config or inherit the
+    parent's SSRF-guard bypass. This is NOT a network sandbox: direct
+    sockets from model code are still possible; true isolation (net
+    namespace/seccomp) is out of scope for the stdlib harness and must
+    not be claimed elsewhere (SPEC 24 wording fixed accordingly).
     """
     env = dict(os.environ)
     for key in ("http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY",
-                "ALL_PROXY", "all_proxy"):
+                "ALL_PROXY", "all_proxy",
+                # Audit SEC-5: never let a sandboxed child inherit the
+                # SSRF-guard bypass; the parent's decision does not
+                # propagate into untrusted child processes.
+                "EMOX_ALLOW_LOCAL"):
         env.pop(key, None)
     env["EMOX_SANDBOX"] = "1"
     return env
@@ -82,7 +139,8 @@ def run_in_sandbox(argv, sandbox_dir=None, timeout=30, input_text=None):
     """Run argv with cwd confined to a temp sandbox dir. SPEC 35.
 
     Returns (returncode, output_tail). Raises SandboxTimeout on timeout.
-    Network-off by construction: no network helpers, proxies stripped.
+    Hardening: cwd-confined + proxy-stripped env only; NOT full network
+    or syscall isolation (see _clean_env).
     """
     own_dir = sandbox_dir is None
     root = sandbox_dir or create_sandbox()
@@ -166,10 +224,17 @@ def safe_tool_run(cmd, ctx, ls_fn, safe_fn, timeout=120):
                 full = safe_fn(p, ctx)
             except ValueError:
                 return False, "ERROR: path escape"
+            if os.path.islink(full):
+                return False, "ERROR: refusing to read symlink: %s" % p
             if not os.path.isfile(full):
                 return False, "ERROR: no such file: %s" % p
-            with open(full, encoding="utf-8", errors="replace") as fh:
-                data = fh.read()
+            fd = os.open(full, os.O_RDONLY | os.O_NOFOLLOW)
+            try:
+                with os.fdopen(fd, encoding="utf-8",
+                               errors="replace") as fh:
+                    data = fh.read()
+            except OSError:
+                return False, "ERROR: refusing to read symlink: %s" % p
             # Audit fix 1: same 6000-char cap as tool_read (memory/context
             # bound) + unified read trail (ctx.reads, AttributeError-safe
             # for minimal test doubles).

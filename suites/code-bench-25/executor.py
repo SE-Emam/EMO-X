@@ -59,6 +59,46 @@ VARIANTS = ("canonical", "perturbed", "novel")
 
 #: Manifest spelling selecting the exponentiation generator subtype.
 H3_MATH_SUBTYPE_MODULAR_EXPONENTIATION = "modular_exponentiation"
+
+
+def _limit_resources():
+    """preexec_fn: cap CPU/memory of toolchain children (POSIX only).
+
+    Audit H6: model-driven toolchains (patch/tsc/psql) must not be able
+    to exhaust the operator machine. Best-effort — silently a no-op
+    where `resource` is unavailable (e.g. Windows).
+    """
+    try:
+        import resource
+        try:
+            resource.setrlimit(resource.RLIMIT_CPU, (60, 60))
+        except (ValueError, OSError):
+            pass
+        try:
+            mem = 512 * 1024 * 1024
+            resource.setrlimit(resource.RLIMIT_AS, (mem, mem))
+        except (ValueError, OSError):
+            pass
+    except ImportError:
+        pass
+
+
+def _validate_diff_paths(diff):
+    """Reject patch diffs that escape the sandbox (audit H4).
+
+    `patch` interprets ---/+++ headers as file paths; a model reply
+    containing `../` or an absolute path would write outside `root`
+    despite cwd confinement. Raises ValueError on refusal.
+    """
+    for line in (diff or "").splitlines():
+        s = line.strip()
+        if s.startswith(("--- ", "+++ ")):
+            path = s[4:].strip().split()[0] if len(s) > 4 else ""
+            low = path.lower()
+            if (not path or ".." in path or path.startswith("/")
+                    or low.startswith("a/../") or low.startswith("b/../")
+                    or path.startswith("\\")):
+                raise ValueError("patch path escape refused: %r" % path[:80])
 #: Runner skips unsupported (family, variant) pairs via TypeError (DEN: a
 #: missing variant observation is NA, never zero).
 
@@ -228,10 +268,15 @@ def check_family(family, reply):
         code = extract_code(reply)
         root = sandbox.create_sandbox()
         try:
-            p = subprocess.run(["python3", "-c", code], cwd=root,
-                               capture_output=True, text=True, timeout=30)
-            ok = p.returncode == 0 and p.stdout.strip() == "5"
-            return ok, (p.stdout + p.stderr)[-500:]
+            # P0-4: model code runs only via run_in_sandbox (cwd-confined
+            # + proxy-stripped env), never bare subprocess.
+            rc, out = sandbox.run_in_sandbox(["python3", "-c", code],
+                                             sandbox_dir=root, timeout=30)
+            lines = [ln for ln in out.strip().splitlines() if ln.strip()]
+            ok = rc == 0 and bool(lines) and lines[-1].strip() == "5"
+            return ok, out[-500:]
+        except sandbox.SandboxTimeout as e:
+            return False, str(e)[:500]
         finally:
             sandbox.destroy_sandbox(root)
     if family == "R1":
@@ -242,16 +287,19 @@ def check_family(family, reply):
         try:
             src = os.path.join(root, "t.rs")
             exe = os.path.join(root, "t")
-            with open(src, "w") as f:
-                f.write(code)
-            c = subprocess.run(["rustc", "-O", src, "-o", exe],
-                               capture_output=True, text=True, timeout=120)
-            if c.returncode != 0:
-                return False, c.stderr[-400:]
-            p = subprocess.run([exe], capture_output=True, text=True,
-                               timeout=30)
-            log = (p.stdout + p.stderr)[-300:]
-            return bool(p.returncode == 0 and "PRIME_OK" in log), log
+            sandbox.write_sandbox_file(root, "t.rs", code)
+            rc, clog = sandbox.run_in_sandbox(
+                ["rustc", "-O", src, "-o", exe],
+                sandbox_dir=root, timeout=120)
+            if rc != 0:
+                return False, clog[-400:]
+            try:
+                rc, log = sandbox.run_in_sandbox(
+                    [exe], sandbox_dir=root, timeout=30)
+            except sandbox.SandboxTimeout as e:
+                return False, str(e)[:300]
+            log = log[-300:]
+            return bool(rc == 0 and "PRIME_OK" in log), log
         finally:
             sandbox.destroy_sandbox(root)
     if family == "R2":
@@ -301,6 +349,10 @@ def check_family(family, reply):
         if shutil.which("patch") is None:
             raise _MissingTool("patch binary not found")
         diff = extract_code(reply, "diff")
+        try:
+            _validate_diff_paths(diff)  # audit H4: refuse path escape
+        except ValueError as e:
+            return False, "REFUSED: %s" % str(e)[:200]
         root = sandbox.create_sandbox()
         try:
             target = os.path.join(root, "calc.py")
@@ -316,7 +368,9 @@ def check_family(family, reply):
                     dry = subprocess.run(["patch", pflag, "--dry-run"],
                                          cwd=root, stdin=f,
                                          capture_output=True, text=True,
-                                         timeout=30)
+                                         timeout=30,
+                                         env=sandbox._clean_env(),
+                                         preexec_fn=_limit_resources)
                 if dry.returncode == 0:
                     strip = pflag
                     break
@@ -324,7 +378,9 @@ def check_family(family, reply):
                 return False, (dry.stdout + dry.stderr)[-300:]
             with open(dp) as f:
                 subprocess.run(["patch", strip, "-s"], cwd=root, stdin=f,
-                               capture_output=True, text=True, timeout=30)
+                               capture_output=True, text=True, timeout=30,
+                               env=sandbox._clean_env(),
+                               preexec_fn=_limit_resources)
             with open(target) as f:
                 content = f.read()
             ok = "def sum_all" in content and "s += i" in content
@@ -379,7 +435,9 @@ def check_family(family, reply):
                         "greet({name: \"Test\", age: 1});\n")
             c = subprocess.run([tsc, "--noEmit", "--strict",
                                 os.path.join(root, "t.ts")],
-                               capture_output=True, text=True, timeout=120)
+                               capture_output=True, text=True, timeout=120,
+                               cwd=root, env=sandbox._clean_env(),
+                               preexec_fn=_limit_resources)
             return c.returncode == 0, c.stderr[-400:] or "tsc-clean"
         finally:
             sandbox.destroy_sandbox(root)
@@ -393,7 +451,9 @@ def check_family(family, reply):
                  "('Keyboard',50),('Mouse',25),('Monitor',200); ")
         c = subprocess.run(["psql", "-h", "/tmp", "-p", "55433", "-d",
                             "postgres", "-tA", "-c", setup + " " + q],
-                           capture_output=True, text=True, timeout=60)
+                           capture_output=True, text=True, timeout=60,
+                           env=sandbox._clean_env(),
+                           preexec_fn=_limit_resources)
         rows = [ln for ln in c.stdout.strip().splitlines() if ln.strip()]
         return bool(c.returncode == 0 and rows == ["Keyboard", "Mouse"]), \
             str(rows) + (c.stderr[-200:] if c.returncode else "")
@@ -668,29 +728,60 @@ def harness_sha256():
         return sha256_bytes(f.read())
 
 
+def _validate_run_id(run_id):
+    """Confine run_id to a single path segment (audit H2).
+
+    The runner generates run_ids via urandom, but write_raw_run is
+    directly callable — a manifest with run_id '../../tmp/evil' must
+    never escape out_root. Raises ValueError on refusal.
+    """
+    rid = run_id or ""
+    if (not rid or ".." in rid or "/" in rid or "\\" in rid
+            or rid.startswith(".") or len(rid) > 128):
+        raise ValueError("run_id refused: %r" % (rid[:60],))
+
+
 def write_raw_run(out_root, run_manifest, attempts, responses,
                   environment=None):
-    """Write results/raw/RUN-ID/ layout (SPEC 33). Returns run dir path."""
+    """Write results/raw/RUN-ID/ layout (SPEC 33). Returns run dir path.
+
+    Atomic publish (audit H2): files are staged in a sibling temp dir
+    and published with a single os.replace, so a crash never leaves a
+    half-written bundle behind.
+    """
+    import tempfile
     manifest = validate_run_manifest(run_manifest)
     run_id = manifest.get("run_id", run_manifest.get("run_id", "RUN"))
+    _validate_run_id(run_id)
+    out_real = os.path.realpath(out_root)
     rundir = os.path.join(out_root, run_id)
-    os.makedirs(rundir, exist_ok=True)
-    with open(os.path.join(rundir, "manifest.json"), "w",
-              encoding="utf-8") as f:
-        json.dump(manifest, f, ensure_ascii=False, indent=1)
-    with open(os.path.join(rundir, "events.jsonl"), "w",
-              encoding="utf-8") as f:
-        for a in attempts:
-            f.write(json.dumps(validate_attempt(a), ensure_ascii=False)
-                    + "\n")
-    with open(os.path.join(rundir, "responses.jsonl"), "w",
-              encoding="utf-8") as f:
-        for r in responses:
-            f.write(json.dumps(r, ensure_ascii=False) + "\n")
-    env = dict(environment or {})
-    env.setdefault("written_utc",
-                   datetime.datetime.now(datetime.timezone.utc).isoformat())
-    with open(os.path.join(rundir, "environment.json"), "w",
-              encoding="utf-8") as f:
-        json.dump(env, f, ensure_ascii=False, indent=1)
+    if os.path.commonpath([os.path.realpath(rundir), out_real]) != out_real:
+        raise ValueError("run_id escapes out_root: %r" % (run_id[:60],))
+    staging = tempfile.mkdtemp(prefix=".stage-", dir=out_root)
+    try:
+        with open(os.path.join(staging, "manifest.json"), "w",
+                  encoding="utf-8") as f:
+            json.dump(manifest, f, ensure_ascii=False, indent=1)
+        with open(os.path.join(staging, "events.jsonl"), "w",
+                  encoding="utf-8") as f:
+            for a in attempts:
+                f.write(json.dumps(validate_attempt(a), ensure_ascii=False)
+                        + "\n")
+        with open(os.path.join(staging, "responses.jsonl"), "w",
+                  encoding="utf-8") as f:
+            for r in responses:
+                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+        env = dict(environment or {})
+        env.setdefault("written_utc",
+                       datetime.datetime.now(datetime.timezone.utc).isoformat())
+        with open(os.path.join(staging, "environment.json"), "w",
+                  encoding="utf-8") as f:
+            json.dump(env, f, ensure_ascii=False, indent=1)
+        if os.path.exists(rundir):
+            raise FileExistsError("refusing to overwrite: %r" % (rundir,))
+        os.replace(staging, rundir)
+    except BaseException:
+        import shutil as _shutil
+        _shutil.rmtree(staging, ignore_errors=True)
+        raise
     return rundir

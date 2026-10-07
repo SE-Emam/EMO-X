@@ -245,7 +245,8 @@ prompt/harness changes + mandatory re-baseline).
 - `judges/`: deterministic, execution, trajectory (single primary failure),
   llm_judge (reliability-gated).
 - `health/`: saturation, discrimination, flakiness, contamination.
-- `suites/`: code-bench-25 (25 families), agent-loop, dynamic-code,
+- `suites/`: code-bench-25 (25 families at the original migration; current
+  inventory is 29), agent-loop, dynamic-code,
   recovery, robustness, security (S1–S5, synthetic fixtures only),
   calibration, long-horizon, gauntlet, vision (real executor over
   vision-bench fixtures), realworld (RW1–RW3 mini-real repos),

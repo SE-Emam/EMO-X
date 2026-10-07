@@ -47,7 +47,10 @@ Skill format follows the repo's existing `SKILL.md` convention (Arabic explanati
 ## 3. Suites
 
 ### 3.1 code-bench-25 (Phase 1)
-Port of the validated 25 tests. Keeps: T5 Arabic-ratio gate (documented strictness), R6/R10/R12 corrected checks, H3 triple-run rule (single runs of H3 are non-admissible after observed instability), `think:false` for math via native API.
+Original port of the validated 25 tests; the current suite inventory is 29
+families. Keeps: T5 Arabic-ratio gate (documented strictness), R6/R10/R12
+corrected checks, H3 triple-run rule (single runs of H3 are non-admissible
+after observed instability), `think:false` for math via native API.
 
 ### 3.2 agent-loop-bench (Phase 1)
 Batch 4 `shop/` scenario + tools (ls/read/run/edit) + A1–A15 mapping + efficiency report

@@ -70,7 +70,7 @@ Binding migration map:
 | WP2 | Isolation + Self-Test | SPEC §§24,35 | `shared/sandbox.py`, `shared/safety.py`, green `--self-test` | `run.py --self-test` fails closed (fail-closed) on sandbox break |
 | WP3 | Scoring engine + goldens | SPEC Part B, DEN Part C | `shared/scoring.py`, `shared/metrics.py`, `tests/golden/` | every B6–B63 and C9–C93 formula has a golden test; `D=0 ⇒ NA` covered (full §C82) |
 | WP4 | Task DSL + deterministic generation | SPEC §§7–8 | `generators/*.py`, `prompts/PROMPT_PACK_v2.md` + `SHA256SUMS` | same seed yields same `instance_hash` on two machines |
-| WP5 | Core-25 migration | WP1,WP2 | `suites/code-bench-25/` (25 families × canonical) | 25/25 run via `--suite code25` + immutable raw results |
+| WP5 | Core-25 migration | WP1,WP2 | `suites/code-bench-25/` (25 families × canonical at planning time; now 29) | 29/29 run via `--suite code25` + immutable raw results |
 | WP6 | Failure taxonomy + fingerprint | SPEC §30, DEN C25–C27 | `judges/trajectory.py` (initial) | every scored failure carries one `primary_failure` (C25) |
 
 **α exit gate:** full `code25` on the new structure + green golden tests + `run_manifest.json` (§32) per run.

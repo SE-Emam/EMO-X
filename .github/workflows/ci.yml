@@ -48,4 +48,13 @@ jobs:
       - name: Harness self-test (SPEC 35, fail-closed)
         run: python3 shared/run.py --self-test
       - name: Full test suites
-        run: python3 tests/run_all.py
+        run: |
+          set -o pipefail
+          python3 tests/run_all.py 2>&1 | tee test-output.log
+      - name: Upload test output on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-output
+          path: test-output.log
+          if-no-files-found: warn

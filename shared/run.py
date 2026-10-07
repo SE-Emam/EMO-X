@@ -89,8 +89,11 @@ def t5_arabic(chat):
     txt, dt, u = chat([{"role": "user",
                         "content": "اشرح باللغة العربية: ما هو الـ closure في JavaScript؟"}])
     r = L.arabic_ratio(txt)
-    return {"pass": bool(r > 0.3), "secs": round(dt, 1), "usage": u,
-            "arabic_ratio": round(r, 3), "sample": txt[:800]}
+    sem = L.closure_semantic_hits(txt)
+    return {"pass": bool(r > 0.3 and sem >= L.CLOSURE_SEMANTIC_MIN_HITS),
+            "secs": round(dt, 1), "usage": u,
+            "arabic_ratio": round(r, 3), "closure_hits": sem,
+            "sample": txt[:800]}
 
 
 def t6_ar_code(chat):
@@ -99,9 +102,34 @@ def t6_ar_code(chat):
     code = L.extract_code(txt, "python")
     ok, log = L.run_py(code, "assert اجمع(2,3)==5; print('ARCODE_OK')")
     r = L.arabic_ratio(txt)
-    return {"pass": bool(ok and "ARCODE_OK" in log and r > 0.1),
+    sem = L._all_groups_hit(txt, L.T6_SEMANTIC_GROUPS)
+    return {"pass": bool(ok and "ARCODE_OK" in log and r > 0.1 and all(sem)),
             "secs": round(dt, 1), "usage": u,
             "arabic_ratio": round(r, 3), "log": log, "sample": txt[:800]}
+
+
+def t9_spanish(chat):
+    # P1 (PROMPT_PACK v2, 2026-10-07): Spanish closure explanation.
+    txt, dt, u = chat([{"role": "user", "content":
+                        "Explica en espa\u00f1ol: \u00bfqu\u00e9 es el concepto de closure en JavaScript?"}])
+    r = L.spanish_ratio(txt)
+    sem = L._all_groups_hit(txt, L.T9_SEMANTIC_GROUPS)
+    return {"pass": bool(r > 0.10 and all(sem)),
+            "secs": round(dt, 1), "usage": u,
+            "spanish_ratio": round(r, 3), "semantic": sem,
+            "sample": txt[:800]}
+
+
+def t10_portuguese(chat):
+    # P1 (PROMPT_PACK v2, 2026-10-07): Portuguese closure explanation.
+    txt, dt, u = chat([{"role": "user", "content":
+                        "Explica em portugu\u00eas: o que \u00e9 o conceito de closure em JavaScript?"}])
+    r = L.portuguese_ratio(txt)
+    sem = L._all_groups_hit(txt, L.T10_SEMANTIC_GROUPS)
+    return {"pass": bool(r > 0.10 and all(sem)),
+            "secs": round(dt, 1), "usage": u,
+            "portuguese_ratio": round(r, 3), "semantic": sem,
+            "sample": txt[:800]}
 
 
 def t7_json(chat):
@@ -312,6 +340,25 @@ def r12_postgres(chat):
             "log": str(rows) + (err if rc else ""), "sample": txt[:400]}
 
 
+def r13_docker(chat):
+    # P2 (PROMPT_PACK v2, 2026-10-07): Dockerfile for a Python app.
+    txt, dt, u = chat([{"role": "user", "content":
+        "Return ONLY a Dockerfile (no markdown, no explanation) for a Python app "
+        "that: uses base image python:3.12-slim, sets WORKDIR to /app, copies "
+        "requirements.txt and runs pip install, and sets a CMD. "
+        "Pin the base image tag (do not use latest)."}])
+    low = txt.lower()
+    checks = ["from python:3.12-slim" in low,
+              "workdir" in low and "/app" in low,
+              "copy" in low and "requirements" in low,
+              "run" in low and "pip install" in low,
+              "cmd" in low]
+    no_latest = "latest" not in low
+    return {"pass": bool(all(checks) and no_latest), "secs": round(dt, 1),
+            "usage": u, "log": "docker-checks=%s no_latest=%s" % (checks, no_latest),
+            "sample": txt[:600]}
+
+
 def h1_increasing(chat):
     txt, dt, u = chat([{"role": "user", "content":
         "How many 5-digit numbers have strictly increasing digits (left to right)? "
@@ -391,21 +438,40 @@ def h6_first_occurrence(chat):
             "log": log, "sample": txt[:600]}
 
 
+def a16_async(chat):
+    # P2 (PROMPT_PACK v2, 2026-10-07): async fetch_all via asyncio.gather.
+    txt, dt, u = chat([{"role": "user", "content":
+        "Write Python code with: import asyncio, async def fetch(x) returning x*2, "
+        "and async def fetch_all() returning await asyncio.gather(fetch(1), fetch(2)). "
+        "Return ONLY code, no explanation."}])
+    code = L.extract_code(txt, "python")
+    has_gather = "asyncio.gather" in code
+    has_calls = "fetch(1)" in code and "fetch(2)" in code
+    ok, log = L.run_py(code, "import asyncio; assert asyncio.run(fetch_all())==[2,4]; "
+                        "print('ASYNC_OK')", timeout=30)
+    passed = bool(has_gather and has_calls and ok and "ASYNC_OK" in log)
+    return {"pass": passed, "secs": round(dt, 1), "usage": u,
+            "log": "gather=%s calls=%s %s" % (has_gather, has_calls, log),
+            "sample": txt[:600]}
+
+
 CODE25_ORDER = [
     ("T2_python_fib", t2_fib), ("T3_bugfix", t3_bugfix),
     ("T4_javascript", t4_js), ("T5_arabic_explain", t5_arabic),
     ("T6_arabic_code", t6_ar_code), ("T7_json_struct", t7_json),
     ("T8_file_task", t8_filetask),
+    ("T9_spanish_explain", t9_spanish), ("T10_portuguese_explain", t10_portuguese),
     ("R1_rust", r1_rust), ("R2_sql", r2_sql), ("R3_git", r3_git),
     ("R4_vercel", r4_vercel), ("R5_supabase", r5_supabase),
     ("R6_diff", r6_diff), ("R7_toolcall", r7_toolcall),
     ("R8_skill", r8_skill), ("R9_htmlcss", r9_htmlcss),
     ("R10_react", r10_react), ("R11_typescript", r11_typescript),
-    ("R12_postgres", r12_postgres),
+    ("R12_postgres", r12_postgres), ("R13_docker", r13_docker),
     ("H1_increasing_digits", h1_increasing),
     ("H2_diophantine", h2_diophantine), ("H3_modexp", h3_modexp),
     ("H4_palindrome", h4_palindrome), ("H5_token_bucket", h5_ratelimit),
     ("H6_first_occurrence", h6_first_occurrence),
+    ("A16_async", a16_async),
 ]
 
 # ================= agent-loop-bench =================

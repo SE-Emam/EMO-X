@@ -1,0 +1,54 @@
+{
+  "capabilities": [
+   "spanish_generation",
+   "explanation"
+  ],
+  "category": "spanish",
+  "difficulty": {
+   "adaptive": false,
+   "base": 1
+  },
+  "estimated_human_minutes": 2,
+  "execution": {
+   "harness": "suites/code-bench-25/executor.py",
+   "type": "text"
+  },
+  "filesystem": {
+   "sandbox_only": true
+  },
+  "forbidden_paths": [
+   "/etc",
+   "/root",
+   "/home",
+   "~/.ssh",
+   "/var/run/secrets"
+  ],
+  "generator": {
+   "parameters": {},
+   "seed": 25009,
+   "type": "frozen-canonical"
+  },
+  "id": "T9",
+  "name": "spanish_explain",
+  "network": {
+   "allowed": false
+  },
+  "oracle": {
+   "check": "spanish_ratio > 0.10 plus semantic checklist: función + ámbito/alcance + conserva/recuerda + ejemplo/código",
+   "type": "deterministic"
+  },
+  "prompt": "Explica en español: ¿qué es el concepto de closure en JavaScript?",
+  "prompt_pack": "v2",
+  "scoring": {
+   "correctness": 1.0
+  },
+  "suite": "code-bench-25",
+  "timeouts": {
+   "execution_seconds": 30,
+   "generation_seconds": 120
+  },
+  "variants": [
+   "canonical"
+  ],
+  "version": "1.0"
+}

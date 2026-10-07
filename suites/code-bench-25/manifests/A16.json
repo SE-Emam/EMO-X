@@ -1,0 +1,54 @@
+{
+ "capabilities": [
+  "async_programming",
+  "concurrency"
+ ],
+ "category": "async",
+ "difficulty": {
+  "adaptive": false,
+  "base": 2
+ },
+ "estimated_human_minutes": 5,
+ "execution": {
+  "harness": "suites/code-bench-25/executor.py",
+  "type": "python"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "forbidden_paths": [
+  "/etc",
+  "/root",
+  "/home",
+  "~/.ssh",
+  "/var/run/secrets"
+ ],
+ "generator": {
+  "parameters": {},
+  "seed": 25016,
+  "type": "frozen-canonical"
+ },
+ "id": "A16",
+ "name": "async_gather",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "executive via sandbox (like T6): asyncio.gather + fetch(1)/fetch(2) present and asyncio.run(fetch_all())==[2,4] printing ASYNC_OK",
+  "type": "deterministic"
+ },
+ "prompt": "Write Python code with: import asyncio, async def fetch(x) returning x*2, and async def fetch_all() returning await asyncio.gather(fetch(1), fetch(2)). Return ONLY code, no explanation.",
+ "prompt_pack": "v2",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "code-bench-25",
+ "timeouts": {
+  "execution_seconds": 30,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

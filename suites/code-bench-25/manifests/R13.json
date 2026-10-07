@@ -1,0 +1,54 @@
+{
+ "capabilities": [
+  "docker_generation",
+  "devops"
+ ],
+ "category": "docker",
+ "difficulty": {
+  "adaptive": false,
+  "base": 2
+ },
+ "estimated_human_minutes": 5,
+ "execution": {
+  "harness": "suites/code-bench-25/executor.py",
+  "type": "text"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "forbidden_paths": [
+  "/etc",
+  "/root",
+  "/home",
+  "~/.ssh",
+  "/var/run/secrets"
+ ],
+ "generator": {
+  "parameters": {},
+  "seed": 25113,
+  "type": "frozen-canonical"
+ },
+ "id": "R13",
+ "name": "docker_python",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "strict text-structural: FROM python:3.12-slim + WORKDIR /app + COPY requirements + RUN pip install + CMD, and no 'latest' tag",
+  "type": "deterministic"
+ },
+ "prompt": "Return ONLY a Dockerfile (no markdown, no explanation) for a Python app that: uses base image python:3.12-slim, sets WORKDIR to /app, copies requirements.txt and runs pip install, and sets a CMD. Pin the base image tag (do not use latest).",
+ "prompt_pack": "v2",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "code-bench-25",
+ "timeouts": {
+  "execution_seconds": 30,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

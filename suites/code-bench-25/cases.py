@@ -12,11 +12,26 @@ this module emits raw observations only.
 """
 
 FAMILY_IDS = (
-    "T2", "T3", "T4", "T5", "T6", "T7", "T8",
+    "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10",
     "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11",
-    "R12",
+    "R12", "R13",
     "H1", "H2", "H3", "H4", "H5", "H6",
+    "A16",
 )
+
+# P1 (PROMPT_PACK v2, 2026-10-07): Latin-language closure-explanation
+# families. New prompts only — v1 strings above are untouched.
+T9_PROMPT = "Explica en espa\u00f1ol: \u00bfqu\u00e9 es el concepto de closure en JavaScript?"
+T10_PROMPT = "Explica em portugu\u00eas: o que \u00e9 o conceito de closure em JavaScript?"
+
+# P2 (PROMPT_PACK v2, 2026-10-07): code25 hardening families.
+R13_PROMPT = ("Return ONLY a Dockerfile (no markdown, no explanation) for a Python app "
+              "that: uses base image python:3.12-slim, sets WORKDIR to /app, copies "
+              "requirements.txt and runs pip install, and sets a CMD. "
+              "Pin the base image tag (do not use latest).")
+A16_PROMPT = ("Write Python code with: import asyncio, async def fetch(x) returning x*2, "
+              "and async def fetch_all() returning await asyncio.gather(fetch(1), fetch(2)). "
+              "Return ONLY code, no explanation.")
 
 # Frozen code fragments embedded inside prompts (copied from shared/run.py).
 T3_BUGGY = "def is_even(n):\n    return n / 2 == 0"
@@ -62,6 +77,10 @@ def prompt_messages(family):
             "Output ONLY a Python file content (no markdown, no explanation) that: "
             "1) defines add(a,b), 2) prints add(2,3) under if __name__ == '__main__', "
             "3) uses no imports.")
+    if family == "T9":
+        return _user(T9_PROMPT)
+    if family == "T10":
+        return _user(T10_PROMPT)
     if family == "R1":
         return _user(
             "Write a COMPLETE Rust program with fn is_prime(n: u64) -> bool and fn main "
@@ -122,6 +141,8 @@ def prompt_messages(family):
             "has rows: (1,'Keyboard',50),(2,'Mouse',25),(3,'Monitor',200). "
             "Return ONLY the SQL query (no markdown, no explanation) returning names of "
             "products cheaper than 100 ordered by price DESC.")
+    if family == "R13":
+        return _user(R13_PROMPT)
     if family == "H1":
         return _user(
             "How many 5-digit numbers have strictly increasing digits (left to right)? "
@@ -150,6 +171,8 @@ def prompt_messages(family):
             "first_occurrence([1,2,2,2,3],2) must be 1, "
             "first_occurrence([1,2,2,2,3],4) must be -1. "
             "Return ONLY the fixed function code, no explanation.\n" + H6_BUGGY)
+    if family == "A16":
+        return _user(A16_PROMPT)
     raise KeyError("unknown code-bench-25 family: %r" % (family,))
 
 

@@ -193,6 +193,116 @@ def arabic_ratio(text):
     return ar / max(len(text), 1)
 
 
+# --- P1 (PROMPT_PACK v2, 2026-10-07): Latin-language + semantic oracles ---
+# T5's bare arabic_ratio gate passes any Arabic-looking text (even off-topic),
+# so T9/T10 pair the language ratio with a semantic checklist, and T5/T6 gain
+# an additive semantic signal beside (never replacing) the legacy ratio.
+
+def _word_ratio(text, markers):
+    """Fraction of word tokens in `markers` (case-insensitive, word-level).
+
+    Word-level (not char-level like arabic_ratio): Latin scripts share the
+    same Unicode block, so the signal must come from distinctive function
+    words / content words, not from the script itself.
+    """
+    words = re.findall(r"[^\W\d_]+", (text or "").lower(), re.UNICODE)
+    if not words:
+        return 0.0
+    hits = sum(1 for w in words if w in markers)
+    return hits / len(words)
+
+
+#: Distinctive Spanish function/content words (single letters excluded —
+#: they collide with other languages; multi-char markers carry the signal).
+SPANISH_MARKERS = frozenset(
+    "el la los las un una unos unas que qué es son está están "
+    "en de del al con para por como cómo este esta estos estas "
+    "ese esa pero porque también tambien hay tiene tienen puede "
+    "función funcion código codigo ejemplo ámbito ambito alcance "
+    "conserva recuerda mantiene explicación explicacion cierre "
+    "donde exteriores interior exterior".split())
+
+#: Distinctive Portuguese words (1-char tokens deliberately excluded:
+#: bare "o"/"a"/"e" occur in English prose and would inflate the ratio).
+PORTUGUESE_MARKERS = frozenset(
+    "que uma um uns umas são sao está esta este estes "
+    "em de do da dos das no na com para por como mas porque "
+    "também tambem há tem têm pode função funcao código codigo "
+    "exemplo escopo mantém mantem conserva lembra explicação "
+    "explicacao onde variáveis variaveis".split())
+
+
+def spanish_ratio(text):
+    """Fraction of Spanish-marker words. T9 gate: pass iff ratio > 0.10."""
+    return _word_ratio(text, SPANISH_MARKERS)
+
+
+def portuguese_ratio(text):
+    """Fraction of Portuguese-marker words. T10 gate: pass iff ratio > 0.10."""
+    return _word_ratio(text, PORTUGUESE_MARKERS)
+
+
+def _fold_accents(text):
+    """Lowercase + strip diacritics so función/funcion match alike."""
+    import unicodedata
+    text = (text or "").lower()
+    return "".join(c for c in unicodedata.normalize("NFD", text)
+                   if unicodedata.category(c) != "Mn")
+
+
+def _all_groups_hit(text, groups):
+    """True iff every semantic group has >=1 hit (folded substring match)."""
+    folded = _fold_accents(text)
+    return [any(g in folded for g in group) for group in groups]
+
+
+#: T9 semantic checklist (all four groups required): función + ámbito/alcance
+#: + conserva/recuerda + ejemplo/código.
+T9_SEMANTIC_GROUPS = (
+    ("funcion",),
+    ("ambito", "alcance"),
+    ("conserv", "recuerd", "mantien"),
+    ("ejemplo", "codigo"),
+)
+
+#: T10 semantic checklist: função + escopo + mantém + exemplo/código.
+T10_SEMANTIC_GROUPS = (
+    ("funcao",),
+    ("escopo",),
+    ("mant", "conserv", "lembr"),
+    ("exemplo", "codigo"),
+)
+
+#: T5 additive semantic signal: closure-explanation keywords. At least
+#: CLOSURE_SEMANTIC_MIN_HITS must appear beside the legacy arabic_ratio
+#: gate (which is kept unchanged).
+CLOSURE_SEMANTIC_MARKERS = (
+    "function", "scope", "lexical", "closure",
+    "دالة", "نطاق", "مثال", "معجم",
+)
+CLOSURE_SEMANTIC_MIN_HITS = 2
+
+
+def closure_semantic_hits(text):
+    """Count of closure keyword hits (folded, case-insensitive)."""
+    folded = _fold_accents(text)
+    low = (text or "").lower()
+    n = sum(1 for m in ("function", "scope", "lexical", "closure")
+            if m in folded)
+    n += sum(1 for m in ("دالة", "نطاق", "مثال", "معجم") if m in low)
+    return n
+
+
+#: T6 additive semantic signal: the Arabic explanation must reference the
+#: defined function and describe/illustrate it (kept lenient: code fence or
+#: explanation verbs count as the illustration hit).
+T6_SEMANTIC_GROUPS = (
+    ("اجمع",),
+    ("ترجع", "تجمع", "مجموع", "return", "جمع"),
+    ("مثال", "شرح", "تأخذ", "تاخذ", "وسيط", "```"),
+)
+
+
 def parse_tool_call(text):
     m = CALL_RE.search(text or "")
     if not m:
@@ -247,13 +357,27 @@ def check_family(family, reply):
         return bool(rc == 0 and "JS_OK" in log), log
     if family == "T5":
         r = arabic_ratio(reply)
-        return bool(r > 0.3), "arabic_ratio=%.3f" % r
+        sem = closure_semantic_hits(reply)
+        ok = bool(r > 0.3 and sem >= CLOSURE_SEMANTIC_MIN_HITS)
+        return ok, "arabic_ratio=%.3f closure_hits=%d/>=%d" % (
+            r, sem, CLOSURE_SEMANTIC_MIN_HITS)
     if family == "T6":
         code = extract_code(reply, "python")
         ok, log = _py_ok(code, "assert اجمع(2,3)==5; print('ARCODE_OK')")
         r = arabic_ratio(reply)
-        return bool(ok and "ARCODE_OK" in log and r > 0.1), \
-            "%s arabic_ratio=%.3f" % (log, r)
+        sem = _all_groups_hit(reply, T6_SEMANTIC_GROUPS)
+        ok = bool(ok and "ARCODE_OK" in log and r > 0.1 and all(sem))
+        return ok, "%s arabic_ratio=%.3f sem=%s" % (log, r, sem)
+    if family == "T9":
+        r = spanish_ratio(reply)
+        sem = _all_groups_hit(reply, T9_SEMANTIC_GROUPS)
+        ok = bool(r > 0.10 and all(sem))
+        return ok, "spanish_ratio=%.3f sem=%s" % (r, sem)
+    if family == "T10":
+        r = portuguese_ratio(reply)
+        sem = _all_groups_hit(reply, T10_SEMANTIC_GROUPS)
+        ok = bool(r > 0.10 and all(sem))
+        return ok, "portuguese_ratio=%.3f sem=%s" % (r, sem)
     if family == "T7":
         try:
             obj = extract_json_object(reply)
@@ -457,6 +581,19 @@ def check_family(family, reply):
         rows = [ln for ln in c.stdout.strip().splitlines() if ln.strip()]
         return bool(c.returncode == 0 and rows == ["Keyboard", "Mouse"]), \
             str(rows) + (c.stderr[-200:] if c.returncode else "")
+    if family == "R13":
+        # P2 (PROMPT_PACK v2): strict text-structural Dockerfile gate.
+        # FROM/COPY/RUN/CMD all required with pinned python:3.12-slim
+        # base; any "latest" tag fails (unpinned base image).
+        low = (reply or "").lower()
+        checks = ["from python:3.12-slim" in low,
+                  "workdir" in low and "/app" in low,
+                  "copy" in low and "requirements" in low,
+                  "run" in low and "pip install" in low,
+                  "cmd" in low]
+        no_latest = "latest" not in low
+        return bool(all(checks) and no_latest), \
+            "docker-checks=%s no_latest=%s" % (checks, no_latest)
     if family == "H1":
         return bool("126" in (reply or "")), "increasing-digits-check"
     if family == "H2":
@@ -488,11 +625,24 @@ def check_family(family, reply):
         code = extract_code(reply, "python")
         ok, log = _py_ok(
             code, "assert first_occurrence([1,2,2,2,3],2)==1 "
-                  "and first_occurrence([1,2,2,2,3],4)==-1 "
-                  "and first_occurrence([2,2,2],2)==0 "
-                  "and first_occurrence([],5)==-1; print('BS_OK')",
+                   "and first_occurrence([1,2,2,2,3],4)==-1 "
+                   "and first_occurrence([2,2,2],2)==0 "
+                   "and first_occurrence([],5)==-1; print('BS_OK')",
             timeout=60)
         return bool(ok and "BS_OK" in log), log
+    if family == "A16":
+        # P2 (PROMPT_PACK v2): real executive oracle via sandbox (like T6).
+        # Static shape (asyncio.gather + fetch(1)/fetch(2)) AND runtime
+        # result asyncio.run(fetch_all()) == [2, 4] must both hold.
+        code = extract_code(reply, "python")
+        has_gather = "asyncio.gather" in code
+        has_calls = "fetch(1)" in code and "fetch(2)" in code
+        ok, log = _py_ok(
+            code, "import asyncio; assert asyncio.run(fetch_all())==[2,4]; "
+                   "print('ASYNC_OK')",
+            timeout=30)
+        passed = bool(has_gather and has_calls and ok and "ASYNC_OK" in log)
+        return passed, "gather=%s calls=%s %s" % (has_gather, has_calls, log)
     raise KeyError("unknown code-bench-25 family: %r" % (family,))
 
 

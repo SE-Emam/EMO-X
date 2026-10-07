@@ -56,10 +56,10 @@ def suite_env():
 
 
 def run_suite(name):
-    """Run one test directory in isolation. Returns (ok, summary_line)."""
+    """Run one test directory in isolation. Returns (ok, summary_line, output)."""
     target = os.path.join(HERE, name)
     if not os.path.isdir(target):
-        return False, "%-10s MISSING DIR" % name
+        return False, "%-10s MISSING DIR" % name, ""
     # No -t flag: with -t, unittest requires the start dir to be an
     # importable package (tests/ has no __init__.py); without it the
     # top-level defaults to the start dir and absolute imports
@@ -70,14 +70,14 @@ def run_suite(name):
         proc = subprocess.run(cmd, cwd=ROOT, env=suite_env(),
                               capture_output=True, text=True, timeout=600)
     except subprocess.TimeoutExpired:
-        return False, "%-10s TIMEOUT (>600s)" % name
+        return False, "%-10s TIMEOUT (>600s)" % name, ""
     out = (proc.stderr or "") + (proc.stdout or "")
     last = " ".join(out.strip().splitlines()[-3:]) if out.strip() else "(no output)"
     ok = proc.returncode == 0
     # unittest prints "OK" to stderr on success; surface the tail.
     status = "PASS" if ok else "FAIL"
     return ok, "%-10s %s  [exit=%d] %s" % (name, status, proc.returncode,
-                                          last[:220])
+                                          last[:220]), out
 
 
 def count_suite(name):
@@ -126,15 +126,23 @@ def main(argv=None):
     print("root: %s" % ROOT)
     results = []
     for name in names:
-        ok, line = run_suite(name)
-        results.append((name, ok, line))
+        ok, line, out = run_suite(name)
+        results.append((name, ok, line, out))
         print(line)
+        if not ok and out.strip():
+            # CI diagnosis (P0): the summary tail hides the traceback.
+            # Print the head (first failure/error in full) so the log
+            # shows the cause, not just "FAILED (errors=2)".
+            print("----- %s first 80 lines (failure detail) -----" % name)
+            for ln in out.strip().splitlines()[:80]:
+                print(ln)
+            print("----- end %s detail -----" % name)
     print("-" * 70)
     print("%-10s %-4s  detail" % ("suite", "pass"))
-    for name, ok, _ in results:
+    for name, ok, _, _ in results:
         print("%-10s %-4s" % (name, "YES" if ok else "NO"))
     print("-" * 70)
-    failed = [n for n, ok, _ in results if not ok]
+    failed = [n for n, ok, _, _ in results if not ok]
     if failed:
         print("RESULT: FAIL (%s)" % ", ".join(failed))
         return 1

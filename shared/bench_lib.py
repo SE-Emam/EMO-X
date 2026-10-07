@@ -107,6 +107,89 @@ def arabic_ratio(t):
     return ar / max(len(t), 1)
 
 
+# --- P1 (PROMPT_PACK v2, 2026-10-07): Latin-language + semantic helpers ---
+# Mirrors suites/code-bench-25/executor.py (kept local: this legacy module
+# stays dependency-free). T9/T10 pair the language ratio with a semantic
+# checklist; T5/T6 keep the legacy ratio plus an additive semantic signal.
+
+def _word_ratio(t, markers):
+    words = re.findall(r"[^\W\d_]+", (t or "").lower(), re.UNICODE)
+    if not words:
+        return 0.0
+    return sum(1 for w in words if w in markers) / len(words)
+
+
+SPANISH_MARKERS = frozenset(
+    "el la los las un una unos unas que qué es son está están "
+    "en de del al con para por como cómo este esta estos estas "
+    "ese esa pero porque también tambien hay tiene tienen puede "
+    "función funcion código codigo ejemplo ámbito ambito alcance "
+    "conserva recuerda mantiene explicación explicacion cierre "
+    "donde exteriores interior exterior".split())
+
+PORTUGUESE_MARKERS = frozenset(
+    "que uma um uns umas são sao está esta este estes "
+    "em de do da dos das no na com para por como mas porque "
+    "também tambem há tem têm pode função funcao código codigo "
+    "exemplo escopo mantém mantem conserva lembra explicação "
+    "explicacao onde variáveis variaveis".split())
+
+
+def spanish_ratio(t):
+    """Fraction of Spanish-marker words. T9 gate: pass iff ratio > 0.10."""
+    return _word_ratio(t, SPANISH_MARKERS)
+
+
+def portuguese_ratio(t):
+    """Fraction of Portuguese-marker words. T10 gate: pass iff ratio > 0.10."""
+    return _word_ratio(t, PORTUGUESE_MARKERS)
+
+
+def _fold_accents(t):
+    import unicodedata
+    t = (t or "").lower()
+    return "".join(c for c in unicodedata.normalize("NFD", t)
+                   if unicodedata.category(c) != "Mn")
+
+
+def _all_groups_hit(t, groups):
+    folded = _fold_accents(t)
+    return [any(g in folded for g in group) for group in groups]
+
+
+T9_SEMANTIC_GROUPS = (
+    ("funcion",),
+    ("ambito", "alcance"),
+    ("conserv", "recuerd", "mantien"),
+    ("ejemplo", "codigo"),
+)
+
+T10_SEMANTIC_GROUPS = (
+    ("funcao",),
+    ("escopo",),
+    ("mant", "conserv", "lembr"),
+    ("exemplo", "codigo"),
+)
+
+CLOSURE_SEMANTIC_MIN_HITS = 2
+
+
+def closure_semantic_hits(t):
+    folded = _fold_accents(t)
+    low = (t or "").lower()
+    n = sum(1 for m in ("function", "scope", "lexical", "closure")
+            if m in folded)
+    n += sum(1 for m in ("دالة", "نطاق", "مثال", "معجم") if m in low)
+    return n
+
+
+T6_SEMANTIC_GROUPS = (
+    ("اجمع",),
+    ("ترجع", "تجمع", "مجموع", "return", "جمع"),
+    ("مثال", "شرح", "تأخذ", "تاخذ", "وسيط", "```"),
+)
+
+
 # ---------------- exec verifiers (all sandboxed, all with timeouts) ----------------
 
 def _clean_env():

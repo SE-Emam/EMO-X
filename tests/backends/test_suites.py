@@ -1,6 +1,6 @@
 """X-4 suites migration tests (stdlib unittest).
 
-Covers: manifest validity for all 25+ families, prompt byte-equality
+Covers: manifest validity for all 29+ families, prompt byte-equality
 spot-checks vs legacy (shared/run.py + security-bench/run_security.py),
 and raw-record schema validation (SPEC C4/C83, Task DSL SPEC 7).
 
@@ -118,7 +118,7 @@ class TestManifestValidity(unittest.TestCase):
 
     def test_all_manifests_validate(self):
         paths = self._all_manifest_paths()
-        self.assertEqual(len(paths), 25 + 1 + 2 + 5 + 6 + 3, paths)
+        self.assertEqual(len(paths), 29 + 1 + 2 + 5 + 6 + 3, paths)
         for p in paths:
             with self.subTest(manifest=p):
                 m = manifest_lib.load_task_manifest(p)
@@ -127,7 +127,7 @@ class TestManifestValidity(unittest.TestCase):
     def test_code25_covers_25_families(self):
         got = sorted(f[:-5] for f in os.listdir(
             os.path.join(CB25, "manifests")) if f.endswith(".json"))
-        self.assertEqual(len(got), 25)
+        self.assertEqual(len(got), 29)
         for fam in cb_cases.FAMILY_IDS:
             self.assertIn(fam, got)
 

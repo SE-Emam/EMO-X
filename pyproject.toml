@@ -22,7 +22,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7", "build", "twine"]
+dev = ["pytest>=7", "coverage>=7", "build", "twine"]
 docs = ["sphinx"]
 
 [project.scripts]

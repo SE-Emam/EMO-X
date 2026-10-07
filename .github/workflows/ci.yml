@@ -51,6 +51,16 @@ jobs:
         run: |
           set -o pipefail
           python3 tests/run_all.py 2>&1 | tee test-output.log
+      - name: Coverage gate (shared, fail-under=70)
+        run: |
+          pip install coverage
+          export PYTHONPATH="$PWD:$PWD/shared:$PYTHONPATH"
+          rm -f .coverage .coverage.*
+          for suite in harness generators scoring golden; do
+            coverage run --parallel-mode --source=shared -m unittest discover -s tests/$suite
+          done
+          coverage combine
+          coverage report --fail-under=70
       - name: Upload test output on failure
         if: failure()
         uses: actions/upload-artifact@v4

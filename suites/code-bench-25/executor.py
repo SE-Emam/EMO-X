@@ -7,10 +7,12 @@ results/raw/RUN-ID/. No scoring here (X-3 owns scoring).
 Oracle logic mirrors the legacy checks in shared/run.py (frozen pass
 criteria); only the execution substrate changed (bench_lib -> sandbox).
 
-Import note: this module does bare `import cases` / `import instances`
-for its siblings. suites/security also ships a cases.py, so consumers
-must keep suites/code-bench-25 ahead of suites/security on sys.path
-(or load modules by file path).
+Import note (High H3 basename isolation): sibling cases.py /
+instances.py are loaded by file path under unique module names
+(code25_cases / code25_instances, aliased as cases / instances for
+internal use) — never bare `import cases` — because every suite
+ships a cases.py and bare imports collide in sys.modules when
+several suites run in one process.
 
 Usage:
   chat = <callable: (messages, temp=..., ...) -> (text, secs, usage)>
@@ -19,6 +21,7 @@ Usage:
 """
 
 import datetime
+import importlib.util
 import json
 import os
 import re
@@ -38,8 +41,27 @@ import sandbox  # noqa: E402
 from schemas import validate_attempt, validate_run_manifest  # noqa: E402
 from manifests import sha256_bytes, sha256_manifest  # noqa: E402
 from backends import reasoning_mode_for  # noqa: E402 (Y-5: attempt mode tag)
-import cases  # noqa: E402
-import instances  # noqa: E402
+
+
+def _load_sibling(mod_name, filename):  # noqa: E402
+    """Load a sibling module by file path (basename isolation, High H3).
+
+    Unique mod_name (e.g. code25_cases) avoids sys.modules collisions
+    with suites/security/cases.py; the caller aliases the result as
+    `cases` / `instances` for internal compatibility.
+    """
+    if mod_name in sys.modules:
+        return sys.modules[mod_name]
+    path = os.path.join(HERE, filename)
+    spec = importlib.util.spec_from_file_location(mod_name, path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[mod_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+cases = _load_sibling("code25_cases", "cases.py")  # noqa: E402
+instances = _load_sibling("code25_instances", "instances.py")  # noqa: E402
 try:
     from instance_factory import build_h3_equation, check_h3_equation
 except ImportError:  # generators/ on path (runner) or add it (standalone)
@@ -256,13 +278,24 @@ def _all_groups_hit(text, groups):
     return [any(g in folded for g in group) for group in groups]
 
 
-#: T9 semantic checklist (all four groups required): función + ámbito/alcance
-#: + conserva/recuerda + ejemplo/código.
+#: T9 semantic checklist (all four groups required): función/closure +
+#: ámbito/entorno/contexto + conserva/captura + ejemplo/código.
+#: Calibrated 2026-10-07 on t9_calibration.json (8 pos + 8 neg): G1 adds
+#: closure/clausura; G2 adds entorno/contexto/lexico/scope/exterior-family/
+#: bloque/anidada/padre/madre (real answers say "entorno", "función
+#: padre/madre/hija", "alcance de bloque"); G3 adds captur/guard/acced/
+#: persist/viv/cierr/atrap (real defs "captura", "guarda", "accede",
+#: "sigue viva"); G4 adds code/prose illustration signals (bare var/let
+#: excluded: "var" is a substring of "variables" and would pass incompletes).
 T9_SEMANTIC_GROUPS = (
-    ("funcion",),
-    ("ambito", "alcance"),
-    ("conserv", "recuerd", "mantien"),
-    ("ejemplo", "codigo"),
+    ("funcion", "closure", "clausura"),
+    ("ambito", "alcance", "entorno", "contexto", "lexico", "scope",
+     "exterior", "interior", "externa", "externo", "interna", "interno",
+     "bloque", "anidada", "padre", "madre"),
+    ("conserv", "recuerd", "mantien", "captur", "guard", "acced",
+     "persist", "viv", "cierr", "atrap"),
+    ("ejemplo", "codigo", "function", "return", "console", "=>", "```",
+     "mira", "supon", "imagin", "ilustr"),
 )
 
 #: T10 semantic checklist: função + escopo + mantém + exemplo/código.

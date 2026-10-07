@@ -5,12 +5,13 @@
 
 ## 1. Requirements
 
-- Python 3.10+ (stdlib only — no pip packages needed for core)
-- Optional verifiers (auto-detected, skipped gracefully if missing):
-  `node` (JS tests), `rustc` (Rust test), `tsc` (TypeScript test),
-  `psql` + local Postgres (R12), `patch` (diff tests)
-- For agent-loop: `pytest` + `git`
-- For running tests with pytest directly: `pip install "pytest>=7"` (or `pip install -e ".[dev]"`)
+- Python 3.10+
+- Docker Engine/Desktop with a running daemon. Generated-code execution
+  fails closed if Docker or the `emox-sandbox:latest` image is missing.
+- The sandbox image supplies Python, pytest, Node, Rust, TypeScript, and
+  patch; these toolchains do not need to be installed on the host.
+- A local PostgreSQL service is not exposed to the networkless executor;
+  the optional PostgreSQL self-test is skipped when its socket is absent.
 - For agent adapters: the agent CLIs (`opencode`, `pi`, `hermes`) + their own auth
 - A model endpoint: any OpenAI-compatible `/v1` (OpenAI, OpenRouter,
   DeepSeek, Gemini, local vLLM/Ollama, Kaggle/Colab tunnel)
@@ -21,6 +22,9 @@
 
 ```bash
 pip install emo-x-eval
+docker build -f "$(python3 -c 'import emox; print(emox.tree_root() + "/Dockerfile.sandbox")')" \
+  -t emox-sandbox:latest \
+  "$(python3 -c 'import emox; print(emox.tree_root())')"
 emo --self-test    # must end: RESULT: PASS
 emo --suite code25 --out results/
 ```
@@ -33,14 +37,20 @@ The `emo` entry behaves exactly like `python3 shared/run.py`
 ```bash
 git clone https://github.com/SE-Emam/EMO-X.git emo-x
 cd emo-x
+uv sync --extra dev --frozen
+make sandbox-image
+uv run --frozen ruff check shared suites generators judges health mcp-server adapters tests
+uv run --frozen mypy shared/sandbox.py
 python3 shared/run.py --help   # must print usage, no errors
 ```
 
-No `pip install` needed for Track 2. Keys/endpoints are supplied per run (see §4).
+Track 2 uses the checked-in `uv.lock` for repeatable development tools.
+Keys/endpoints are supplied per run (see §4).
 
 ## 3. Verify first (2 minutes, no endpoint needed)
 
 ```bash
+make sandbox-image                   # required once per checkout/image version
 python3 shared/run.py --self-test   # harness check, must end: RESULT: PASS
 python3 tests/run_all.py            # full suite, must end: RESULT: PASS (all 5 suites green)
 ```
@@ -106,17 +116,17 @@ Every run writes an immutable bundle to
 
 | Suite | Needs live model? | Needs locally? | Notes |
 |---|---|---|---|
-| code25 | yes (`/v1`) | python3 + optional node/rustc/tsc/psql/patch | start here |
-| agent-loop | yes | python3 + pytest + git | A1–A15 trajectory |
-| dynamic-code | yes | python3 | `--seed` reproduces instances exactly |
-| recovery / robustness | yes | python3 | fault-injection episodes |
-| calibration | yes | python3 | solvable/unsolvable/ambiguous |
-| long-horizon / gauntlet | yes | python3 | compound scenarios |
-| security S1–S5 | yes | python3 only | 100% synthetic fixtures |
+| code25 | yes (`/v1`) | Docker sandbox image | start here |
+| agent-loop | yes | Docker sandbox image + host git | A1–A15 trajectory |
+| dynamic-code | yes | Docker sandbox image | `--seed` reproduces instances exactly |
+| recovery / robustness | yes | Docker sandbox image | fault-injection episodes |
+| calibration | yes | Docker sandbox image | solvable/unsolvable/ambiguous |
+| long-horizon / gauntlet | yes | Docker sandbox image | compound scenarios |
+| security S1–S5 | yes | Docker sandbox image | 100% synthetic fixtures |
 | security S3–S5 scope | no (gate) | env approval only | `EMOX_SCOPE_APPROVED=1` + `EMOX_SCOPE_TARGET=synthetic:...` (or `fixture:`/`offline:`) required — without it S3–S5 are SAFETY-SKIP (fail-closed, `pass: false`), S1/S2 still run |
 | vision V1–V5 | yes, **multimodal** endpoint | python3 | skips gracefully on text-only endpoints |
 | computer-use C1–C3 | yes | spec-only runner (manual for now) | PILOT |
-| adapters | local agent CLI + its auth | task runs locally | labeled NON-COMPARABLE by design |
+| adapters | local agent CLI + its auth | task verification uses Docker; third-party CLI execution is outside this sandbox | labeled NON-COMPARABLE by design |
 
 ## 6. Run: benchmark a third-party agent harness
 

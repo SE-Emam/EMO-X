@@ -4,9 +4,15 @@
 PY ?= python3
 ROOT := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
-.PHONY: gate selftest suites secrets-scan patterns-scan compile clean
+.PHONY: gate selftest suites secrets-scan patterns-scan compile sandbox-image readme-metrics clean
 
-gate: compile secrets-scan patterns-scan selftest suites
+gate: sandbox-image compile secrets-scan patterns-scan selftest suites
+
+selftest: sandbox-image
+suites: sandbox-image
+
+sandbox-image:
+	docker build -f Dockerfile.sandbox -t emox-sandbox:latest .
 
 selftest:
 	$(PY) shared/run.py --self-test
@@ -14,8 +20,11 @@ selftest:
 suites:
 	$(PY) tests/run_all.py
 
+readme-metrics:
+	$(PY) tools/update_readme_metrics.py
+
 compile:
-	$(PY) -m compileall -q shared suites generators judges health mcp-server adapters tests
+	$(PY) -m compileall -q shared suites generators judges health mcp-server adapters tests tools
 
 secrets-scan:
 	! rg -n --pcre2 "(sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|(?i:api[_-]?key\s*[:=]\s*['\"][^'\"]{8,}|password\s*[:=]\s*['\"][^'\"]{6,}|bearer\s+[A-Za-z0-9\-_.]{16,}))" \
@@ -23,11 +32,11 @@ secrets-scan:
 	  --glob '!security-bench/fixtures/*' \
 	  --glob '!shared/PROMPT_PACK_v1.md' \
 	  --glob '!reports/*' \
-	  shared suites generators judges health mcp-server adapters tests prompts || exit 1
+	  shared suites generators judges health mcp-server adapters tests tools prompts || exit 1
 
 patterns-scan:
 	! rg -n "shell\s*=\s*True|os\.system|import pickle|[^_.a-zA-Z]eval\(|[^_.a-zA-Z]exec\(" \
-	  --glob '*.py' shared suites generators judges health mcp-server adapters tests || exit 1
+	  --glob '*.py' shared suites generators judges health mcp-server adapters tests tools || exit 1
 
 clean:
 	find . -path ./.git -prune -o -type d -name __pycache__ -print | xargs rm -rf

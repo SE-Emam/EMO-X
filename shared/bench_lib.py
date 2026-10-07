@@ -6,16 +6,18 @@ Python stdlib only (urllib transport lives in backends.py).
 Ported from /tmp/bench_df1.py, /tmp/bench_df2.py, /tmp/bench_df3.py
 (do not re-run those files; this is the maintained copy).
 
-Execution safety (PLAN §0.5): sandboxed tmp dirs, no network in exec,
-timeouts on every subprocess, log truncation, raw-trace retention.
+Execution safety (PLAN §0.5): temporary working dirs, minimal child
+environment, timeouts on subprocesses. This is not network isolation.
 """
 
 import json
 import os
 import re
-import shutil
-import subprocess
-import tempfile
+
+try:
+    import sandbox
+except ImportError:  # `python shared/run.py` vs package import
+    from shared import sandbox
 
 try:
     from backends import get_default_chat, make_chat
@@ -31,8 +33,9 @@ PROMPT_PACK = "v1"
 _DEFAULT_CHAT = None
 
 
-def configure(base_url=None, model=None, backend=None, api_key=None,
-              chat_callable=None):
+def configure(
+    base_url=None, model=None, backend=None, api_key=None, chat_callable=None
+):
     """Set the module-level chat used by chat(). Returns the callable."""
     global _DEFAULT_CHAT
     if chat_callable is not None:
@@ -40,8 +43,9 @@ def configure(base_url=None, model=None, backend=None, api_key=None,
         return _DEFAULT_CHAT
     if make_chat is None:
         raise RuntimeError("backends module unavailable")
-    _DEFAULT_CHAT = make_chat(backend or os.environ.get("BACKEND", "kaggle"),
-                              base_url, model, api_key)
+    _DEFAULT_CHAT = make_chat(
+        backend or os.environ.get("BACKEND", "kaggle"), base_url, model, api_key
+    )
     return _DEFAULT_CHAT
 
 
@@ -56,8 +60,9 @@ def chat(messages, temp=0.4, max_tokens=512, think=None, num_predict=None):
         if get_default_chat is None:
             raise RuntimeError("no chat configured; call configure() first")
         _DEFAULT_CHAT = get_default_chat()
-    return _DEFAULT_CHAT(messages, temp=temp, max_tokens=max_tokens,
-                         think=think, num_predict=num_predict)
+    return _DEFAULT_CHAT(
+        messages, temp=temp, max_tokens=max_tokens, think=think, num_predict=num_predict
+    )
 
 
 def extract_code(text, lang=None):
@@ -112,6 +117,7 @@ def arabic_ratio(t):
 # stays dependency-free). T9/T10 pair the language ratio with a semantic
 # checklist; T5/T6 keep the legacy ratio plus an additive semantic signal.
 
+
 def _word_ratio(t, markers):
     words = re.findall(r"[^\W\d_]+", (t or "").lower(), re.UNICODE)
     if not words:
@@ -120,19 +126,115 @@ def _word_ratio(t, markers):
 
 
 SPANISH_MARKERS = frozenset(
-    "el la los las un una unos unas que qué es son está están "
-    "en de del al con para por como cómo este esta estos estas "
-    "ese esa pero porque también tambien hay tiene tienen puede "
-    "función funcion código codigo ejemplo ámbito ambito alcance "
-    "conserva recuerda mantiene explicación explicacion cierre "
-    "donde exteriores interior exterior".split())
+    [
+        "el",
+        "la",
+        "los",
+        "las",
+        "un",
+        "una",
+        "unos",
+        "unas",
+        "que",
+        "qué",
+        "es",
+        "son",
+        "está",
+        "están",
+        "en",
+        "de",
+        "del",
+        "al",
+        "con",
+        "para",
+        "por",
+        "como",
+        "cómo",
+        "este",
+        "esta",
+        "estos",
+        "estas",
+        "ese",
+        "esa",
+        "pero",
+        "porque",
+        "también",
+        "tambien",
+        "hay",
+        "tiene",
+        "tienen",
+        "puede",
+        "función",
+        "funcion",
+        "código",
+        "codigo",
+        "ejemplo",
+        "ámbito",
+        "ambito",
+        "alcance",
+        "conserva",
+        "recuerda",
+        "mantiene",
+        "explicación",
+        "explicacion",
+        "cierre",
+        "donde",
+        "exteriores",
+        "interior",
+        "exterior",
+    ]
+)
 
 PORTUGUESE_MARKERS = frozenset(
-    "que uma um uns umas são sao está esta este estes "
-    "em de do da dos das no na com para por como mas porque "
-    "também tambem há tem têm pode função funcao código codigo "
-    "exemplo escopo mantém mantem conserva lembra explicação "
-    "explicacao onde variáveis variaveis".split())
+    [
+        "que",
+        "uma",
+        "um",
+        "uns",
+        "umas",
+        "são",
+        "sao",
+        "está",
+        "esta",
+        "este",
+        "estes",
+        "em",
+        "de",
+        "do",
+        "da",
+        "dos",
+        "das",
+        "no",
+        "na",
+        "com",
+        "para",
+        "por",
+        "como",
+        "mas",
+        "porque",
+        "também",
+        "tambem",
+        "há",
+        "tem",
+        "têm",
+        "pode",
+        "função",
+        "funcao",
+        "código",
+        "codigo",
+        "exemplo",
+        "escopo",
+        "mantém",
+        "mantem",
+        "conserva",
+        "lembra",
+        "explicação",
+        "explicacao",
+        "onde",
+        "variáveis",
+        "variaveis",
+    ]
+)
 
 
 def spanish_ratio(t):
@@ -147,9 +249,11 @@ def portuguese_ratio(t):
 
 def _fold_accents(t):
     import unicodedata
+
     t = (t or "").lower()
-    return "".join(c for c in unicodedata.normalize("NFD", t)
-                   if unicodedata.category(c) != "Mn")
+    return "".join(
+        c for c in unicodedata.normalize("NFD", t) if unicodedata.category(c) != "Mn"
+    )
 
 
 def _all_groups_hit(t, groups):
@@ -177,8 +281,7 @@ CLOSURE_SEMANTIC_MIN_HITS = 2
 def closure_semantic_hits(t):
     folded = _fold_accents(t)
     low = (t or "").lower()
-    n = sum(1 for m in ("function", "scope", "lexical", "closure")
-            if m in folded)
+    n = sum(1 for m in ("function", "scope", "lexical", "closure") if m in folded)
     n += sum(1 for m in ("دالة", "نطاق", "مثال", "معجم") if m in low)
     return n
 
@@ -192,60 +295,33 @@ T6_SEMANTIC_GROUPS = (
 
 # ---------------- exec verifiers (all sandboxed, all with timeouts) ----------------
 
+
 def _clean_env():
-    """Proxy-stripped environment for child processes (audit fix 2).
+    """Use the canonical minimal environment for child processes.
 
-    Local copy of the sandbox.py policy (kept dependency-free: this is
-    the legacy module). Model-executed code must never reach the network
-    via ambient proxy config — every subprocess below gets this env.
+    Keep this wrapper for legacy callers while sharing the current
+    sandbox environment policy.
     """
-    env = dict(os.environ)
-    for key in ("http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY",
-                "ALL_PROXY", "all_proxy"):
-        env.pop(key, None)
-    env["EMOX_SANDBOX"] = "1"
-    return env
-
-
-def _sandbox():
-    """Private tmp cwd for executing model code (PLAN §0.5)."""
-    return tempfile.mkdtemp(prefix="emobench_")
+    return sandbox._clean_env()
 
 
 def run_py(code, test, timeout=30):
     """Append `test` to `code`, run with python3. Returns (ok, log_tail)."""
-    d = _sandbox()
-    try:
-        p = subprocess.run(["python3", "-c", code + "\n" + test], cwd=d,
-                            capture_output=True, text=True, timeout=timeout,
-                            env=_clean_env())
-        return p.returncode == 0, (p.stdout + p.stderr)[-500:]
-    finally:
-        shutil.rmtree(d, ignore_errors=True)
+    return sandbox.run_python_code(code, test, timeout=timeout)
 
 
 def run_py_file(code, timeout=30):
     """Run a full file content. Returns (ok, stdout, log_tail)."""
-    d = _sandbox()
-    try:
-        p = subprocess.run(["python3", "-c", code], cwd=d,
-                            capture_output=True, text=True, timeout=timeout,
-                            env=_clean_env())
-        return p.returncode == 0, p.stdout, (p.stdout + p.stderr)[-500:]
-    finally:
-        shutil.rmtree(d, ignore_errors=True)
+    rc, output = sandbox.run_in_sandbox(["python3", "-c", code], timeout=timeout)
+    return rc == 0, output, output[-500:]
 
 
 def run_js(code, test, timeout=30):
     """Append `test` to `code`, run with node. Returns (ok, log_tail)."""
-    d = _sandbox()
-    try:
-        p = subprocess.run(["node", "-e", code + "\n" + test], cwd=d,
-                            capture_output=True, text=True, timeout=timeout,
-                            env=_clean_env())
-        return p.returncode == 0, (p.stdout + p.stderr)[-500:]
-    finally:
-        shutil.rmtree(d, ignore_errors=True)
+    rc, output = sandbox.run_in_sandbox(
+        ["node", "-e", code + "\n" + test], timeout=timeout
+    )
+    return rc == 0, output[-500:]
 
 
 def run_rust(code, timeout_compile=120, timeout_run=30):
@@ -253,47 +329,36 @@ def run_rust(code, timeout_compile=120, timeout_run=30):
 
     Program must print its own _OK marker. Returns (ok, log_tail).
     """
-    d = tempfile.mkdtemp()
+    d = sandbox.create_sandbox()
     try:
-        src = os.path.join(d, "t.rs")
-        exe = os.path.join(d, "t")
-        with open(src, "w") as f:
-            f.write(code)
-        c = subprocess.run(["rustc", "-O", src, "-o", exe],
-                            capture_output=True, text=True,
-                            timeout=timeout_compile, env=_clean_env())
-        if c.returncode != 0:
-            return False, c.stderr[-400:]
-        p = subprocess.run([exe], capture_output=True, text=True,
-                            timeout=timeout_run, env=_clean_env())
-        return p.returncode == 0, (p.stdout + p.stderr)[-300:]
+        sandbox.write_sandbox_file(d, "t.rs", code)
+        rc, output = sandbox.run_in_sandbox(
+            ["rustc", "-O", "t.rs", "-o", "t"], sandbox_dir=d, timeout=timeout_compile
+        )
+        if rc != 0:
+            return False, output[-400:]
+        rc, output = sandbox.run_in_sandbox(["./t"], sandbox_dir=d, timeout=timeout_run)
+        return rc == 0, output[-300:]
     finally:
-        shutil.rmtree(d, ignore_errors=True)
+        sandbox.destroy_sandbox(d)
 
 
-def verify_tsc(code, extra="const _chk: string = greet({name: \"Test\", age: 1});",
-               timeout=120):
+def verify_tsc(
+    code, extra='const _chk: string = greet({name: "Test", age: 1});', timeout=120
+):
     """Type-check TS with tsc --noEmit --strict. Returns (ok, log).
 
-    Falls back to a static check when tsc is not installed
-    (log tagged 'tsc-missing-static').
+    The compiler runs in the networkless execution container.
     """
-    tsc = shutil.which("tsc")
-    if not tsc:
-        low = code.lower()
-        ok = "interface user" in low and "greet" in low and ": string" in code
-        return ok, "tsc-missing-static"
-    d = tempfile.mkdtemp()
+    d = sandbox.create_sandbox()
     try:
-        with open(os.path.join(d, "t.ts"), "w") as f:
-            f.write(code + "\n" + extra + "\n")
-        c = subprocess.run([tsc, "--noEmit", "--strict",
-                            os.path.join(d, "t.ts")],
-                            capture_output=True, text=True, timeout=timeout,
-                            env=_clean_env())
-        return c.returncode == 0, c.stderr[-400:] or "tsc-clean"
+        sandbox.write_sandbox_file(d, "t.ts", code + "\n" + extra + "\n")
+        rc, output = sandbox.run_in_sandbox(
+            ["tsc", "--noEmit", "--strict", "t.ts"], sandbox_dir=d, timeout=timeout
+        )
+        return rc == 0, output[-400:] or "tsc-clean"
     finally:
-        shutil.rmtree(d, ignore_errors=True)
+        sandbox.destroy_sandbox(d)
 
 
 def sqlite_query(query, schema, rows, timeout=30):
@@ -315,65 +380,82 @@ def sqlite_query(query, schema, rows, timeout=30):
         con.close()
 
 
-def psql_query(query, setup_sql, host="/tmp", port="55433", db="postgres",
-               timeout=60):
+def psql_query(query, setup_sql, host="/tmp", port="55433", db="postgres", timeout=60):
     """Run query via local psql test instance. Returns (rows, returncode, err).
 
     Requires the scratch postgres on host:port (see code-bench-25/SKILL.md).
     Missing binary/instance -> (None, -1, message); caller marks test error,
     never a silent pass.
     """
-    if shutil.which("psql") is None:
-        return None, -1, "psql binary not found"
-    c = subprocess.run(["psql", "-h", host, "-p", str(port), "-d", db,
-                        "-tA", "-c", setup_sql + " " + query],
-                        capture_output=True, text=True, timeout=timeout,
-                        env=_clean_env())
-    rows = [ln for ln in c.stdout.strip().splitlines() if ln.strip()]
-    return rows, c.returncode, c.stderr[-200:]
+    if host != "/tmp":
+        raise ValueError("PostgreSQL checks are limited to the local socket")
+    rc, output = sandbox.run_in_sandbox(
+        [
+            "psql",
+            "-h",
+            host,
+            "-p",
+            str(port),
+            "-d",
+            db,
+            "-tA",
+            "-c",
+            setup_sql + " " + query,
+        ],
+        timeout=timeout,
+    )
+    rows = [
+        line
+        for line in output.splitlines()
+        if line.strip() and not line.startswith("psql:")
+    ]
+    err = "\n".join(line for line in output.splitlines() if line.startswith("psql:"))[
+        -200:
+    ]
+    return rows, rc, err
 
 
-def verify_patch(orig_name, orig_content, diff_text, must_contain=(),
-                 timeout=30):
+def verify_patch(orig_name, orig_content, diff_text, must_contain=(), timeout=30):
     """Dry-run a unified diff with `patch`, apply, check content.
 
     Returns (ok, log_tail). Corrected R6 check: patch must apply AND the
     patched file must contain every string in must_contain (e.g. the renamed
     symbol AND the preserved body) — an applying-but-wrong diff fails.
     """
-    d = tempfile.mkdtemp()
+    d = sandbox.create_sandbox()
     try:
-        target = os.path.join(d, orig_name)
-        with open(target, "w") as f:
-            f.write(orig_content)
+        target = sandbox.write_sandbox_file(d, orig_name, orig_content)
         diff = diff_text if diff_text.endswith("\n") else diff_text + "\n"
-        diff_path = os.path.join(d, "c.diff")
-        with open(diff_path, "w") as f:
-            f.write(diff)
         strip = None
+        dry_output = ""
         for pflag in ("-p0", "-p1"):  # accept plain and git-style (a/ b/) headers
-            with open(diff_path) as f:
-                dry = subprocess.run(["patch", pflag, "--dry-run"], cwd=d,
-                                     stdin=f, capture_output=True, text=True,
-                                     timeout=timeout, env=_clean_env())
-            if dry.returncode == 0:
+            dry_rc, dry_output = sandbox.run_in_sandbox(
+                ["patch", pflag, "--dry-run"],
+                sandbox_dir=d,
+                timeout=timeout,
+                input_text=diff,
+            )
+            if dry_rc == 0:
                 strip = pflag
                 break
         if strip is None:
-            return False, (dry.stdout + dry.stderr)[-300:]
-        with open(diff_path) as f:
-            subprocess.run(["patch", strip, "-s"], cwd=d, stdin=f,
-                           capture_output=True, text=True, timeout=timeout,
-                           env=_clean_env())
+            return False, dry_output[-300:]
+        apply_rc, apply_output = sandbox.run_in_sandbox(
+            ["patch", strip, "-s"], sandbox_dir=d, timeout=timeout, input_text=diff
+        )
+        if apply_rc != 0:
+            return False, apply_output[-300:]
         with open(target) as f:
             content = f.read()
         ok = all(s in content for s in must_contain)
-        return ok, (dry.stdout + dry.stderr)[-300:]
+        return ok, dry_output[-300:]
     finally:
-        shutil.rmtree(d, ignore_errors=True)
+        sandbox.destroy_sandbox(d)
 
 
-CALL_RE = re.compile(r"<tool_call>\s*<function=([\w]+)>\s*(.*?)</function>\s*</tool_call>", re.S)
+CALL_RE = re.compile(
+    r"<tool_call>\s*<function=([\w]+)>\s*(.*?)</function>\s*</tool_call>", re.S
+)
 PARAM_RE = re.compile(r"<parameter=([\w]+)>\s*(.*?)\s*</parameter>", re.S)
 
 
@@ -391,6 +473,7 @@ def parse_tool_call(text):
 
 
 # ---------------- result JSON writer ----------------
+
 
 def load_results(path):
     try:

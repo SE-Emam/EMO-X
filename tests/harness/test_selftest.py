@@ -38,25 +38,25 @@ EXPECTED_NAMES = (
 class TestSelftest(unittest.TestCase):
     def test_all_14_names_present(self):
         ok, rows = selftest.run_all_checks()
-        self.assertEqual([n for n, _, _ in rows], list(EXPECTED_NAMES))
-        self.assertEqual(len(rows), 14)
-        self.assertIsInstance(ok, bool)
+        assert [n for n, _, _ in rows] == list(EXPECTED_NAMES)
+        assert len(rows) == 14
+        assert isinstance(ok, bool)
 
     def test_rows_shape(self):
         _, rows = selftest.run_all_checks()
         for row in rows:
             name, passed, detail = row
-            self.assertIsInstance(name, str)
-            self.assertIsInstance(passed, bool)
-            self.assertIsInstance(detail, str)
+            assert isinstance(name, str)
+            assert isinstance(passed, bool)
+            assert isinstance(detail, str)
             if passed and detail.startswith("SKIP"):
-                self.assertTrue(detail.startswith("SKIP: "))
+                assert detail.startswith("SKIP: ")
 
     def test_ok_iff_zero_fails(self):
         ok, rows = selftest.run_all_checks()
-        self.assertEqual(ok, all(p for _, p, _ in rows))
+        assert ok == all(p for _, p, _ in rows)
 
-    def test_missing_node_is_skip_not_fail(self):
+    def test_missing_host_node_does_not_affect_container(self):
         real_which = shutil.which
 
         def masked(binary, *args, **kwargs):
@@ -71,10 +71,10 @@ class TestSelftest(unittest.TestCase):
             shutil.which = real_which
         by_name = {n: (p, d) for n, p, d in rows}
         passed, detail = by_name["node-executor"]
-        self.assertTrue(passed)
-        self.assertTrue(detail.startswith("SKIP: "))
-        self.assertEqual(ok, all(p for _, p, _ in rows))
-        self.assertTrue(ok)  # SKIP is not FAIL
+        assert passed
+        assert not detail.startswith("SKIP: ")
+        assert ok == all(p for _, p, _ in rows)
+        assert ok  # the pinned container toolchain is authoritative
 
     def test_tampered_checksum_copy_fails_closed(self):
         tmp = tempfile.mkdtemp(prefix="selftest_tamper_")
@@ -95,7 +95,7 @@ class TestSelftest(unittest.TestCase):
             shutil.rmtree(tmp, ignore_errors=True)
         by_name = {n: (p, d) for n, p, d in rows}
         passed, _ = by_name["checksum-validation"]
-        self.assertFalse(passed)
+        assert not passed
 
 
 if __name__ == "__main__":

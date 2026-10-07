@@ -19,15 +19,15 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SHARED = os.path.normpath(os.path.join(HERE, "..", "..", "shared"))
 if SHARED not in sys.path:
     sys.path.insert(0, SHARED)
 
-from schemas import validate_attempt  # noqa: E402
+import sandbox  # noqa: E402
 from backends import reasoning_mode_for  # noqa: E402 (Y-5: attempt mode tag)
+from schemas import validate_attempt  # noqa: E402
 
 AGENT_SYSTEM = (
     "You are a coding agent inside a repo at /repo. Fix the failing tests. "
@@ -92,7 +92,8 @@ def build_ledger_repo(root):
             "    if n < 1:\n"
             "        return []\n"
             "    start = (n - 1) * size\n"
-            "    return list(items[start + 1:start + size + 1])\n"),
+            "    return list(items[start + 1:start + size + 1])\n"
+        ),
         "ledger/totals.py": (
             "from ledger.paginate import page\n\n"
             "def grand_total(items, per_page=None):\n"
@@ -105,7 +106,8 @@ def build_ledger_repo(root):
             "            break\n"
             "        total += sum(chunk)\n"
             "        n += 1\n"
-            "    return total\n"),
+            "    return total\n"
+        ),
         "ledger/settings.py": 'PAGE_SIZE = 10\nOUT_DIR = "out"\n',
         "ledger/tests/test_paginate.py": (
             "from ledger.paginate import page\n"
@@ -120,18 +122,23 @@ def build_ledger_repo(root):
             "def test_out_of_range():\n"
             "    assert page(ITEMS, 4) == []\n\n"
             "def test_grand_total():\n"
-            "    assert grand_total(ITEMS) == sum(ITEMS)\n"),
-        "ledger/legacy_dump.py": "# vendored legacy dump - DO NOT USE\n" + "".join(
-            "LEGACY_%d = %d\n" % (i, (i * 2654435761) % 100000)
-            for i in range(1500)),
+            "    assert grand_total(ITEMS) == sum(ITEMS)\n"
+        ),
+        "ledger/legacy_dump.py": "# vendored legacy dump - DO NOT USE\n"
+        + "".join(
+            "LEGACY_%d = %d\n" % (i, (i * 2654435761) % 100000) for i in range(1500)
+        ),
     }
     for rel, content in files.items():
         with open(os.path.join(root, rel), "w") as f:
             f.write(content)
     subprocess.run(["git", "init", "-q"], cwd=root, capture_output=True)
     subprocess.run(["git", "add", "-A"], cwd=root, capture_output=True)
-    subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t",
-                    "commit", "-qm", "init"], cwd=root, capture_output=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "init"],
+        cwd=root,
+        capture_output=True,
+    )
 
 
 LEDGER_SYSTEM = (
@@ -156,6 +163,7 @@ LEDGER_TASK = (
 
 # --- repo builder + tools (copied from shared/run.py, see module doc) -----
 
+
 def build_repo(root):
     os.makedirs(os.path.join(root, "shop", "tests"), exist_ok=True)
     files = {
@@ -167,59 +175,75 @@ def build_repo(root):
             "    net = 0\n"
             "    for price in items:\n"
             "        net = net + price\n"
-            "    return net + net * vat_rate()\n"),
+            "    return net + net * vat_rate()\n"
+        ),
         "shop/taxes.py": (
             "from shop.config import REGION\n\n"
             "def vat_rate():\n"
             '    """VAT rate for the configured region (bug: wrong region key)."""\n'
             '    if REGION == "EU":\n'
             "        return 0.20\n"
-            "    return 0.0\n"),
+            "    return 0.0\n"
+        ),
         "shop/config.py": 'REGION = "UK"\nCURRENCY = "GBP"\n',
         "shop/tests/test_pricing.py": (
             "from shop.pricing import total\n\n"
             "def test_total():\n"
             "    assert total([100.0, 50.0]) == 180.0\n\n"
             "def test_empty():\n"
-            "    assert total([]) == 0.0\n"),
-        "shop/vendor_dump.py": "# vendored legacy dump - DO NOT USE\n" + "".join(
-            "LEGACY_%d = %d\n" % (i, (i * 2654435761) % 100000)
-            for i in range(1500)),
+            "    assert total([]) == 0.0\n"
+        ),
+        "shop/vendor_dump.py": "# vendored legacy dump - DO NOT USE\n"
+        + "".join(
+            "LEGACY_%d = %d\n" % (i, (i * 2654435761) % 100000) for i in range(1500)
+        ),
     }
     for rel, content in files.items():
         with open(os.path.join(root, rel), "w") as f:
             f.write(content)
     subprocess.run(["git", "init", "-q"], cwd=root, capture_output=True)
     subprocess.run(["git", "add", "-A"], cwd=root, capture_output=True)
-    subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t",
-                    "commit", "-qm", "init"], cwd=root, capture_output=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "init"],
+        cwd=root,
+        capture_output=True,
+    )
 
 
 #: Scenario registry (review P1-10). shop/ is frozen (byte-identical
 #: prompts/IDs); new families add entries here, never edits to shop/.
 SCENARIOS = {
     "shop": {
-        "family_id": "AG", "variant": "canonical",
-        "system": AGENT_SYSTEM, "task": AGENT_TASK,
+        "family_id": "AG",
+        "variant": "canonical",
+        "system": AGENT_SYSTEM,
+        "task": AGENT_TASK,
         "test_cmd": ["python3", "-m", "pytest", "shop/tests/", "-q"],
         "test_prefix": "shop/tests",
-        "intended": INTENDED, "optional": OPTIONAL_HARDEN,
+        "intended": INTENDED,
+        "optional": OPTIONAL_HARDEN,
         "forbidden": FORBIDDEN,
-        "config": "shop/config.py", "recon": "shop/taxes.py",
+        "config": "shop/config.py",
+        "recon": "shop/taxes.py",
         "distractor": "shop/vendor_dump.py",
-        "build": build_repo, "max_steps": AGENT_MAX_STEPS,
+        "build": build_repo,
+        "max_steps": AGENT_MAX_STEPS,
     },
     "ledger": {
-        "family_id": "AG2", "variant": "canonical",
-        "system": LEDGER_SYSTEM, "task": LEDGER_TASK,
+        "family_id": "AG2",
+        "variant": "canonical",
+        "system": LEDGER_SYSTEM,
+        "task": LEDGER_TASK,
         "test_cmd": ["python3", "-m", "pytest", "ledger/tests/", "-q"],
         "test_prefix": "ledger/tests",
         "intended": {"ledger/paginate.py"},
         "optional": {"ledger/totals.py"},
         "forbidden": {"ledger/settings.py", "ledger/legacy_dump.py"},
-        "config": "ledger/settings.py", "recon": "ledger/paginate.py",
+        "config": "ledger/settings.py",
+        "recon": "ledger/paginate.py",
         "distractor": "ledger/legacy_dump.py",
-        "build": build_ledger_repo, "max_steps": AGENT_MAX_STEPS,
+        "build": build_ledger_repo,
+        "max_steps": AGENT_MAX_STEPS,
     },
 }
 
@@ -233,12 +257,15 @@ def scenario_for(name):
         return SCENARIOS[name]
     except KeyError:
         raise ValueError(
-            "unknown agent-loop scenario: %r (choose from %s)"
-            % (name, ", ".join(sorted(SCENARIOS))))
+            "unknown agent-loop scenario: {!r} (choose from {})".format(
+                name, ", ".join(sorted(SCENARIOS))
+            )
+        )
+
 
 CALL_RE = re.compile(
-    r"<tool_call>\s*<function=([\w]+)>\s*(.*?)</function>\s*</tool_call>",
-    re.S)
+    r"<tool_call>\s*<function=([\w]+)>\s*(.*?)</function>\s*</tool_call>", re.S
+)
 PARAM_RE = re.compile(r"<parameter=([\w]+)>\s*(.*?)\s*</parameter>", re.S)
 
 
@@ -252,11 +279,23 @@ def parse_tool_call(text):
 # Agent-loop tool primitives live in shared/agent_tools.py (audit item 4:
 # single source of truth — was duplicated with shared/run.py).
 try:
-    from agent_tools import (Ctx, _safe, tool_ls, tool_read, tool_run,  # noqa: E402,F401
-                             tool_edit)
+    from agent_tools import (  # noqa: E402,F401
+        Ctx,
+        _safe,
+        tool_edit,
+        tool_ls,
+        tool_read,
+        tool_run,
+    )
 except ImportError:
-    from shared.agent_tools import (Ctx, _safe, tool_ls, tool_read,  # noqa: E402,F401
-                                    tool_run, tool_edit)
+    from shared.agent_tools import (  # noqa: E402,F401
+        Ctx,
+        _safe,
+        tool_edit,
+        tool_ls,
+        tool_read,
+        tool_run,
+    )
 
 
 def _tool_steps(trace, tool):
@@ -281,10 +320,8 @@ def _canonical_recovery(result, trajectory=None):
         failed = result.get("failed_calls", 0)
         return bool(failed == 0 or result.get("tests_green"))
     traj = trajectory or {}
-    faults = [f for f in traj.get("failures", [])
-              if f.get("kind") != "BACKEND_ERROR"]
-    return bool(faults and traj.get("recoveries")
-                and result.get("tests_green"))
+    faults = [f for f in traj.get("failures", []) if f.get("kind") != "BACKEND_ERROR"]
+    return bool(faults and traj.get("recoveries") and result.get("tests_green"))
 
 
 def _terminal_state(trajectory, tests_green, forbidden):
@@ -303,12 +340,19 @@ def _terminal_state(trajectory, tests_green, forbidden):
     forbidden_n = len(forbidden or [])
     verified = bool(traj.get("verification")) and bool(tests_green)
     pending = 0 if kind == "FINAL" else None
-    clean = (kind == "FINAL" and bool((term.get("summary") or "").strip())
-             and verified and pending == 0 and forbidden_n == 0)
-    return {"terminal_state": "CLEAN_STOP" if clean else kind,
-            "verified": verified,
-            "pending_actions": pending,
-            "forbidden_edits": forbidden_n}
+    clean = (
+        kind == "FINAL"
+        and bool((term.get("summary") or "").strip())
+        and verified
+        and pending == 0
+        and forbidden_n == 0
+    )
+    return {
+        "terminal_state": "CLEAN_STOP" if clean else kind,
+        "verified": verified,
+        "pending_actions": pending,
+        "forbidden_edits": forbidden_n,
+    }
 
 
 def score_a1_a15(result, trajectory=None, scenario="shop"):
@@ -329,8 +373,8 @@ def score_a1_a15(result, trajectory=None, scenario="shop"):
     diff = set(result.get("diff_files", []))
     sc = scenario_for(scenario)
     intended, optional = sc["intended"], sc["optional"]
-    first_edit = min(_tool_steps(trace, "edit") or [10 ** 9])
-    first_read = min(_tool_steps(trace, "read") or [10 ** 9])
+    first_edit = min(_tool_steps(trace, "edit") or [10**9])
+    first_read = min(_tool_steps(trace, "read") or [10**9])
     last_edit = max(_tool_steps(trace, "edit") or [-1])
     last_run = max(_tool_steps(trace, "run") or [-1])
     failed = result.get("failed_calls", 0)
@@ -345,11 +389,13 @@ def score_a1_a15(result, trajectory=None, scenario="shop"):
         "A8_verify_after_edit": bool(last_run > last_edit),
         "A9_tests_green": bool(result.get("tests_green")),
         "A10_config_untouched": sc["config"] not in edited,
-        "A11_distractor_ignored": (sc["distractor"] not in edited
-                                   and sc["distractor"] not in reads),
+        "A11_distractor_ignored": (
+            sc["distractor"] not in edited and sc["distractor"] not in reads
+        ),
         "A12_diff_clean": bool(diff) and diff <= (intended | optional),
-        "A13_efficient": (result.get("tool_calls", 99) <= sc["max_steps"]
-                          and sc["recon"] in reads),
+        "A13_efficient": (
+            result.get("tool_calls", 99) <= sc["max_steps"] and sc["recon"] in reads
+        ),
         "A14_stop_cleanly": _clean_stop(result),
         "A15_success": bool(result.get("success")),
     }
@@ -357,8 +403,8 @@ def score_a1_a15(result, trajectory=None, scenario="shop"):
 
 # --- episode runner with P4 trajectory log --------------------------------
 
-def run_episode(chat, max_steps=None, scaffold="L2-standard",
-                scenario="shop"):
+
+def run_episode(chat, max_steps=None, scaffold="L2-standard", scenario="shop"):
     """Run one agent-loop episode. Returns (result, trajectory).
 
     trajectory records SPEC P4 fields: plan/observations/tool calls/
@@ -374,23 +420,29 @@ def run_episode(chat, max_steps=None, scaffold="L2-standard",
     """
     if scaffold not in SCAFFOLD_TOOLS:
         raise ValueError(
-            "unknown scaffold: %r (choose from %s)"
-            % (scaffold, ", ".join(SCAFFOLD_LEVELS)))
+            "unknown scaffold: {!r} (choose from {})".format(
+                scaffold, ", ".join(SCAFFOLD_LEVELS)
+            )
+        )
     sc = scenario_for(scenario)
     max_steps = sc["max_steps"] if max_steps is None else max_steps
     allowed = set(SCAFFOLD_TOOLS[scaffold])
     root = tempfile.mkdtemp(prefix="agentrepo_")
     sc["build"](root)
     ctx = Ctx(root)
-    history = [{"role": "system", "content": sc["system"]},
-               {"role": "user", "content": sc["task"]}]
-    trajectory = {"plan": [sc["task"]],
-                  "observations": [],
-                  "tool_calls": [],
-                  "failures": [],
-                  "recoveries": [],
-                  "verification": [],
-                  "termination": {}}
+    history = [
+        {"role": "system", "content": sc["system"]},
+        {"role": "user", "content": sc["task"]},
+    ]
+    trajectory = {
+        "plan": [sc["task"]],
+        "observations": [],
+        "tool_calls": [],
+        "failures": [],
+        "recoveries": [],
+        "verification": [],
+        "termination": {},
+    }
     steps, toks, lat = 0, 0, 0.0
     trace = []
     final = None
@@ -398,14 +450,14 @@ def run_episode(chat, max_steps=None, scaffold="L2-standard",
         while steps < max_steps:
             steps += 1
             try:
-                text, dt, ev = chat(history, temp=AGENT_TEMP,
-                                    think=True,
-                                    num_predict=AGENT_NUM_PREDICT)
+                text, dt, ev = chat(
+                    history, temp=AGENT_TEMP, think=True, num_predict=AGENT_NUM_PREDICT
+                )
             except Exception as e:
                 trace.append({"step": steps, "error": str(e)[:200]})
                 trajectory["failures"].append(
-                    {"step": steps, "kind": "BACKEND_ERROR",
-                     "detail": str(e)[:200]})
+                    {"step": steps, "kind": "BACKEND_ERROR", "detail": str(e)[:200]}
+                )
                 break
             lat += dt
             toks += ev if isinstance(ev, int) else 0
@@ -413,15 +465,28 @@ def run_episode(chat, max_steps=None, scaffold="L2-standard",
             if fn and scaffold == "L0-raw":
                 # L0: chat only; a tool-call-shaped reply is a
                 # FORMAT_ERROR failure (SPEC 27), FINAL still stops.
-                trace.append({"step": steps, "no_tool_call": text[:200],
-                              "scaffold_level": scaffold})
+                trace.append(
+                    {
+                        "step": steps,
+                        "no_tool_call": text[:200],
+                        "scaffold_level": scaffold,
+                    }
+                )
                 trajectory["failures"].append(
-                    {"step": steps, "kind": "FORMAT_ERROR",
-                     "detail": "no tools at L0-raw: reply FINAL or plain text"})
+                    {
+                        "step": steps,
+                        "kind": "FORMAT_ERROR",
+                        "detail": "no tools at L0-raw: reply FINAL or plain text",
+                    }
+                )
                 history.append({"role": "assistant", "content": text})
-                history.append({"role": "user", "content":
-                    "<tool_response>\nERROR: no tool call found. Either call a "
-                    "tool or reply FINAL: <summary>\n</tool_response>"})
+                history.append(
+                    {
+                        "role": "user",
+                        "content": "<tool_response>\nERROR: no tool call found. Either call a "
+                        "tool or reply FINAL: <summary>\n</tool_response>",
+                    }
+                )
                 ctx.failed += 1
                 continue
             if not fn:
@@ -429,29 +494,49 @@ def run_episode(chat, max_steps=None, scaffold="L2-standard",
                     final = text.strip()[:300]
                     trace.append({"step": steps, "final": final})
                     trajectory["termination"] = {
-                        "kind": "FINAL", "step": steps, "summary": final}
+                        "kind": "FINAL",
+                        "step": steps,
+                        "summary": final,
+                    }
                     break
                 trace.append({"step": steps, "no_tool_call": text[:200]})
                 trajectory["failures"].append(
-                    {"step": steps, "kind": "FORMAT_ERROR",
-                     "detail": "no tool call and no FINAL"})
+                    {
+                        "step": steps,
+                        "kind": "FORMAT_ERROR",
+                        "detail": "no tool call and no FINAL",
+                    }
+                )
                 history.append({"role": "assistant", "content": text})
-                history.append({"role": "user", "content":
-                    "<tool_response>\nERROR: no tool call found. Either call a "
-                    "tool or reply FINAL: <summary>\n</tool_response>"})
+                history.append(
+                    {
+                        "role": "user",
+                        "content": "<tool_response>\nERROR: no tool call found. Either call a "
+                        "tool or reply FINAL: <summary>\n</tool_response>",
+                    }
+                )
                 ctx.failed += 1
                 continue
             ctx.calls += 1
-            trace.append({"step": steps, "tool": fn,
-                          "params": {k: v[:80] for k, v in params.items()},
-                          "scaffold_level": scaffold})
+            trace.append(
+                {
+                    "step": steps,
+                    "tool": fn,
+                    "params": {k: v[:80] for k, v in params.items()},
+                    "scaffold_level": scaffold,
+                }
+            )
             trajectory["tool_calls"].append(
-                {"step": steps, "tool": fn,
-                 "params": {k: v[:80] for k, v in params.items()},
-                 "scaffold_level": scaffold})
+                {
+                    "step": steps,
+                    "tool": fn,
+                    "params": {k: v[:80] for k, v in params.items()},
+                    "scaffold_level": scaffold,
+                }
+            )
             try:
                 if fn not in allowed:
-                    ok, out = False, "ERROR: unknown tool %s" % fn
+                    ok, out = False, f"ERROR: unknown tool {fn}"
                 elif fn == "ls":
                     ok, out = tool_ls(params.get("path", "."), ctx)
                 elif fn == "read":
@@ -459,47 +544,64 @@ def run_episode(chat, max_steps=None, scaffold="L2-standard",
                 elif fn == "run":
                     ok, out = tool_run(params.get("cmd", ""), ctx)
                 elif fn == "edit":
-                    ok, out = tool_edit(params.get("path", ""),
-                                        params.get("old", "") or "",
-                                        params.get("new", ""), ctx)
+                    ok, out = tool_edit(
+                        params.get("path", ""),
+                        params.get("old", "") or "",
+                        params.get("new", ""),
+                        ctx,
+                    )
                 else:
-                    ok, out = False, "ERROR: unknown tool %s" % fn
+                    ok, out = False, f"ERROR: unknown tool {fn}"
             except Exception as e:
-                ok, out = False, "ERROR: %s" % e
+                ok, out = False, f"ERROR: {e}"
             trajectory["observations"].append(
-                {"step": steps, "tool": fn, "ok": ok,
-                 "output": out[-500:]})
+                {"step": steps, "tool": fn, "ok": ok, "output": out[-500:]}
+            )
             if not ok:
                 ctx.failed += 1
                 trajectory["failures"].append(
-                    {"step": steps, "kind": "WRONG_TOOL",
-                     "detail": out[:200]})
+                    {"step": steps, "kind": "WRONG_TOOL", "detail": out[:200]}
+                )
             else:
                 if trajectory["failures"]:
                     trajectory["recoveries"].append(
-                        {"step": steps, "after": "tool ok following failure"})
+                        {"step": steps, "after": "tool ok following failure"}
+                    )
             history.append({"role": "assistant", "content": text})
-            history.append({"role": "user", "content":
-                            "<tool_response>\n%s\n</tool_response>" % out})
+            history.append(
+                {
+                    "role": "user",
+                    "content": f"<tool_response>\n{out}\n</tool_response>",
+                }
+            )
         else:
-            trajectory["termination"] = {"kind": "MAX_STEPS", "step": steps,
-                                         "summary": None}
+            trajectory["termination"] = {
+                "kind": "MAX_STEPS",
+                "step": steps,
+                "summary": None,
+            }
     finally:
-        p = subprocess.run(["python3", "-m", "pytest"] + [sc["test_prefix"]]
-                           + ["-q"],
-                           cwd=root, capture_output=True, text=True,
-                           timeout=120)
-        tests_green = p.returncode == 0
+        test_rc, test_output = sandbox.run_in_sandbox(
+            ["python3", "-m", "pytest", sc["test_prefix"], "-q"],
+            sandbox_dir=root,
+            timeout=120,
+        )
+        tests_green = test_rc == 0
         trajectory["verification"].append(
-            {"kind": "pytest", "tests_green": tests_green,
-             "log": (p.stdout + p.stderr)[-600:]})
+            {"kind": "pytest", "tests_green": tests_green, "log": test_output[-600:]}
+        )
         if final is None and not trajectory["termination"]:
-            trajectory["termination"] = {"kind": "NO_FINAL", "step": steps,
-                                         "summary": None}
-        diff = subprocess.run(["git", "diff", "--name-only"], cwd=root,
-                              capture_output=True, text=True).stdout.split()
-        forbidden = [f for f in diff
-                     if f.startswith(sc["test_prefix"]) or f in sc["forbidden"]]
+            trajectory["termination"] = {
+                "kind": "NO_FINAL",
+                "step": steps,
+                "summary": None,
+            }
+        diff = subprocess.run(
+            ["git", "diff", "--name-only"], cwd=root, capture_output=True, text=True
+        ).stdout.split()
+        forbidden = [
+            f for f in diff if f.startswith(sc["test_prefix"]) or f in sc["forbidden"]
+        ]
         result = {
             "scenario": scenario,
             "success": bool(tests_green and final),
@@ -516,20 +618,27 @@ def run_episode(chat, max_steps=None, scaffold="L2-standard",
             "hallucinated_paths": ctx.nonexistent,
             "total_tokens": toks,
             "total_latency_s": round(lat, 1),
-            "pytest": (p.stdout + p.stderr)[-600:],
+            "pytest": test_output[-600:],
             "trace": trace,
             "final": final,
             "scaffold_level": scaffold,
         }
-        result["terminal_state"] = _terminal_state(
-            trajectory, tests_green, forbidden)
+        result["terminal_state"] = _terminal_state(trajectory, tests_green, forbidden)
         result["A"] = score_a1_a15(result, trajectory, scenario)
         shutil.rmtree(root, ignore_errors=True)
     return result, trajectory
 
 
-def episode_attempt(result, run_id, model_id, trial_id=1, index=1, seed=0,
-                    scaffold_level=None, scenario=None):
+def episode_attempt(
+    result,
+    run_id,
+    model_id,
+    trial_id=1,
+    index=1,
+    seed=0,
+    scaffold_level=None,
+    scenario=None,
+):
     """Build a schema-valid raw attempt record for an episode (no scoring).
 
     Frozen scaffold tier tag (SPEC 27): scaffold_level defaults to the
@@ -544,26 +653,28 @@ def episode_attempt(result, run_id, model_id, trial_id=1, index=1, seed=0,
     scenario = scenario or result.get("scenario") or "shop"
     sc = scenario_for(scenario)
     family, variant = sc["family_id"], sc["variant"]
-    return validate_attempt({
-        "run_id": run_id,
-        "model_id": model_id,
-        "task_family_id": family,
-        "instance_id": "%s-%s-%05d" % (family, variant, index),
-        "variant_class": variant,
-        "trial_id": trial_id,
-        "primary_status": status,
-        "score": 1.0 if status == "PASS" else 0.0,
-        "eligible_for_task_score": True,
-        "eligible_for_pass_rate": True,
-        "eligible_for_efficiency": True,
-        "eligible_for_calibration": False,
-        "primary_failure": None if status == "PASS" else "WRONG_RESULT",
-        "secondary_failure_tags": [],
-        "seed": seed,
-        "reasoning_mode": reasoning_mode_for(True, AGENT_NUM_PREDICT),
-        "scaffold_level": level,
-        "scenario": scenario,
-        "A": result.get("A", {}),
-        "tool_calls": result.get("tool_calls", 0),
-        "failed_calls": result.get("failed_calls", 0),
-    })
+    return validate_attempt(
+        {
+            "run_id": run_id,
+            "model_id": model_id,
+            "task_family_id": family,
+            "instance_id": "%s-%s-%05d" % (family, variant, index),
+            "variant_class": variant,
+            "trial_id": trial_id,
+            "primary_status": status,
+            "score": 1.0 if status == "PASS" else 0.0,
+            "eligible_for_task_score": True,
+            "eligible_for_pass_rate": True,
+            "eligible_for_efficiency": True,
+            "eligible_for_calibration": False,
+            "primary_failure": None if status == "PASS" else "WRONG_RESULT",
+            "secondary_failure_tags": [],
+            "seed": seed,
+            "reasoning_mode": reasoning_mode_for(True, AGENT_NUM_PREDICT),
+            "scaffold_level": level,
+            "scenario": scenario,
+            "A": result.get("A", {}),
+            "tool_calls": result.get("tool_calls", 0),
+            "failed_calls": result.get("failed_calls", 0),
+        }
+    )

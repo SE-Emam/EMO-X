@@ -14,17 +14,21 @@ reasoning.
 
 ## Sandbox
 
-`shared/sandbox.py`: sandbox-only temp dirs, realpath-based path-escape
-rejection (symlinks resolved, `commonpath` confinement, symlink reads
-and writes refused via `O_NOFOLLOW`), forbidden prefixes (`/etc`,
-`/root`, `/home`, `/var/run/secrets`, `/proc`, `/sys`, `/dev`,
-`/var/run/docker.sock`, plus `~/.aws`/`~/.ssh`), proxy-stripped
-environment (**proxy-strip only — NOT full network isolation; direct
-sockets from model code remain possible without OS-level net
-namespaces**), hard timeouts (`SandboxTimeout`). All model-code
-execution is routed through `run_in_sandbox` (cwd-confined +
-proxy-stripped env). Scope gates fail closed: missing or ambiguous
-authorization is denied.
+`shared/sandbox.py` runs generated code in the `emox-sandbox:latest`
+Docker image with `--network=none`, a read-only container root, dropped
+capabilities, no-new-privileges, and only a dedicated temporary
+workspace mounted read/write. Docker must be available and the image
+must already be built; absence is an explicit failure with no host
+execution fallback. The trusted Docker client receives a separate
+allowlisted environment; the container receives no host environment
+variables. The image's own runtime files remain readable inside the
+container, but no other host filesystem paths are mounted. The Docker
+daemon and image are trusted components. Each container is limited to
+1 GiB RAM, 2 CPUs, and 128 processes. Combined stdout/stderr is streamed
+with a 1 MiB retained-tail cap; output beyond the cap is drained but not
+stored. The canonical and legacy `shared/bench_lib.py` execution helpers
+route through this same policy.
+Scope gates fail closed: missing or ambiguous authorization is denied.
 
 ## Safety gate (non-compensatory)
 

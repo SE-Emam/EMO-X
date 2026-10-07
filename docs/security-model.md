@@ -60,3 +60,11 @@ S5 (security reasoning) are enforced **in code**, not by convention:
   fail-closed, never a silent pass.
 - Approval: `EMOX_SCOPE_APPROVED=1 EMOX_SCOPE_TARGET=synthetic:<label>
   python security-bench/run_security.py --only S3,S4,S5 ...`
+
+## Trust Boundaries and Third-Party CLIs
+
+The Docker sandbox isolation applies strictly to EMO-X-managed generated code
+execution. Optional third-party agent CLIs (e.g., opencode, hermes) execute
+outside this boundary. EMO-X does not control their internal tool execution or
+environment handling. Deployments must treat them as separate trusted
+components and avoid claiming universal generated-code isolation.

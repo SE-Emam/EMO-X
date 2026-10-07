@@ -18,6 +18,8 @@ sandboxed, offline, non-deployable, scope-gated (`docs/security-model.md`,
 - The Docker daemon and sandbox image are trusted components. This
   boundary does not constrain third-party agent CLIs invoked by optional
   adapters; those tools need their own security review and isolation.
+- For detailed runtime isolation and trust boundaries, see
+  `docs/security-model.md`.
 
 ## Reporting a vulnerability
 

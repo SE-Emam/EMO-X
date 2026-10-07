@@ -22,6 +22,10 @@ jobs:
         run: docker build -f Dockerfile.sandbox -t emox-sandbox:latest .
       - name: Install locked development dependencies
         run: uv sync --extra dev --frozen --no-install-project
+      - name: Export locked dependencies for vulnerability audit
+        run: uv export --frozen --all-extras --no-emit-project --no-hashes --output-file "$RUNNER_TEMP/requirements-audit.txt"
+      - name: Audit locked dependencies
+        run: uvx --from pip-audit pip-audit --requirement "$RUNNER_TEMP/requirements-audit.txt" --no-deps --disable-pip
       - name: Static syntax check (compileall)
         run: python3 -m compileall -q shared suites generators judges health mcp-server adapters tests tools
       - name: Ruff lint

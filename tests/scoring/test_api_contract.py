@@ -25,25 +25,51 @@ if SHARED not in sys.path:
 import scoring
 
 CONTRACTED = (
-    "pass_rate", "family_balanced_pass_rate", "coverage",
-    "generalization_score", "novelty_robustness",
+    "pass_rate",
+    "family_balanced_pass_rate",
+    "coverage",
+    "generalization_score",
+    "novelty_robustness",
     "novelty_retention_benchmark",
-    "tool_precision", "tool_recall", "tool_f1", "argument_accuracy",
-    "sequence_validity", "action_discipline", "side_effect_safety",
-    "tool_discipline", "tool_components_from_agent_attempt",
+    "tool_precision",
+    "tool_recall",
+    "tool_f1",
+    "argument_accuracy",
+    "sequence_validity",
+    "action_discipline",
+    "side_effect_safety",
+    "tool_discipline",
+    "tool_components_from_agent_attempt",
     "tool_discipline_from_attempts",
-    "recovery_rate", "recovery_score", "recovery_precision",
-    "efficiency_score", "budget_compliance",
-    "state_awareness", "stale_plan_rate", "correct_replanning_rate",
+    "recovery_rate",
+    "recovery_score",
+    "recovery_precision",
+    "efficiency_score",
+    "budget_compliance",
+    "state_awareness",
+    "stale_plan_rate",
+    "correct_replanning_rate",
     "robustness_from_drift",
-    "bootstrap_ci", "paired_bootstrap_diff", "instance_paired_bootstrap",
-    "wilson_interval", "mde_paired", "usd_per_solve", "pareto_frontier",
+    "bootstrap_ci",
+    "paired_bootstrap_diff",
+    "instance_paired_bootstrap",
+    "wilson_interval",
+    "mde_paired",
+    "usd_per_solve",
+    "pareto_frontier",
     "passk_summary",
-    "family_value_lists", "family_strict_lists", "instance_mean_scores",
-    "aggregate_events", "time_horizon_fit",
-    "calibration_score", "brier_score", "safety_score", "csv_rate",
+    "family_value_lists",
+    "family_strict_lists",
+    "instance_mean_scores",
+    "aggregate_events",
+    "time_horizon_fit",
+    "calibration_score",
+    "brier_score",
+    "safety_score",
+    "csv_rate",
     "saturation_penalty",
-    "BOOTSTRAP_RESAMPLES", "BOOTSTRAP_MAX",
+    "BOOTSTRAP_RESAMPLES",
+    "BOOTSTRAP_MAX",
 )
 
 
@@ -64,10 +90,9 @@ class ApiSurfaceTests(unittest.TestCase):
 class PurityTests(unittest.TestCase):
     def test_no_io_or_network_imports(self):
         import scoring as _s
-        mods = set(getattr(_s, "__dict__", {}).keys())
+
         src = inspect.getsource(_s)
-        for banned in ("urllib", "socket", "subprocess", "requests",
-                       "numpy", "open("):
+        for banned in ("urllib", "socket", "subprocess", "requests", "numpy", "open("):
             self.assertNotIn("import %s" % banned, src, banned)
         self.assertNotIn("urllib.request", src)
 

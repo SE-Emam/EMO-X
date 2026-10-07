@@ -10,18 +10,18 @@ gating + SATURATED policy live here.
 """
 
 try:
-    from scoring import (novelty_retention_benchmark,
-                         novelty_gap_benchmark, saturation_penalty)
+    from scoring import novelty_retention_benchmark, novelty_gap_benchmark, saturation_penalty
 except ImportError:  # package-style import (repo root on sys.path)
-    from shared.scoring import (novelty_retention_benchmark,
-                                novelty_gap_benchmark,
-                                saturation_penalty)
+    from shared.scoring import (
+        novelty_retention_benchmark,
+        novelty_gap_benchmark,
+        saturation_penalty,
+    )
 
 SATURATED_PASS_THRESHOLD = 0.98
 SATURATED_DISCRIMINATION_THRESHOLD = 0.10
 
-__all__ = ["saturation_snapshot", "SATURATED_PASS_THRESHOLD",
-           "SATURATED_DISCRIMINATION_THRESHOLD"]
+__all__ = ["saturation_snapshot", "SATURATED_PASS_THRESHOLD", "SATURATED_DISCRIMINATION_THRESHOLD"]
 
 
 def mean_pass_rate(ref_scores):
@@ -43,17 +43,26 @@ def saturation_snapshot(ref_scores, discrimination=None, tau=0.95):
     n_ref = len(valid)
     mean = mean_pass_rate(ref_scores)
     if n_ref < 3:  # C71: reference set too small => NA
-        return {"mean_pass": mean, "n_ref": n_ref, "penalty": None,
-                "saturated": False,
-                "reason": "NA: fewer than 3 reference models (C71)"}
+        return {
+            "mean_pass": mean,
+            "n_ref": n_ref,
+            "penalty": None,
+            "saturated": False,
+            "reason": "NA: fewer than 3 reference models (C71)",
+        }
     penalty = saturation_penalty(mean, tau=tau)
     saturated = bool(
-        mean is not None and mean > SATURATED_PASS_THRESHOLD
-        and (discrimination is None
-             or discrimination < SATURATED_DISCRIMINATION_THRESHOLD))
-    return {"mean_pass": mean, "n_ref": n_ref, "penalty": penalty,
-            "saturated": saturated,
-            "reason": "SATURATED (SPEC 11)" if saturated else "not saturated"}
+        mean is not None
+        and mean > SATURATED_PASS_THRESHOLD
+        and (discrimination is None or discrimination < SATURATED_DISCRIMINATION_THRESHOLD)
+    )
+    return {
+        "mean_pass": mean,
+        "n_ref": n_ref,
+        "penalty": penalty,
+        "saturated": saturated,
+        "reason": "SATURATED (SPEC 11)" if saturated else "not saturated",
+    }
 
 
 def novelty_snapshot(canonical_by_task, novel_by_task):

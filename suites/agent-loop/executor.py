@@ -51,6 +51,7 @@ def _ep():
 def load_manifest(family):
     """Load the frozen Task DSL manifest for AG/AG2."""
     import json
+
     fam = str(family or "").strip().upper()
     if fam not in FAMILY_IDS:
         raise KeyError("unknown agent-loop family: %r" % (family,))
@@ -59,9 +60,19 @@ def load_manifest(family):
         return json.load(f)
 
 
-def run_family(family, chat, run_id, model_id, trial_id=1, index=1,
-               seed=0, variant="canonical", scope=None, scaffold=None,
-               max_steps=None):
+def run_family(
+    family,
+    chat,
+    run_id,
+    model_id,
+    trial_id=1,
+    index=1,
+    seed=0,
+    variant="canonical",
+    scope=None,
+    scaffold=None,
+    max_steps=None,
+):
     """Run one agent-loop episode; returns (attempt, response)."""
     ep = _ep()
     fam = str(family or "").strip().upper()
@@ -69,23 +80,25 @@ def run_family(family, chat, run_id, model_id, trial_id=1, index=1,
         raise KeyError("unknown agent-loop family: %r" % (family,))
     v = variant or "canonical"
     if v != "canonical":
-        raise TypeError("variant %r not supported for family %r"
-                        % (variant, family))
+        raise TypeError("variant %r not supported for family %r" % (variant, family))
     scenario = ep.SCENARIO_FAMILIES[fam]
     result, trajectory = ep.run_episode(
-        chat, max_steps=max_steps,
-        scaffold=scaffold or ep.DEFAULT_SCAFFOLD, scenario=scenario)
+        chat, max_steps=max_steps, scaffold=scaffold or ep.DEFAULT_SCAFFOLD, scenario=scenario
+    )
     attempt = ep.episode_attempt(
-        result, run_id, model_id, trial_id=int(trial_id), index=index,
-        seed=seed, scenario=scenario)
-    response = {"instance_id": attempt["instance_id"], "trial_id": trial_id,
-                "scenario": scenario,
-                "final": result.get("final"),
-                "tool_calls": result.get("tool_calls", 0),
-                "failed_calls": result.get("failed_calls", 0),
-                "terminal_state": result.get("terminal_state"),
-                "usage": {"total_tokens": result.get("total_tokens", 0)},
-                "reply": str(result.get("final") or "")}
+        result, run_id, model_id, trial_id=int(trial_id), index=index, seed=seed, scenario=scenario
+    )
+    response = {
+        "instance_id": attempt["instance_id"],
+        "trial_id": trial_id,
+        "scenario": scenario,
+        "final": result.get("final"),
+        "tool_calls": result.get("tool_calls", 0),
+        "failed_calls": result.get("failed_calls", 0),
+        "terminal_state": result.get("terminal_state"),
+        "usage": {"total_tokens": result.get("total_tokens", 0)},
+        "reply": str(result.get("final") or ""),
+    }
     return attempt, response
 
 

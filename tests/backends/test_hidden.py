@@ -13,8 +13,7 @@ import os
 import sys
 import unittest
 
-ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                      "..", ".."))
+ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 SHARED = os.path.join(ROOT, "shared")
 HIDDEN = os.path.join(ROOT, "suites", "code-bench-25-hidden")
 MANIFESTS = os.path.join(HIDDEN, "manifests")
@@ -35,10 +34,8 @@ def _load_by_path(name, path):
     return mod
 
 
-hidden_cases = _load_by_path("hidden_cases_under_test",
-                             os.path.join(HIDDEN, "cases.py"))
-hidden_executor = _load_by_path("hidden_executor_under_test",
-                                os.path.join(HIDDEN, "executor.py"))
+hidden_cases = _load_by_path("hidden_cases_under_test", os.path.join(HIDDEN, "cases.py"))
+hidden_executor = _load_by_path("hidden_executor_under_test", os.path.join(HIDDEN, "executor.py"))
 
 FAMILIES = ("HH1", "HH2", "HH3", "HH4", "HH5", "HH6")
 
@@ -46,6 +43,7 @@ FAMILIES = ("HH1", "HH2", "HH3", "HH4", "HH5", "HH6")
 def _stub_chat_factory(reply_fn):
     def chat(messages, **kw):
         return reply_fn(messages), 0.1, {}
+
     return chat
 
 
@@ -60,12 +58,12 @@ def _snapshot_files(top):
 class TestHiddenManifests(unittest.TestCase):
     def test_six_manifests_validate(self):
         files = sorted(f for f in os.listdir(MANIFESTS) if f.endswith(".json"))
-        self.assertEqual(files, ["HH1.json", "HH2.json", "HH3.json",
-                                 "HH4.json", "HH5.json", "HH6.json"])
+        self.assertEqual(
+            files, ["HH1.json", "HH2.json", "HH3.json", "HH4.json", "HH5.json", "HH6.json"]
+        )
         for name in files:
             with self.subTest(manifest=name):
-                manifest = manifest_lib.load_task_manifest(
-                    os.path.join(MANIFESTS, name))
+                manifest = manifest_lib.load_task_manifest(os.path.join(MANIFESTS, name))
                 self.assertEqual(manifest["id"], name[:-5])
                 self.assertEqual(manifest.get("visibility"), "hidden")
                 self.assertIn("hidden", manifest["variants"])
@@ -73,11 +71,9 @@ class TestHiddenManifests(unittest.TestCase):
     def test_manifests_hold_config_only(self):
         for family in FAMILIES:
             with self.subTest(family=family):
-                with open(os.path.join(MANIFESTS, family + ".json"),
-                          encoding="utf-8") as f:
+                with open(os.path.join(MANIFESTS, family + ".json"), encoding="utf-8") as f:
                     raw = json.load(f)
-                for banned in ("instances", "prompt", "prompts", "seeds",
-                               "answers", "expected"):
+                for banned in ("instances", "prompt", "prompts", "seeds", "answers", "expected"):
                     self.assertNotIn(banned, raw)
                 self.assertIn("parameters", raw["generator"])
                 self.assertEqual(raw["oracle"]["type"], "deterministic")
@@ -89,10 +85,8 @@ class TestHiddenDeterminism(unittest.TestCase):
             with self.subTest(family=family):
                 first = hidden_cases.make_instance(family, 25000, 1)
                 second = hidden_cases.make_instance(family, 25000, 1)
-                self.assertEqual(first["instance_hash"],
-                                 second["instance_hash"])
-                self.assertEqual(first["oracle_hash"],
-                                 second["oracle_hash"])
+                self.assertEqual(first["instance_hash"], second["instance_hash"])
+                self.assertEqual(first["oracle_hash"], second["oracle_hash"])
                 self.assertEqual(first["prompt"], second["prompt"])
 
     def test_different_seeds_differ(self):
@@ -111,11 +105,11 @@ class TestHiddenDeterminism(unittest.TestCase):
 
     def test_instance_id_convention(self):
         from generators.seeds import parse_instance_id
+
         for family in FAMILIES:
             with self.subTest(family=family):
                 inst = hidden_cases.make_instance(family, 99, 7)
-                self.assertEqual(inst["instance_id"],
-                                 "%s-hidden-00007" % family)
+                self.assertEqual(inst["instance_id"], "%s-hidden-00007" % family)
                 self.assertEqual(inst["variant_class"], "hidden")
                 fam, variant, index = parse_instance_id(inst["instance_id"])
                 self.assertEqual((fam, variant, index), (family, "hidden", 7))
@@ -138,27 +132,38 @@ class TestHiddenGate(unittest.TestCase):
 
         for bad_scope in (None, "", "public", "HIDDEN-OK"):
             with self.subTest(scope=bad_scope):
-                with self.assertRaises(
-                        hidden_executor.ScopeRequiredError):
+                with self.assertRaises(hidden_executor.ScopeRequiredError):
                     hidden_executor.run_family(
-                        "HH1", chat, run_id="RUN-H", model_id="stub",
-                        trial_id=1, index=1, seed=1, scope=bad_scope)
+                        "HH1",
+                        chat,
+                        run_id="RUN-H",
+                        model_id="stub",
+                        trial_id=1,
+                        index=1,
+                        seed=1,
+                        scope=bad_scope,
+                    )
 
     def test_gate_refuses_missing_scope_kwarg(self):
         def chat(messages, **kw):
             raise AssertionError("model must not be called without scope")
 
         with self.assertRaises(hidden_executor.ScopeRequiredError):
-            hidden_executor.run_family("HH1", chat, run_id="RUN-H",
-                                       model_id="stub")
+            hidden_executor.run_family("HH1", chat, run_id="RUN-H", model_id="stub")
 
     def test_gate_allows_hidden_ok(self):
         inst = hidden_cases.make_instance("HH1", 5, 1)
         answer = inst["oracle"]["value"]
         attempt, _resp = hidden_executor.run_family(
-            "HH1", _stub_chat_factory(lambda _m: answer),
-            run_id="RUN-H", model_id="stub", trial_id=1, index=1, seed=5,
-            scope="hidden-ok")
+            "HH1",
+            _stub_chat_factory(lambda _m: answer),
+            run_id="RUN-H",
+            model_id="stub",
+            trial_id=1,
+            index=1,
+            seed=5,
+            scope="hidden-ok",
+        )
         self.assertEqual(attempt["primary_status"], "PASS")
         self.assertEqual(attempt["variant_class"], "hidden")
         self.assertEqual(attempt["instance_id"], "HH1-hidden-00001")
@@ -169,8 +174,7 @@ class TestHiddenOracles(unittest.TestCase):
         for family in FAMILIES:
             with self.subTest(family=family):
                 inst = hidden_cases.make_instance(family, 31337, 2)
-                ok, _log = hidden_cases.check_family(
-                    family, inst["oracle"]["value"], inst)
+                ok, _log = hidden_cases.check_family(family, inst["oracle"]["value"], inst)
                 self.assertTrue(ok)
 
     def test_wrong_reply_fails(self):
@@ -183,10 +187,17 @@ class TestHiddenOracles(unittest.TestCase):
 
     def test_executor_fail_produces_valid_attempt(self):
         from shared import schemas as _schemas
+
         attempt, _resp = hidden_executor.run_family(
-            "HH2", _stub_chat_factory(lambda _m: "not a number"),
-            run_id="RUN-H", model_id="stub", trial_id=1, index=1, seed=9,
-            scope="hidden-ok")
+            "HH2",
+            _stub_chat_factory(lambda _m: "not a number"),
+            run_id="RUN-H",
+            model_id="stub",
+            trial_id=1,
+            index=1,
+            seed=9,
+            scope="hidden-ok",
+        )
         self.assertEqual(attempt["primary_status"], "FAIL")
         _schemas.validate_attempt(attempt)
 
@@ -194,6 +205,7 @@ class TestHiddenOracles(unittest.TestCase):
 class TestHiddenCanary(unittest.TestCase):
     def test_canary_digit_free(self):
         import re
+
         self.assertTrue(hidden_cases.CANARY)
         self.assertIsNone(re.search(r"[0-9]", hidden_cases.CANARY))
 
@@ -207,8 +219,7 @@ class TestHiddenCanary(unittest.TestCase):
         for family in FAMILIES:
             with self.subTest(family=family):
                 inst = hidden_cases.make_instance(family, 4242, 3)
-                ok, _ = hidden_cases.check_family(
-                    family, hidden_cases.CANARY, inst)
+                ok, _ = hidden_cases.check_family(family, hidden_cases.CANARY, inst)
                 self.assertFalse(ok)
 
 
@@ -218,10 +229,8 @@ class TestHiddenNewFamilies(unittest.TestCase):
             with self.subTest(family=family):
                 params = hidden_cases.resolve_params(family, 7, 1)
                 inst = hidden_cases.make_instance(family, 7, 1)
-                self.assertEqual(inst["oracle"]["value"],
-                                 hidden_cases.oracle_value(family, params))
-                ok, _ = hidden_cases.check_family(
-                    family, "work " + inst["oracle"]["value"], inst)
+                self.assertEqual(inst["oracle"]["value"], hidden_cases.oracle_value(family, params))
+                ok, _ = hidden_cases.check_family(family, "work " + inst["oracle"]["value"], inst)
                 self.assertTrue(ok)
 
 

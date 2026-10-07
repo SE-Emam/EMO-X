@@ -12,14 +12,29 @@ import shutil
 from setuptools import setup
 from setuptools.command.build_py import build_py
 
-TREE_DIRS = ("shared", "suites", "prompts", "generators", "judges",
-             "health", "adapters", "mcp-server", "commands")
+TREE_DIRS = (
+    "shared",
+    "suites",
+    "prompts",
+    "generators",
+    "judges",
+    "health",
+    "adapters",
+    "mcp-server",
+    "commands",
+)
 # NOTE: keep in sync with src/emox/__init__.py _TREE_DIRS (single source
 # of truth for the runtime tree; _is_tree() validates all of these).
-TREE_FILES = ("SKILL.md", "LICENSE", "README.md", "SPEC.md",
-              "DENOMINATORS.md", "REPORT_TEMPLATE.md")
-IGNORE = shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo",
-                                ".DS_Store")
+TREE_FILES = (
+    "SKILL.md",
+    "LICENSE",
+    "README.md",
+    "SPEC.md",
+    "DENOMINATORS.md",
+    "REPORT_TEMPLATE.md",
+    "Dockerfile.sandbox",
+)
+IGNORE = shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo", ".DS_Store")
 
 
 class BuildPyWithData(build_py):
@@ -35,8 +50,7 @@ class BuildPyWithData(build_py):
         for dirname in TREE_DIRS:
             src = os.path.join(src_root, dirname)
             if os.path.isdir(src):
-                shutil.copytree(src, os.path.join(dest, dirname),
-                                ignore=IGNORE, dirs_exist_ok=True)
+                shutil.copytree(src, os.path.join(dest, dirname), ignore=IGNORE, dirs_exist_ok=True)
         for filename in TREE_FILES:
             src = os.path.join(src_root, filename)
             if os.path.isfile(src):

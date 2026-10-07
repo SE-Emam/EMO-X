@@ -21,31 +21,56 @@ try:
     from mutations import VARIANT_DIFFICULTY_BUMP, VARIANT_LEVELS
 except ImportError:  # package-style import (repo root on sys.path)
     try:
-        from generators.mutations import (VARIANT_DIFFICULTY_BUMP,
-                                          VARIANT_LEVELS)
+        from generators.mutations import VARIANT_DIFFICULTY_BUMP, VARIANT_LEVELS
     except ImportError:  # standalone `python shared/adaptive.py`
-        VARIANT_DIFFICULTY_BUMP = {"canonical": 0, "paraphrase": 0,
-                                   "naming": 1, "constraint": 1,
-                                   "structural": 2, "adversarial": 2,
-                                   "recovery": 3, "novel": 2}
-        VARIANT_LEVELS = {"canonical": "C", "paraphrase": "P",
-                          "naming": "S", "constraint": "S",
-                          "structural": "S", "adversarial": "A",
-                          "recovery": "R", "novel": "N"}
+        VARIANT_DIFFICULTY_BUMP = {
+            "canonical": 0,
+            "paraphrase": 0,
+            "naming": 1,
+            "constraint": 1,
+            "structural": 2,
+            "adversarial": 2,
+            "recovery": 3,
+            "novel": 2,
+        }
+        VARIANT_LEVELS = {
+            "canonical": "C",
+            "paraphrase": "P",
+            "naming": "S",
+            "constraint": "S",
+            "structural": "S",
+            "adversarial": "A",
+            "recovery": "R",
+            "novel": "N",
+        }
 
 MIN_DIFFICULTY = 0
 MAX_DIFFICULTY = 7
 
-DIFFICULTY_LABELS = ("trivial", "standard", "perturbed", "constrained",
-                     "adversarial", "recovery", "compound", "long-horizon")
+DIFFICULTY_LABELS = (
+    "trivial",
+    "standard",
+    "perturbed",
+    "constrained",
+    "adversarial",
+    "recovery",
+    "compound",
+    "long-horizon",
+)
 
 PROMOTE_STREAK = 2  # consecutive passes required to step up (SPEC 10)
 DEMOTE_STREAK = 2  # consecutive fails required to step down (SPEC 10)
 
 ACTIONS = ("promote", "hold", "demote", "diagnose")
 
-__all__ = ["AdaptiveController", "difficulty_label", "variant_for_difficulty",
-           "MIN_DIFFICULTY", "MAX_DIFFICULTY", "DIFFICULTY_LABELS"]
+__all__ = [
+    "AdaptiveController",
+    "difficulty_label",
+    "variant_for_difficulty",
+    "MIN_DIFFICULTY",
+    "MAX_DIFFICULTY",
+    "DIFFICULTY_LABELS",
+]
 
 
 def difficulty_label(difficulty):
@@ -78,7 +103,7 @@ def variant_for_difficulty(difficulty):
     return "novel"
 
 
-class AdaptiveController(object):
+class AdaptiveController:
     """Per-family adaptive difficulty state. SPEC 10.
 
     Usage:
@@ -88,8 +113,7 @@ class AdaptiveController(object):
       curve = ctl.ability_curve("H3")
     """
 
-    def __init__(self, promote_streak=PROMOTE_STREAK,
-                 demote_streak=DEMOTE_STREAK):
+    def __init__(self, promote_streak=PROMOTE_STREAK, demote_streak=DEMOTE_STREAK):
         self.promote_streak = promote_streak
         self.demote_streak = demote_streak
         self._history = {}  # family -> list of (difficulty, passed_bool)
@@ -98,8 +122,7 @@ class AdaptiveController(object):
         """Record one evaluated attempt at a rung. SPEC 10."""
         if not MIN_DIFFICULTY <= difficulty <= MAX_DIFFICULTY:
             raise ValueError("difficulty must be D0-D7")
-        self._history.setdefault(family, []).append(
-            (difficulty, bool(passed)))
+        self._history.setdefault(family, []).append((difficulty, bool(passed)))
 
     def _streaks(self, family):
         hist = self._history.get(family, [])
@@ -150,13 +173,12 @@ class AdaptiveController(object):
             vals = [1 if ok else 0 for d, ok in hist if d == rung]
             by_rung[rung] = (sum(vals) / len(vals)) if vals else None
         observed = {r: v for r, v in by_rung.items() if v is not None}
-        best = max(observed, key=lambda r: (observed[r], -r)) \
-            if observed else None
+        best = max(observed, key=lambda r: (observed[r], -r)) if observed else None
         curve = dict(by_rung)
-        curve["summary"] = {"n_observed": len(hist),
-                            "n_rungs_observed": len(observed),
-                            "best_rung": best,
-                            "label": {r: difficulty_label(r)
-                                      for r in range(MIN_DIFFICULTY,
-                                                     MAX_DIFFICULTY + 1)}}
+        curve["summary"] = {
+            "n_observed": len(hist),
+            "n_rungs_observed": len(observed),
+            "best_rung": best,
+            "label": {r: difficulty_label(r) for r in range(MIN_DIFFICULTY, MAX_DIFFICULTY + 1)},
+        }
         return curve

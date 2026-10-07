@@ -23,7 +23,7 @@ def load_task_manifest(source):
         data = source
     elif isinstance(source, str):
         if os.path.exists(source):
-            with open(source, "r", encoding="utf-8") as f:
+            with open(source, encoding="utf-8") as f:
                 text = f.read()
         else:
             text = source
@@ -57,8 +57,7 @@ def sha256_manifest(manifest):
 
     Uses sorted-key canonical JSON so equal manifests hash equally.
     """
-    canonical = json.dumps(manifest, sort_keys=True, ensure_ascii=False,
-                           separators=(",", ":"))
+    canonical = json.dumps(manifest, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
     return sha256_bytes(canonical.encode("utf-8"))
 
 
@@ -67,16 +66,20 @@ def comparison_key(prompt_sha256, harness_sha256, manifest_sha256):
 
     Two runs are DIRECT-comparable only when all three hashes match.
     """
-    return {"prompt_sha256": prompt_sha256,
-            "harness_sha256": harness_sha256,
-            "manifest_sha256": manifest_sha256}
+    return {
+        "prompt_sha256": prompt_sha256,
+        "harness_sha256": harness_sha256,
+        "manifest_sha256": manifest_sha256,
+    }
 
 
 def is_directly_comparable(key_a, key_b):
     """True iff two B58 comparison keys match exactly. SPEC B58."""
-    return (key_a.get("prompt_sha256") == key_b.get("prompt_sha256")
-            and key_a.get("harness_sha256") == key_b.get("harness_sha256")
-            and key_a.get("manifest_sha256") == key_b.get("manifest_sha256"))
+    return (
+        key_a.get("prompt_sha256") == key_b.get("prompt_sha256")
+        and key_a.get("harness_sha256") == key_b.get("harness_sha256")
+        and key_a.get("manifest_sha256") == key_b.get("manifest_sha256")
+    )
 
 
 def comparability_with_capabilities(key_a, key_b, cap_a, cap_b):
@@ -89,20 +92,24 @@ def comparability_with_capabilities(key_a, key_b, cap_a, cap_b):
     """
     if not is_directly_comparable(key_a, key_b):
         return ("NON_COMPARABLE", "B58 hash mismatch")
-    material = ("tool_calls", "reasoning_tokens", "seed", "token_usage",
-                "vision", "stop_behavior", "max_tokens")
+    material = (
+        "tool_calls",
+        "reasoning_tokens",
+        "seed",
+        "token_usage",
+        "vision",
+        "stop_behavior",
+        "max_tokens",
+    )
     for field in material:
         a, b = (cap_a or {}).get(field), (cap_b or {}).get(field)
         if a == b:
             continue
         if "unknown" in (a, b):
-            return ("CONDITIONALLY_COMPARABLE",
-                    "unverified capability %r" % field)
-        return ("NON_COMPARABLE",
-                "material conflict in %r: %r vs %r" % (field, a, b))
+            return ("CONDITIONALLY_COMPARABLE", "unverified capability %r" % field)
+        return ("NON_COMPARABLE", "material conflict in %r: %r vs %r" % (field, a, b))
     if any((cap_a or {}).get(f) == "unknown" for f in material):
-        return ("CONDITIONALLY_COMPARABLE",
-                "unverified material capability")
+        return ("CONDITIONALLY_COMPARABLE", "unverified material capability")
     return ("DIRECT", "identical material capabilities")
 
 
@@ -118,8 +125,11 @@ def verify_prompt_pack(pack_name, root=None):
         from schemas import VoidRun
     except ImportError:  # `python shared/x.py` vs package import
         from shared.schemas import VoidRun
-    base = os.path.normpath(root) if root is not None else os.path.normpath(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+    base = (
+        os.path.normpath(root)
+        if root is not None
+        else os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+    )
     name = str(pack_name)
     if name.endswith(".md"):
         name = name[:-3]
@@ -132,7 +142,7 @@ def verify_prompt_pack(pack_name, root=None):
     sums_path = os.path.join(base, "prompts", "SHA256SUMS")
     pack_path = os.path.join(base, rel)
     try:
-        with open(sums_path, "r", encoding="utf-8") as f:
+        with open(sums_path, encoding="utf-8") as f:
             lines = f.read().splitlines()
     except OSError:
         raise VoidRun("prompt-changed: cannot read SHA256SUMS")

@@ -32,7 +32,7 @@ except ImportError:
 def _load(name, rundir):
     with open(os.path.join(rundir, name), encoding="utf-8") as f:
         if name.endswith(".jsonl"):
-            return [json.loads(l) for l in f if l.strip()]
+            return [json.loads(line) for line in f if line.strip()]
         return json.load(f)
 
 
@@ -44,8 +44,8 @@ def _bar(label, value, color="#2c7be5"):
         '<svg width="260" height="14" aria-label="%s %.1f%%">'
         '<rect width="260" height="14" rx="3" class="track"/>'
         '<rect width="%.1f" height="14" rx="3" fill="%s"/></svg>'
-        '<span class="val">%.1f%%</span></div>' % (
-            lab, lab, pct, pct * 2.6, color, pct))
+        '<span class="val">%.1f%%</span></div>' % (lab, lab, pct, pct * 2.6, color, pct)
+    )
 
 
 def render(rundir, outdir):
@@ -56,16 +56,17 @@ def render(rundir, outdir):
     responses = _load("responses.jsonl", rundir)
     try:
         environment = _load("environment.json", rundir)
-    except (IOError, ValueError):
+    except (OSError, ValueError):
         environment = {}
-    report = build_v2_report(
-        attempts, responses, model_id=manifest.get("model"))
+    report = build_v2_report(attempts, responses, model_id=manifest.get("model"))
     os.makedirs(outdir, exist_ok=True)
-    with open(os.path.join(outdir, "report.json"), "w",
-              encoding="utf-8") as f:
-        json.dump({"manifest": manifest, "report": report,
-                   "environment": environment}, f, ensure_ascii=False,
-                  indent=1)
+    with open(os.path.join(outdir, "report.json"), "w", encoding="utf-8") as f:
+        json.dump(
+            {"manifest": manifest, "report": report, "environment": environment},
+            f,
+            ensure_ascii=False,
+            indent=1,
+        )
     profile = report.get("capability_profile") or {}
     if not isinstance(profile, dict):
         profile = {}
@@ -79,18 +80,31 @@ def render(rundir, outdir):
     if not isinstance(unc, dict):
         unc = {}
     rows = []
-    rows.append("<h1>EMO-X report <small>%s</small></h1>" % html.escape(
-        str(manifest.get("run_id", "?"))))
-    rows.append("<p>model <b>%s</b> · suite <b>%s</b> · backend <b>%s</b> "
-                "· eligibility <b>%s</b></p>" % (
-                    html.escape(str(manifest.get("model", "?"))),
-                    html.escape(str(manifest.get("suite", "?"))),
-                    html.escape(str(manifest.get("backend", "?"))),
-                    html.escape(str(report.get("eligibility", "?")))))
+    rows.append(
+        "<h1>EMO-X report <small>%s</small></h1>" % html.escape(str(manifest.get("run_id", "?")))
+    )
+    rows.append(
+        "<p>model <b>%s</b> · suite <b>%s</b> · backend <b>%s</b> "
+        "· eligibility <b>%s</b></p>"
+        % (
+            html.escape(str(manifest.get("model", "?"))),
+            html.escape(str(manifest.get("suite", "?"))),
+            html.escape(str(manifest.get("backend", "?"))),
+            html.escape(str(report.get("eligibility", "?"))),
+        )
+    )
     rows.append("<h2>Capability profile</h2>")
-    for dim in ("correctness", "generalization", "tool_discipline",
-                "recovery", "robustness", "safety", "calibration",
-                "efficiency", "long_horizon"):
+    for dim in (
+        "correctness",
+        "generalization",
+        "tool_discipline",
+        "recovery",
+        "robustness",
+        "safety",
+        "calibration",
+        "efficiency",
+        "long_horizon",
+    ):
         rows.append(_bar(dim, profile.get(dim)))
     rows.append("<h2>Failure fingerprint</h2>")
     if fingerprint:
@@ -105,24 +119,42 @@ def render(rundir, outdir):
         block = eff.get(tier)
         if isinstance(block, dict):
             rows.append("<h3>%s</h3>" % html.escape(tier))
-            for key in ("tokens_per_solve", "calls_per_solve",
-                        "latency_per_solve", "cost_per_solve"):
+            for key in (
+                "tokens_per_solve",
+                "calls_per_solve",
+                "latency_per_solve",
+                "cost_per_solve",
+            ):
                 if block.get(key) is not None:
-                    rows.append("<p>%s: <b>%s</b></p>" % (
-                        html.escape(key), html.escape(str(block[key]))))
+                    rows.append(
+                        "<p>%s: <b>%s</b></p>" % (html.escape(key), html.escape(str(block[key])))
+                    )
     rows.append("<h2>Uncertainty (95% CI)</h2>")
-    rows.append("<p>low <b>%s</b> · high <b>%s</b> · se <b>%s</b></p>" % (
-        html.escape(str(unc.get("low"))), html.escape(str(unc.get("high"))),
-        html.escape(str(unc.get("se")))))
+    rows.append(
+        "<p>low <b>%s</b> · high <b>%s</b> · se <b>%s</b></p>"
+        % (
+            html.escape(str(unc.get("low"))),
+            html.escape(str(unc.get("high"))),
+            html.escape(str(unc.get("se"))),
+        )
+    )
     rows.append("<h2>Run conditions &amp; gates</h2><table>")
-    for key in ("claim_tier", "reasoning_conditions", "provider_profile",
-                "seed", "trials", "prompt_sha256", "harness_sha256"):
-        rows.append("<tr><th>%s</th><td>%s</td></tr>" % (
-            html.escape(key),
-            html.escape(str(manifest.get(key, "—")))))
+    for key in (
+        "claim_tier",
+        "reasoning_conditions",
+        "provider_profile",
+        "seed",
+        "trials",
+        "prompt_sha256",
+        "harness_sha256",
+    ):
+        rows.append(
+            "<tr><th>%s</th><td>%s</td></tr>"
+            % (html.escape(key), html.escape(str(manifest.get(key, "—"))))
+        )
     rows.append("</table>")
     page = (
-        "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+        '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
         "<title>EMO-X report</title><style>"
         "body{font-family:system-ui,sans-serif;max-width:760px;margin:2em auto;"
         "padding:0 1em;color:#111}"
@@ -130,9 +162,9 @@ def render(rundir, outdir):
         ".lab{width:150px}.val{width:60px;text-align:right}"
         ".track{fill:#eee}table{border-collapse:collapse}"
         "th,td{border:1px solid #ccc;padding:4px 10px;text-align:left}"
-        "</style></head><body>%s</body></html>" % "\n".join(rows))
-    with open(os.path.join(outdir, "report.html"), "w",
-              encoding="utf-8") as f:
+        "</style></head><body>%s</body></html>" % "\n".join(rows)
+    )
+    with open(os.path.join(outdir, "report.html"), "w", encoding="utf-8") as f:
         f.write(page)
     return outdir
 
@@ -144,8 +176,7 @@ def main(argv=None):
         return 0
     rundir = argv[0].rstrip("/")
     parent = os.path.dirname(os.path.dirname(rundir.rstrip("/")))
-    outdir = os.path.join(parent, "reports",
-                           os.path.basename(rundir.rstrip("/")))
+    outdir = os.path.join(parent, "reports", os.path.basename(rundir.rstrip("/")))
     if "--out" in argv:
         outdir = argv[argv.index("--out") + 1]
     print("written", render(rundir, outdir))

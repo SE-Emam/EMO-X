@@ -26,10 +26,13 @@ BAD_WORDS = ("win", "beats", "winner")
 def _attempt(family, passed, score=None):
     if score is None:
         score = 1.0 if passed else 0.0
-    return {"task_family_id": family, "variant_class": "std",
-            "instance_id": family + "-0",
-            "primary_status": "PASS" if passed else "FAIL",
-            "score": float(score)}
+    return {
+        "task_family_id": family,
+        "variant_class": "std",
+        "instance_id": family + "-0",
+        "primary_status": "PASS" if passed else "FAIL",
+        "score": float(score),
+    }
 
 
 def _close_call_attempts():
@@ -41,45 +44,43 @@ def _close_call_attempts():
 
 
 def _matching_manifests():
-    key = {"prompt_sha256": "p", "harness_sha256": "h",
-           "manifest_sha256": "m"}
-    return ({"comparison_key": dict(key), "backend_capabilities": {}},
-            {"comparison_key": dict(key), "backend_capabilities": {}})
+    key = {"prompt_sha256": "p", "harness_sha256": "h", "manifest_sha256": "m"}
+    return (
+        {"comparison_key": dict(key), "backend_capabilities": {}},
+        {"comparison_key": dict(key), "backend_capabilities": {}},
+    )
 
 
 def _mismatched_manifests():
-    man_a = {"comparison_key": {"prompt_sha256": "p",
-                                "harness_sha256": "h",
-                                "manifest_sha256": "m"},
-             "backend_capabilities": {}}
-    man_b = {"comparison_key": {"prompt_sha256": "p",
-                                "harness_sha256": "h",
-                                "manifest_sha256": "OTHER"},
-             "backend_capabilities": {}}
+    man_a = {
+        "comparison_key": {"prompt_sha256": "p", "harness_sha256": "h", "manifest_sha256": "m"},
+        "backend_capabilities": {},
+    }
+    man_b = {
+        "comparison_key": {"prompt_sha256": "p", "harness_sha256": "h", "manifest_sha256": "OTHER"},
+        "backend_capabilities": {},
+    }
     return man_a, man_b
 
 
 def _assert_ranking_free(testcase, text):
     lowered = text.lower()
     for bad in BAD_WORDS:
-        testcase.assertNotIn(bad, lowered,
-                             "ranking language %r in render" % bad)
+        testcase.assertNotIn(bad, lowered, "ranking language %r in render" % bad)
 
 
 class TestReturnReps(unittest.TestCase):
     def test_default_omits_reps(self):
-        out = scoring.paired_bootstrap_diff({"t1": [1.0], "t2": [0.5]},
-                                            {"t1": [0.5], "t2": [0.5]},
-                                            B=50, seed=3)
+        out = scoring.paired_bootstrap_diff(
+            {"t1": [1.0], "t2": [0.5]}, {"t1": [0.5], "t2": [0.5]}, B=50, seed=3
+        )
         self.assertNotIn("reps", out)
 
     def test_reps_deterministic_and_match_bootstrap_scheme(self):
         groups_a = {"t1": [1.0, 0.0], "t2": [0.5], "t3": [1.0]}
         groups_b = {"t1": [0.5, 0.5], "t2": [0.0], "t3": [0.0]}
-        first = scoring.paired_bootstrap_diff(
-            groups_a, groups_b, B=200, seed=7, return_reps=True)
-        second = scoring.paired_bootstrap_diff(
-            groups_a, groups_b, B=200, seed=7, return_reps=True)
+        first = scoring.paired_bootstrap_diff(groups_a, groups_b, B=200, seed=7, return_reps=True)
+        second = scoring.paired_bootstrap_diff(groups_a, groups_b, B=200, seed=7, return_reps=True)
         self.assertIn("reps", first)
         self.assertEqual(len(first["reps"]), 200)
         self.assertEqual(first["reps"], second["reps"])
@@ -96,8 +97,7 @@ class TestReturnReps(unittest.TestCase):
         rng = random.Random(7)
         expected = []
         for _ in range(200):
-            sample = [fam[rng.randrange(len(fam))]
-                      for _ in range(len(fam))]
+            sample = [fam[rng.randrange(len(fam))] for _ in range(len(fam))]
             vals = [g[0] for g in sample]
             expected.append(sum(vals) / len(vals))
         self.assertEqual(first["reps"], expected)
@@ -108,9 +108,9 @@ class TestReturnReps(unittest.TestCase):
         self.assertAlmostEqual(first["ci_high"], direct["ci_high"])
 
     def test_empty_reps_on_no_overlap(self):
-        out = scoring.paired_bootstrap_diff({"a": [1.0]}, {"b": [1.0]},
-                                            B=50, seed=0,
-                                            return_reps=True)
+        out = scoring.paired_bootstrap_diff(
+            {"a": [1.0]}, {"b": [1.0]}, B=50, seed=0, return_reps=True
+        )
         self.assertIsNone(out["mean"])
         self.assertEqual(out["reps"], [])
 
@@ -121,10 +121,20 @@ class TestCompareModels(unittest.TestCase):
         man_a, man_b = _matching_manifests()
         for seed in (0, 1, 2):
             comp = report_v2.compare_models(
-                att_a, att_b, "model-a", "model-b",
-                manifest_a=man_a, manifest_b=man_b, B=2000, seed=seed)
-            self.assertIn(comp["status"], ("directional", "inconclusive"),
-                          "seed %d gave %s" % (seed, comp["status"]))
+                att_a,
+                att_b,
+                "model-a",
+                "model-b",
+                manifest_a=man_a,
+                manifest_b=man_b,
+                B=2000,
+                seed=seed,
+            )
+            self.assertIn(
+                comp["status"],
+                ("directional", "inconclusive"),
+                "seed %d gave %s" % (seed, comp["status"]),
+            )
             self.assertNotEqual(comp["status"], "significant")
             self.assertAlmostEqual(comp["paired_difference"], 0.04)
             self.assertAlmostEqual(comp["pass_rate_a"], 24 / 25)
@@ -145,20 +155,25 @@ class TestCompareModels(unittest.TestCase):
         mixed outcomes) so the assertion actually discriminates seeds --
         a near-degenerate leg makes the test pass either way.
         """
+
         def _noisy(offset):
             out = []
             for i in range(25):
                 for t in range(1, 4):
                     ok = (i * 7 + t * 3 + offset) % 5 != 0
-                    out.append({
-                        "run_id": "leg", "model_id": "m",
-                        "task_family_id": "fam%02d" % i,
-                        "instance_id": "fam%02d" % i,
-                        "variant_class": "canonical", "trial_id": t,
-                        "primary_status": "PASS" if ok else "FAIL",
-                        "primary_failure": None if ok else "ASSERTION_FAILED",
-                        "score": 1.0 if ok else 0.0,
-                    })
+                    out.append(
+                        {
+                            "run_id": "leg",
+                            "model_id": "m",
+                            "task_family_id": "fam%02d" % i,
+                            "instance_id": "fam%02d" % i,
+                            "variant_class": "canonical",
+                            "trial_id": t,
+                            "primary_status": "PASS" if ok else "FAIL",
+                            "primary_failure": None if ok else "ASSERTION_FAILED",
+                            "score": 1.0 if ok else 0.0,
+                        }
+                    )
             return out
 
         att_a, att_b = _noisy(0), _noisy(1)
@@ -179,14 +194,24 @@ class TestCompareModels(unittest.TestCase):
         scoring.bootstrap_ci = spy
         try:
             comp = report_v2.compare_models(
-                att_a, att_b, "model-a", "model-b",
-                manifest_a=man_a, manifest_b=man_b, B=2000, seed=0)
+                att_a,
+                att_b,
+                "model-a",
+                "model-b",
+                manifest_a=man_a,
+                manifest_b=man_b,
+                B=2000,
+                seed=0,
+            )
         finally:
             scoring.bootstrap_ci = real_ci
         self.assertGreaterEqual(len(seeds), 2)
-        self.assertEqual(set(seeds), {0},
-                         "all bootstrap intervals in one comparison must "
-                         "share one stream; got seeds %r" % (seeds,))
+        self.assertEqual(
+            set(seeds),
+            {0},
+            "all bootstrap intervals in one comparison must "
+            "share one stream; got seeds %r" % (seeds,),
+        )
 
         # Cross-surface agreement: comparison CI == per-run report CI.
         for attempts, key in ((att_a, "ci_a"), (att_b, "ci_b")):
@@ -198,8 +223,8 @@ class TestCompareModels(unittest.TestCase):
         att_a, att_b = _close_call_attempts()
         man_a, man_b = _mismatched_manifests()
         comp = report_v2.compare_models(
-            att_a, att_b, "model-a", "model-b",
-            manifest_a=man_a, manifest_b=man_b, B=200, seed=0)
+            att_a, att_b, "model-a", "model-b", manifest_a=man_a, manifest_b=man_b, B=200, seed=0
+        )
         self.assertEqual(comp["comparability"], "NON_COMPARABLE")
         self.assertEqual(comp["status"], "non-comparable")
         self.assertNotIn("paired_difference", comp)
@@ -215,8 +240,8 @@ class TestCompareModels(unittest.TestCase):
         att_b = [_attempt(f, False) for f in fams]
         man_a, man_b = _matching_manifests()
         comp = report_v2.compare_models(
-            att_a, att_b, "model-a", "model-b",
-            manifest_a=man_a, manifest_b=man_b, B=500, seed=0)
+            att_a, att_b, "model-a", "model-b", manifest_a=man_a, manifest_b=man_b, B=500, seed=0
+        )
         self.assertEqual(comp["status"], "significant")
         self.assertAlmostEqual(comp["paired_difference"], 1.0)
         low, high = comp["difference_ci"]
@@ -229,14 +254,16 @@ class TestCompareModels(unittest.TestCase):
 
     def test_directional_lean(self):
         fams = ["fam%02d" % i for i in range(20)]
-        att_a = ([_attempt(f, False, score=0.3) for f in fams[:18]]
-                 + [_attempt(f, False, score=0.0) for f in fams[18:]])
-        att_b = ([_attempt(f, False, score=0.0) for f in fams[:18]]
-                 + [_attempt(f, True, score=1.0) for f in fams[18:]])
+        att_a = [_attempt(f, False, score=0.3) for f in fams[:18]] + [
+            _attempt(f, False, score=0.0) for f in fams[18:]
+        ]
+        att_b = [_attempt(f, False, score=0.0) for f in fams[:18]] + [
+            _attempt(f, True, score=1.0) for f in fams[18:]
+        ]
         man_a, man_b = _matching_manifests()
         comp = report_v2.compare_models(
-            att_a, att_b, "model-a", "model-b",
-            manifest_a=man_a, manifest_b=man_b, B=4000, seed=0)
+            att_a, att_b, "model-a", "model-b", manifest_a=man_a, manifest_b=man_b, B=4000, seed=0
+        )
         self.assertEqual(comp["status"], "directional")
         low, high = comp["difference_ci"]
         self.assertLessEqual(low, 0)
@@ -251,16 +278,16 @@ class TestCompareModels(unittest.TestCase):
         att_b = [_attempt("b%02d" % i, True) for i in range(5)]
         man_a, man_b = _matching_manifests()
         comp = report_v2.compare_models(
-            att_a, att_b, "model-a", "model-b",
-            manifest_a=man_a, manifest_b=man_b, B=200, seed=0)
+            att_a, att_b, "model-a", "model-b", manifest_a=man_a, manifest_b=man_b, B=200, seed=0
+        )
         self.assertEqual(comp["status"], "insufficient-data")
 
     def test_close_call_render_language(self):
         att_a, att_b = _close_call_attempts()
         man_a, man_b = _matching_manifests()
         comp = report_v2.compare_models(
-            att_a, att_b, "model-a", "model-b",
-            manifest_a=man_a, manifest_b=man_b, B=500, seed=0)
+            att_a, att_b, "model-a", "model-b", manifest_a=man_a, manifest_b=man_b, B=500, seed=0
+        )
         text = report_v2.render_comparison(comp)
         self.assertIn("Difference", text)
         self.assertIn("Status", text)
@@ -296,14 +323,17 @@ class NumericGuardTests(unittest.TestCase):
 
 class InstancePairingTests(unittest.TestCase):
     def test_shared_instances_pair_at_instance_level(self):
-        att_a = [_inst_attempt("t1", "t1-0", True),
-                 _inst_attempt("t1", "t1-1", False),
-                 _inst_attempt("t2", "t2-0", True)]
-        att_b = [_inst_attempt("t1", "t1-0", False),
-                 _inst_attempt("t1", "t1-1", False),
-                 _inst_attempt("t2", "t2-0", True)]
-        out = scoring.instance_paired_bootstrap(att_a, att_b, B=500,
-                                                seed=0)
+        att_a = [
+            _inst_attempt("t1", "t1-0", True),
+            _inst_attempt("t1", "t1-1", False),
+            _inst_attempt("t2", "t2-0", True),
+        ]
+        att_b = [
+            _inst_attempt("t1", "t1-0", False),
+            _inst_attempt("t1", "t1-1", False),
+            _inst_attempt("t2", "t2-0", True),
+        ]
+        out = scoring.instance_paired_bootstrap(att_a, att_b, B=500, seed=0)
         self.assertEqual(out["level"], "instance")
         self.assertEqual(out["n_paired"], 3)
         # diffs: +1, 0, 0 -> mean 1/3
@@ -312,14 +342,12 @@ class InstancePairingTests(unittest.TestCase):
     def test_no_shared_instances_falls_back_with_flag(self):
         att_a = [_inst_attempt("t1", "a-0", True)]
         att_b = [_inst_attempt("t1", "b-0", False)]
-        out = scoring.instance_paired_bootstrap(att_a, att_b, B=500,
-                                                seed=0)
+        out = scoring.instance_paired_bootstrap(att_a, att_b, B=500, seed=0)
         self.assertEqual(out["level"], "family-fallback")
         self.assertIsNotNone(out["mean"])
 
     def test_canonical_group_builders(self):
-        events = [_inst_attempt("t1", "t1-0", True),
-                  _inst_attempt("t1", "t1-1", False)]
+        events = [_inst_attempt("t1", "t1-0", True), _inst_attempt("t1", "t1-1", False)]
         strict = scoring.family_strict_lists(events)
         self.assertEqual(sorted(strict["t1"]), [0, 1])
         means = scoring.instance_mean_scores(events)
@@ -330,8 +358,8 @@ class InstancePairingTests(unittest.TestCase):
         att_a = [_inst_attempt("t1", "t1-0", True)]
         att_b = [_inst_attempt("t1", "t1-0", True)]
         comp = report_v2.compare_models(
-            att_a, att_b, "model-a", "model-b",
-            manifest_a=man_a, manifest_b=man_b, B=500, seed=0)
+            att_a, att_b, "model-a", "model-b", manifest_a=man_a, manifest_b=man_b, B=500, seed=0
+        )
         self.assertEqual(comp.get("pairing_level"), "instance")
 
 

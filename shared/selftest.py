@@ -33,7 +33,6 @@ English code.
 
 import json
 import os
-import shutil
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -44,12 +43,12 @@ for _p in (HERE, ROOT):
 
 try:
     import bench_lib
-    import sandbox
-    import scoring
     import manifests
+    import sandbox
     import schemas
+    import scoring
 except ImportError:  # `python shared/selftest.py` vs package import
-    from shared import bench_lib, sandbox, scoring, manifests, schemas
+    from shared import bench_lib, manifests, sandbox, schemas, scoring
 
 #: Canonical check names in run order (binding for tests/Y-INT). SPEC 35.
 CHECK_NAMES = (
@@ -79,72 +78,61 @@ class _SkipCheck(Exception):
     """Raised when an optional binary is absent: SKIP, not FAIL. SPEC 35."""
 
 
-def _require_binary(name):
-    """Return binary path or raise _SkipCheck. SPEC 35 (SKIP, not FAIL)."""
-    # NOTE: call as shutil.which (not `from shutil import which`) so tests
-    # can monkeypatch shutil.which to simulate a missing binary.
-    path = shutil.which(name)
-    if path is None:
-        raise _SkipCheck("%s binary not found" % name)
-    return path
-
-
 # ---------------------------------------------------------------------------
 # Individual checks (each returns a detail string; _SkipCheck => SKIP row;
 # any other exception => FAIL row, fail-closed per SPEC 35).
 # ---------------------------------------------------------------------------
 
+
 def _check_code_extraction():
     """bench_lib.extract_code pulls the fenced block; no binary. SPEC 35."""
-    sample = ("prefix text\n```python\nprint(6 * 7)\n```\ntrailing\n")
+    sample = "prefix text\n```python\nprint(6 * 7)\n```\ntrailing\n"
     code = bench_lib.extract_code(sample, lang="python")
     if "print(6 * 7)" not in code:
-        raise AssertionError("extract_code missed fenced block: %r" % code)
-    other = bench_lib.extract_code("```js\nx();\n```\n```python\ny();\n```",
-                                   lang="python")
+        raise AssertionError(f"extract_code missed fenced block: {code!r}")
+    other = bench_lib.extract_code("```js\nx();\n```\n```python\ny();\n```", lang="python")
     if "y();" not in other:
-        raise AssertionError("extract_code lang filter broken: %r" % other)
+        raise AssertionError(f"extract_code lang filter broken: {other!r}")
     return "ok"
 
 
 def _check_python_executor():
     """Sandboxed python executes model code. SPEC 35."""
     ok, log = sandbox.run_python_code(
-        "x = 6 * 7", "assert x == 42\nprint('SELFTEST_PY')", timeout=30)
+        "x = 6 * 7", "assert x == 42\nprint('SELFTEST_PY')", timeout=30
+    )
     if not ok or "SELFTEST_PY" not in log:
-        raise AssertionError("python executor failed: %s" % log[-200:])
+        raise AssertionError(f"python executor failed: {log[-200:]}")
     return "ok"
 
 
 def _check_node_executor():
-    """Node executes model JS; missing binary => SKIP. SPEC 35."""
-    _require_binary("node")
-    ok, log = bench_lib.run_js("const x = 41;",
-                               "if (x + 1 !== 42) { throw new Error('bad'); }",
-                               timeout=30)
+    """Node executes model JS in the isolation container. SPEC 35."""
+    ok, log = bench_lib.run_js(
+        "const x = 41;", "if (x + 1 !== 42) { throw new Error('bad'); }", timeout=30
+    )
     if not ok:
-        raise AssertionError("node executor failed: %s" % log[-200:])
+        raise AssertionError(f"node executor failed: {log[-200:]}")
     return "ok"
 
 
 def _check_rust_compiler():
-    """rustc compiles+runs a hello program; missing binary => SKIP. SPEC 35."""
-    _require_binary("rustc")
-    ok, log = bench_lib.run_rust(
-        'fn main() { println!("SELFTEST_RUST"); }')
+    """rustc compiles+runs a hello program in the container. SPEC 35."""
+    ok, log = bench_lib.run_rust('fn main() { println!("SELFTEST_RUST"); }')
     if not ok:
-        raise AssertionError("rustc check failed: %s" % log[-200:])
+        raise AssertionError(f"rustc check failed: {log[-200:]}")
     return "ok"
 
 
 def _check_typescript_compiler():
-    """tsc --strict type-checks; missing binary => SKIP. SPEC 35."""
-    _require_binary("tsc")
-    code = ("interface User { name: string; age: number }\n"
-            "function greet(u: User): string { return u.name; }\n")
+    """tsc --strict type-checks inside the isolation container. SPEC 35."""
+    code = (
+        "interface User { name: string; age: number }\n"
+        "function greet(u: User): string { return u.name; }\n"
+    )
     ok, log = bench_lib.verify_tsc(code)
     if not ok:
-        raise AssertionError("tsc check failed: %s" % log[-200:])
+        raise AssertionError(f"tsc check failed: {log[-200:]}")
     return "ok"
 
 
@@ -152,11 +140,11 @@ def _check_sqlite():
     """In-memory sqlite round-trip via bench_lib helper. SPEC 35."""
     rows, err = bench_lib.sqlite_query(
         "SELECT SUM(a) FROM t;",
-        "CREATE TABLE t(a INTEGER); INSERT INTO t VALUES (1);"
-        " INSERT INTO t VALUES (2);",
-        [])
+        "CREATE TABLE t(a INTEGER); INSERT INTO t VALUES (1); INSERT INTO t VALUES (2);",
+        [],
+    )
     if err is not None or rows != [(3,)]:
-        raise AssertionError("sqlite check failed: %r %r" % (rows, err))
+        raise AssertionError(f"sqlite check failed: {rows!r} {err!r}")
     return "ok"
 
 
@@ -168,23 +156,18 @@ def _check_postgres_connection():
     code-bench-25/SKILL.md) is environmental, not a harness defect, so it
     must not fail-close the whole self-test.
     """
-    _require_binary("psql")
-    rows, rc, err = bench_lib.psql_query(
-        "SELECT 1;", "SELECT 1;", timeout=15)
+    rows, rc, err = bench_lib.psql_query("SELECT 1;", "SELECT 1;", timeout=15)
     if rows is None or rc != 0:
-        raise _SkipCheck("postgres instance unavailable: %s"
-                         % (err or "connection failed"))
+        raise _SkipCheck("postgres instance unavailable: %s" % (err or "connection failed"))
     return "ok"
 
 
 def _check_patch_engine():
-    """`patch` applies a unified diff; missing binary => SKIP. SPEC 35."""
-    _require_binary("patch")
-    diff = ("--- a.txt\n+++ a.txt\n@@ -1 +1 @@\n-hello\n+hello world\n")
-    ok, log = bench_lib.verify_patch("a.txt", "hello\n", diff,
-                                     must_contain=("hello world",))
+    """`patch` applies a unified diff inside the isolation container."""
+    diff = "--- a.txt\n+++ a.txt\n@@ -1 +1 @@\n-hello\n+hello world\n"
+    ok, log = bench_lib.verify_patch("a.txt", "hello\n", diff, must_contain=("hello world",))
     if not ok:
-        raise AssertionError("patch check failed: %s" % log[-200:])
+        raise AssertionError(f"patch check failed: {log[-200:]}")
     return "ok"
 
 
@@ -198,9 +181,7 @@ def _check_json_parser():
 def _check_timeout_enforcement():
     """Overrunning sandboxed command raises SandboxTimeout. SPEC 35."""
     try:
-        sandbox.run_in_sandbox(
-            [sys.executable, "-c", "import time; time.sleep(30)"],
-            timeout=2)
+        sandbox.run_in_sandbox(["python3", "-c", "import time; time.sleep(30)"], timeout=2)
     except sandbox.SandboxTimeout:
         return "ok"
     raise AssertionError("timeout did not fire")
@@ -210,13 +191,12 @@ def _check_forbidden_path_guard():
     """Escapes and forbidden prefixes are refused. SPEC 24 + SPEC 35."""
     root = sandbox.create_sandbox()
     try:
-        for bad in ("../../etc/passwd", "/etc/passwd",
-                    "/var/run/secrets/tok"):
+        for bad in ("../../etc/passwd", "/etc/passwd", "/var/run/secrets/tok"):
             try:
                 sandbox.resolve_sandbox_path(root, bad)
             except sandbox.SandboxPathEscape:
                 continue
-            raise AssertionError("allowed forbidden path: %r" % bad)
+            raise AssertionError(f"allowed forbidden path: {bad!r}")
     finally:
         sandbox.destroy_sandbox(root)
     return "ok"
@@ -224,15 +204,30 @@ def _check_forbidden_path_guard():
 
 def _check_result_schema():
     """validate_attempt accepts valid, rejects missing trial_id. SPEC 35."""
-    schemas.validate_attempt({"run_id": "R", "model_id": "M",
-                              "task_family_id": "T", "instance_id": "I",
-                              "variant_class": "canonical", "trial_id": 1,
-                              "primary_status": "PASS", "score": 1.0})
+    schemas.validate_attempt(
+        {
+            "run_id": "R",
+            "model_id": "M",
+            "task_family_id": "T",
+            "instance_id": "I",
+            "variant_class": "canonical",
+            "trial_id": 1,
+            "primary_status": "PASS",
+            "score": 1.0,
+        }
+    )
     try:
-        schemas.validate_attempt({"run_id": "R", "model_id": "M",
-                                  "task_family_id": "T", "instance_id": "I",
-                                  "variant_class": "canonical",
-                                  "primary_status": "PASS", "score": 1.0})
+        schemas.validate_attempt(
+            {
+                "run_id": "R",
+                "model_id": "M",
+                "task_family_id": "T",
+                "instance_id": "I",
+                "variant_class": "canonical",
+                "primary_status": "PASS",
+                "score": 1.0,
+            }
+        )
     except Exception:
         return "ok"
     raise AssertionError("schema accepted a record without trial_id")
@@ -246,7 +241,7 @@ def _check_checksum_validation():
     """
     sums_file = SHA256SUMS_FILE  # read global at call time (monkeypatchable)
     if not os.path.isfile(sums_file):
-        raise AssertionError("SHA256SUMS not found: %s" % sums_file)
+        raise AssertionError(f"SHA256SUMS not found: {sums_file}")
     base = os.path.dirname(sums_file)
     entries = []
     with open(sums_file, encoding="utf-8") as f:
@@ -256,7 +251,7 @@ def _check_checksum_validation():
                 continue
             parts = line.split()
             if len(parts) < 2:
-                raise AssertionError("bad SHA256SUMS line: %r" % line)
+                raise AssertionError(f"bad SHA256SUMS line: {line!r}")
             digest, name = parts[0], parts[-1].lstrip("*")
             entries.append((digest, name))
     if not entries:
@@ -264,10 +259,10 @@ def _check_checksum_validation():
     for digest, name in entries:
         target = os.path.normpath(os.path.join(base, name))
         if not os.path.isfile(target):
-            raise AssertionError("checksummed file missing: %s" % name)
+            raise AssertionError(f"checksummed file missing: {name}")
         actual = manifests.sha256_file(target)
         if actual != digest:
-            raise AssertionError("checksum mismatch (FAIL closed): %s" % name)
+            raise AssertionError(f"checksum mismatch (FAIL closed): {name}")
     return "ok (%d files)" % len(entries)
 
 
@@ -280,10 +275,11 @@ def _check_golden_outputs():
     """
     if scoring.pass_at_k(5, 3, 2) != 0.9:
         raise AssertionError("pass_at_k golden mismatch")
-    brier = scoring.brier_score([{"confidence": 0.8, "outcome": 1},
-                                 {"confidence": 0.2, "outcome": 0}])
+    brier = scoring.brier_score(
+        [{"confidence": 0.8, "outcome": 1}, {"confidence": 0.2, "outcome": 0}]
+    )
     if brier is None or abs(brier - 0.04) > 1e-9:
-        raise AssertionError("brier golden mismatch: %r" % (brier,))
+        raise AssertionError(f"brier golden mismatch: {brier!r}")
     if scoring.consistency_at_k(5, 3, 2) != 0.3:
         raise AssertionError("consistency_at_k golden mismatch")
     return "ok"
@@ -323,7 +319,7 @@ def run_all_checks():
             detail = func()
         except _SkipCheck as e:
             detail = " ".join(str(e).split())[:200]  # single-line detail
-            rows.append((name, True, "SKIP: %s" % detail))
+            rows.append((name, True, f"SKIP: {detail}"))
         except Exception as e:  # fail-closed: any error fails the check
             rows.append((name, False, str(e)[:200]))
         else:

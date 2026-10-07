@@ -34,8 +34,7 @@ import sys
 try:
     from _log import configure, get_logger  # noqa: E402  (P1-02 logging)
 except ImportError:  # standalone `python adapters/x.py`: shared/ off path
-    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                    "..", "shared"))
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "shared"))
     from _log import configure, get_logger  # noqa: E402
 
 log = get_logger("pi_adapter")
@@ -85,8 +84,7 @@ def _binary():
 
 
 def _help_text(exe):
-    p = subprocess.run([exe, "--help"], capture_output=True, text=True,
-                       timeout=30)
+    p = subprocess.run([exe, "--help"], capture_output=True, text=True, timeout=30)
     return p.returncode, (p.stdout or "") + (p.stderr or "")
 
 
@@ -94,11 +92,10 @@ def _builtin_tools(help_text):
     """Extract the Built-in Tool Names list from `pi --help` (read-only)."""
     tools = []
     lines = (help_text or "").splitlines()
-    start = next((i for i, ln in enumerate(lines)
-                  if "Built-in Tool Names:" in ln), None)
+    start = next((i for i, ln in enumerate(lines) if "Built-in Tool Names:" in ln), None)
     if start is None:
         return tools
-    for line in lines[start + 1:]:
+    for line in lines[start + 1 :]:
         if line.strip() == "" or not line[0].isspace():
             break
         name = line.strip().split(" ")[0].strip()
@@ -123,20 +120,25 @@ def probe():
     except Exception as e:  # noqa: BLE001 - report, never raise, in probe
         info["error"] = "failed to probe `pi --help`: %s" % e
         return info
-    info["print_flag"] = ("--print" in help_text)
-    info["json_mode"] = ("--mode" in help_text and "json" in help_text)
-    info["model_flag"] = ("--model" in help_text)
-    info["system_prompt_flag"] = ("--append-system-prompt" in help_text
-                                  or "--system-prompt" in help_text)
+    info["print_flag"] = "--print" in help_text
+    info["json_mode"] = "--mode" in help_text and "json" in help_text
+    info["model_flag"] = "--model" in help_text
+    info["system_prompt_flag"] = (
+        "--append-system-prompt" in help_text or "--system-prompt" in help_text
+    )
     info["builtin_tools"] = _builtin_tools(help_text)
     if rc != 0:
         info["error"] = "`pi --help` exited %d; cannot verify capabilities." % rc
         return info
     if "--print" not in help_text:
-        info["error"] = "this pi version lacks non-interactive --print mode; cannot drive it as a benchmark harness."
+        info["error"] = (
+            "this pi version lacks non-interactive --print mode; cannot drive it as a benchmark harness."
+        )
         return info
     if "--mode" not in help_text or "json" not in help_text:
-        info["error"] = "this pi version lacks `--mode json`; cannot convert trajectory to trace JSON."
+        info["error"] = (
+            "this pi version lacks `--mode json`; cannot convert trajectory to trace JSON."
+        )
         return info
     info["ok"] = True
     return info
@@ -163,9 +165,11 @@ def harness_spec(model_id, task_dir, timeout_s=TIMEOUT_S):
         "tool_list": cap.get("builtin_tools") or "(unknown; see cli_capabilities)",
         "tools_restricted_by_adapter": False,
         "stop_rule": STOP_RULE,
-        "budget": {"timeout_s": timeout_s, "max_steps": None,
-                   "note": "no step-budget flag observed in `pi --help`; "
-                           "wall-clock timeout only."},
+        "budget": {
+            "timeout_s": timeout_s,
+            "max_steps": None,
+            "note": "no step-budget flag observed in `pi --help`; wall-clock timeout only.",
+        },
         "task_dir": task_dir,
         "comparability": COMPARABILITY,
     }
@@ -205,8 +209,7 @@ def run_episode(task_dir, model_id, timeout_s=TIMEOUT_S):
     if not os.path.isdir(task_dir):
         raise RuntimeError("task_dir does not exist: %s" % task_dir)
 
-    argv = [cap["binary"], "--print", "--mode", "json",
-            "--no-session", "--no-themes"]
+    argv = [cap["binary"], "--print", "--mode", "json", "--no-session", "--no-themes"]
     if model_id:
         argv += ["--model", model_id]
     if cap.get("system_prompt_flag"):
@@ -214,8 +217,7 @@ def run_episode(task_dir, model_id, timeout_s=TIMEOUT_S):
     argv += [TASK_PROMPT]
 
     try:
-        p = subprocess.run(argv, cwd=task_dir, capture_output=True,
-                           text=True, timeout=timeout_s)
+        p = subprocess.run(argv, cwd=task_dir, capture_output=True, text=True, timeout=timeout_s)
     except subprocess.TimeoutExpired as e:
         try:
             from _base import decode_bytes, timeout_trace
@@ -226,26 +228,41 @@ def run_episode(task_dir, model_id, timeout_s=TIMEOUT_S):
         steps = _normalize_events(out)
         diff, files, _ = _final_diff(task_dir)
         return timeout_trace(
-            ADAPTER_NAME, model_id, task_dir, steps, err, timeout_s,
-            harness_spec(model_id, task_dir, timeout_s), COMPARABILITY,
-            diff=diff, files=files)
+            ADAPTER_NAME,
+            model_id,
+            task_dir,
+            steps,
+            err,
+            timeout_s,
+            harness_spec(model_id, task_dir, timeout_s),
+            COMPARABILITY,
+            diff=diff,
+            files=files,
+        )
 
     steps = _normalize_events(p.stdout)
     diff, files, _ = _final_diff(task_dir)
-    return {"adapter": ADAPTER_NAME, "model_id": model_id,
-            "task_dir": task_dir,
-            "harness": harness_spec(model_id, task_dir, timeout_s),
-            "steps": steps, "final_diff": diff, "diff_files": files,
-            "stopped_cleanly": bool(p.returncode == 0),
-            "timed_out": False, "exit_code": p.returncode,
-            "stderr_tail": (p.stderr or "")[-500:],
-            "comparability": COMPARABILITY}
+    return {
+        "adapter": ADAPTER_NAME,
+        "model_id": model_id,
+        "task_dir": task_dir,
+        "harness": harness_spec(model_id, task_dir, timeout_s),
+        "steps": steps,
+        "final_diff": diff,
+        "diff_files": files,
+        "stopped_cleanly": bool(p.returncode == 0),
+        "timed_out": False,
+        "exit_code": p.returncode,
+        "stderr_tail": (p.stderr or "")[-500:],
+        "comparability": COMPARABILITY,
+    }
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="pi adapter probe/runner")
-    ap.add_argument("--probe", action="store_true",
-                    help="check pi availability; exit non-zero if unusable")
+    ap.add_argument(
+        "--probe", action="store_true", help="check pi availability; exit non-zero if unusable"
+    )
     ap.add_argument("--task-dir", default=None)
     ap.add_argument("--model", default=None)
     ap.add_argument("--timeout", type=int, default=TIMEOUT_S)

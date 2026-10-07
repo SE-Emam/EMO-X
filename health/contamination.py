@@ -15,16 +15,23 @@ signal":
 """
 
 try:
-    from scoring import (brier_score, expected_calibration_error,
-                         calibration_score, abstention_metrics,
-                         novelty_retention_benchmark)
+    from scoring import (
+        brier_score,
+        expected_calibration_error,
+        calibration_score,
+        abstention_metrics,
+        novelty_retention_benchmark,
+    )
 except ImportError:  # package-style import (repo root on sys.path)
-    from shared.scoring import (brier_score, expected_calibration_error,
-                                calibration_score, abstention_metrics,
-                                novelty_retention_benchmark)
+    from shared.scoring import (
+        brier_score,
+        expected_calibration_error,
+        calibration_score,
+        abstention_metrics,
+        novelty_retention_benchmark,
+    )
 
-__all__ = ["contamination_snapshot", "calibration_eligibility_snapshot",
-           "hash_overlap_rate"]
+__all__ = ["contamination_snapshot", "calibration_eligibility_snapshot", "hash_overlap_rate"]
 
 
 def hash_overlap_rate(observed_hashes, public_hashes):
@@ -36,8 +43,7 @@ def hash_overlap_rate(observed_hashes, public_hashes):
     return sum(1 for h in observed if h in public) / len(observed)
 
 
-def contamination_snapshot(canonical_rate=None, novel_rate=None,
-                           pairs=None, overlap_rate=None):
+def contamination_snapshot(canonical_rate=None, novel_rate=None, pairs=None, overlap_rate=None):
     """Contamination-risk snapshot. SPEC 38 + DEN C48/C49.
 
     Inputs: benchmark canonical/novel rates (or raw C/N pairs), plus an
@@ -49,28 +55,39 @@ def contamination_snapshot(canonical_rate=None, novel_rate=None,
     retention = None
     if pairs is not None:
         retention = novelty_retention_benchmark(list(pairs))
-    elif canonical_rate is not None and novel_rate is not None \
-            and canonical_rate > 0:
+    elif canonical_rate is not None and novel_rate is not None and canonical_rate > 0:
         retention = min(1.0, novel_rate / canonical_rate)
     signals = []
-    if retention is not None and canonical_rate is not None \
-            and canonical_rate > 0.8 and retention < 0.7:
+    if (
+        retention is not None
+        and canonical_rate is not None
+        and canonical_rate > 0.8
+        and retention < 0.7
+    ):
         signals.append("high-canonical-low-retention")
     if overlap_rate is not None and overlap_rate > 0:
         signals.append("hash-overlap")
     if retention is None and overlap_rate is None:
-        return {"risk": None, "level": "unknown",
-                "retention": None, "overlap_rate": overlap_rate,
-                "reason": "NA: no contamination evidence"}
+        return {
+            "risk": None,
+            "level": "unknown",
+            "retention": None,
+            "overlap_rate": overlap_rate,
+            "reason": "NA: no contamination evidence",
+        }
     risk = 0.0
     if retention is not None:
         risk = max(risk, 1.0 - retention)
     if overlap_rate is not None:
         risk = max(risk, min(1.0, overlap_rate))
     level = "low" if risk < 0.3 else ("elevated" if risk < 0.7 else "high")
-    return {"risk": risk, "level": level, "retention": retention,
-            "overlap_rate": overlap_rate,
-            "reason": ";".join(signals) if signals else "no risk signals"}
+    return {
+        "risk": risk,
+        "level": level,
+        "retention": retention,
+        "overlap_rate": overlap_rate,
+        "reason": ";".join(signals) if signals else "no risk signals",
+    }
 
 
 def calibration_eligibility_snapshot(cases):
@@ -87,21 +104,25 @@ def calibration_eligibility_snapshot(cases):
     pairs = _calibration_pairs(list(cases or []))
     d_cal = len(pairs)
     if d_cal == 0:
-        return {"d_cal": 0, "brier": None, "ece": None,
-                "calibration": None,
-                "reason": "NA: D_cal=0 (C50)"}
-    return {"d_cal": d_cal,
-            "brier": brier_score(cases),
-            "ece": expected_calibration_error(cases),
-            "calibration": calibration_score(cases),
-            "reason": "ok"}
+        return {
+            "d_cal": 0,
+            "brier": None,
+            "ece": None,
+            "calibration": None,
+            "reason": "NA: D_cal=0 (C50)",
+        }
+    return {
+        "d_cal": d_cal,
+        "brier": brier_score(cases),
+        "ece": expected_calibration_error(cases),
+        "calibration": calibration_score(cases),
+        "reason": "ok",
+    }
 
 
-def abstention_snapshot(n_answered, correct_answers, n_abstained,
-                        correct_abstentions):
+def abstention_snapshot(n_answered, correct_answers, n_abstained, correct_abstentions):
     """Abstention arms with per-arm NA denominators. DEN C53."""
-    return abstention_metrics(n_answered, correct_answers, n_abstained,
-                              correct_abstentions)
+    return abstention_metrics(n_answered, correct_answers, n_abstained, correct_abstentions)
 
 
 def canary_check(text):

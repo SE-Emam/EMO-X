@@ -115,12 +115,13 @@ itself; the live image probe still gates per-family VOIDs.
 
 ```python
 # V1/V2 grounding (OSWorld-G/ScreenSpot-style)
-box = parse_box(reply)   # {x,y,w,h} or {x_min,...} -> [x0,y0,x1,y1]
-ok = box is not None and iou(box, GT) >= 0.5   # raw iou always logged
+box = parse_box(reply)  # {x,y,w,h} or {x_min,...} -> [x0,y0,x1,y1]
+ok = box is not None and iou(box, GT) >= 0.5  # raw iou always logged
 # V3 Arabic-from-image (keyword-substring, order-free)
 ok = all(k in reply for k in ("تسجيل", "الدخول"))  # Arabic keywords: test data
 # V4/V5/V6 counting (first integer wins, exact match)
-m = re.search(r"-?\d+", reply); ok = (m and int(m.group(0)) == 7)
+m = re.search(r"-?\d+", reply)
+ok = m and int(m.group(0)) == 7
 ```
 
 ## Reports

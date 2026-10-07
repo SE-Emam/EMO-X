@@ -22,8 +22,7 @@ def _load(name, path):
     return mod
 
 
-GEN = _load("generic_cli_under_test",
-            os.path.join(ADAPTERS, "generic_cli_adapter.py"))
+GEN = _load("generic_cli_under_test", os.path.join(ADAPTERS, "generic_cli_adapter.py"))
 
 
 def _fresh():
@@ -71,8 +70,7 @@ class DriveTests(unittest.TestCase):
         trace = GEN.run_episode("/tmp", "fake-model", timeout_s=30)
         self.assertEqual(trace["adapter"], "generic-cli")
         self.assertTrue(trace["stopped_cleanly"])
-        self.assertTrue(trace["comparability"].startswith(
-            "NON-COMPARABLE"))
+        self.assertTrue(trace["comparability"].startswith("NON-COMPARABLE"))
         self.assertIn("cli_argv_template", trace["harness"])
 
     def test_run_episode_unconfigured_raises(self):
@@ -81,9 +79,8 @@ class DriveTests(unittest.TestCase):
 
     def test_quoting_keeps_prompt_whole(self):
         argv = GEN._build_argv(
-            {"bin": "/bin/echo",
-             "template": 'run --model {model} "{prompt}"'},
-            "m", "/tmp")
+            {"bin": "/bin/echo", "template": 'run --model {model} "{prompt}"'}, "m", "/tmp"
+        )
         self.assertIn(GEN.GENERIC_TASK, argv)
         self.assertEqual(argv[0], "run")
 

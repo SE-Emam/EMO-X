@@ -29,7 +29,7 @@ def _fmt_secs(seconds):
     return "~%02d:%02d" % (seconds // 60, seconds % 60)
 
 
-class NullProgress(object):
+class NullProgress:
     """Drop-in no-op reporter. All methods accept anything, do nothing."""
 
     def start_run(self, *a, **k):
@@ -60,7 +60,7 @@ class NullProgress(object):
         return {}
 
 
-class ProgressReporter(object):
+class ProgressReporter:
     """Hierarchical run progress: run > suite > attempt (+ step title).
 
     Usage:
@@ -74,8 +74,7 @@ class ProgressReporter(object):
       prog.finish_run()
     """
 
-    def __init__(self, stream=None, enabled=True, bar_width=_BAR_WIDTH,
-                 on_event=None):
+    def __init__(self, stream=None, enabled=True, bar_width=_BAR_WIDTH, on_event=None):
         self._stream = stream
         self.enabled = enabled
         self.bar_width = bar_width
@@ -222,24 +221,29 @@ class ProgressReporter(object):
             rfrac = min(1.0, self.run_done / float(self.run_total))
             rfilled = int(round(rfrac * self.bar_width))
             rbar = "█" * rfilled + "░" * (self.bar_width - rfilled)
-            head = "[run %d/%d %s] " % (self.run_done, self.run_total,
-                                        rbar)
+            head = "[run %d/%d %s] " % (self.run_done, self.run_total, rbar)
         elif self.total_suites > 1:
-            head = "[profile %d/%d] " % (self.suite_idx,
-                                         self.total_suites)
+            head = "[profile %d/%d] " % (self.suite_idx, self.total_suites)
         scope = ""
         if self.suite:
             if self.suite_total > 0:
-                scope = "[%s %d/%d] " % (self.suite, self.done,
-                                         self.suite_total)
+                scope = "[%s %d/%d] " % (self.suite, self.done, self.suite_total)
             else:
                 scope = "[%s] " % self.suite
         title = ("| %s " % self.title) if self.title else ""
         tallies = "✓%d ✗%d" % (self.passed, self.failed)
         elapsed = time.strftime("%M:%S", time.gmtime(self.elapsed()))
         line = "%s%s%s %3d%% %s%s · %s · %s %s" % (
-            head, scope, bar, int(round(frac * 100)), title,
-            tallies, elapsed, _fmt_secs(self.eta()), "")
+            head,
+            scope,
+            bar,
+            int(round(frac * 100)),
+            title,
+            tallies,
+            elapsed,
+            _fmt_secs(self.eta()),
+            "",
+        )
         return line.rstrip()
 
     def _emit(self):

@@ -13,12 +13,18 @@ for path in (REPO, SHARED):
         sys.path.insert(0, path)
 
 from generators.task_dsl import example_h3_manifest
-from generators.instance_factory import (build_instance, verify_oracle,
-                                         prompt_leaks_oracle)
-from generators.mutations import (PRIMARY_VARIANTS, VARIANT_LEVELS,
-                                  TRANSFORMS, VariantError, apply_variant,
-                                  primary_variant, variant_level)
+from generators.instance_factory import build_instance, verify_oracle, prompt_leaks_oracle
+from generators.mutations import (
+    PRIMARY_VARIANTS,
+    VARIANT_LEVELS,
+    TRANSFORMS,
+    VariantError,
+    apply_variant,
+    primary_variant,
+    variant_level,
+)
 from generators.seeds import parse_instance_id
+
 try:
     from schemas import SchemaError  # noqa: F401 (re-export parity check)
 except ImportError:
@@ -39,13 +45,10 @@ def all_variants():
     out.append(("paraphrase", apply_variant(base, "paraphrase")))
     out.append(("naming", apply_variant(base, "naming")))
     out.append(("constraint", apply_variant(base, "constraint")))
-    out.append(("structural",
-                apply_variant(base, "structural",
-                              parameters_spec=h3_spec())))
+    out.append(("structural", apply_variant(base, "structural", parameters_spec=h3_spec())))
     out.append(("adversarial", apply_variant(base, "adversarial")))
     out.append(("recovery", apply_variant(base, "recovery")))
-    out.append(("novel",
-                apply_variant(base, "novel", parameters_spec=h3_spec())))
+    out.append(("novel", apply_variant(base, "novel", parameters_spec=h3_spec())))
     return out
 
 
@@ -80,31 +83,29 @@ class TestVariantExclusivity(unittest.TestCase):
             primary_variant(bad_unknown)
 
     def test_levels_cover_c_p_s_a_r_n(self):
-        self.assertEqual(set(VARIANT_LEVELS.values()),
-                         {"C", "P", "S", "A", "R", "N"})
+        self.assertEqual(set(VARIANT_LEVELS.values()), {"C", "P", "S", "A", "R", "N"})
         for variant in PRIMARY_VARIANTS:
-            self.assertEqual(variant_level(variant),
-                             VARIANT_LEVELS[variant])
+            self.assertEqual(variant_level(variant), VARIANT_LEVELS[variant])
         with self.assertRaises(VariantError):
             variant_level("hidden-edge")
 
 
 class TestTransformPurity(unittest.TestCase):
     def test_inputs_never_mutated(self):
-        for name, inst in all_variants():
+        for name, _inst in all_variants():
             with self.subTest(variant=name):
                 before = canonical()
                 snapshot = copy.deepcopy(before)
                 TRANSFORMS[name](
-                    before, **({"parameters_spec": h3_spec()}
-                               if name in ("structural", "novel") else {}))
+                    before,
+                    **({"parameters_spec": h3_spec()} if name in ("structural", "novel") else {}),
+                )
                 self.assertEqual(before, snapshot)
 
     def test_transforms_deterministic(self):
         for name, _ in all_variants():
             with self.subTest(variant=name):
-                kwargs = ({"parameters_spec": h3_spec()}
-                          if name in ("structural", "novel") else {})
+                kwargs = {"parameters_spec": h3_spec()} if name in ("structural", "novel") else {}
                 first = apply_variant(canonical(), name, **kwargs)
                 second = apply_variant(canonical(), name, **kwargs)
                 self.assertEqual(first, second)
@@ -112,10 +113,8 @@ class TestTransformPurity(unittest.TestCase):
     def test_instance_id_follows_convention(self):
         for name, inst in all_variants():
             with self.subTest(variant=name):
-                family, variant, index = parse_instance_id(
-                    inst["instance_id"])
-                self.assertEqual((family, variant, index),
-                                 ("H3", name, 1))
+                family, variant, index = parse_instance_id(inst["instance_id"])
+                self.assertEqual((family, variant, index), ("H3", name, 1))
                 self.assertIn("derived_from", inst)
 
     def test_unknown_variant_rejected(self):
@@ -134,8 +133,7 @@ class TestOraclePreservation(unittest.TestCase):
         manifest = example_h3_manifest()
         for name, inst in all_variants():
             with self.subTest(variant=name):
-                self.assertTrue(verify_oracle(inst, manifest),
-                                msg=name)
+                self.assertTrue(verify_oracle(inst, manifest), msg=name)
 
     def test_perturbed_params_change_oracle(self):
         base = canonical()
@@ -149,17 +147,15 @@ class TestOraclePreservation(unittest.TestCase):
             with self.subTest(variant=name):
                 self.assertFalse(
                     prompt_leaks_oracle(inst["prompt"], inst["oracle"]),
-                    msg="%s prompt leaks %r" % (
-                        name, inst["oracle"].get("expected")))
+                    msg="%s prompt leaks %r" % (name, inst["oracle"].get("expected")),
+                )
                 if "expected" in inst["oracle"]:
-                    self.assertNotIn(str(inst["oracle"]["expected"]),
-                                     inst["prompt"])
+                    self.assertNotIn(str(inst["oracle"]["expected"]), inst["prompt"])
 
     def test_recovery_marks_recoverable(self):
         inst = apply_variant(canonical(), "recovery")
         self.assertTrue(inst["recoverable"])
-        self.assertEqual(inst["parameters"]["injected_fault"],
-                         "TOOL_TIMEOUT")
+        self.assertEqual(inst["parameters"]["injected_fault"], "TOOL_TIMEOUT")
 
 
 if __name__ == "__main__":

@@ -59,17 +59,16 @@ def require_hidden_scope(scope):
     """Raise ScopeRequiredError unless scope is the hidden opt-in."""
     if scope != HIDDEN_SCOPE:
         raise ScopeRequiredError(
-            "hidden suite requires scope=%r (pass --hidden-ok)" % (
-                HIDDEN_SCOPE,))
+            "hidden suite requires scope=%r (pass --hidden-ok)" % (HIDDEN_SCOPE,)
+        )
 
 
-def run_family(family, chat, run_id, model_id, trial_id=1, index=1,
-               seed=0, scope=None, **kwargs):
+def run_family(family, chat, run_id, model_id, trial_id=1, index=1, seed=0, scope=None, **kwargs):
     """Run one hidden instance. Gate: scope must be "hidden-ok"."""
     require_hidden_scope(scope)
-    return _cases.run_family(family, chat, run_id, model_id,
-                             trial_id=trial_id, index=index, seed=seed,
-                             **kwargs)
+    return _cases.run_family(
+        family, chat, run_id, model_id, trial_id=trial_id, index=index, seed=seed, **kwargs
+    )
 
 
 def harness_sha256():

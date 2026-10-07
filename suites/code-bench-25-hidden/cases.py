@@ -39,9 +39,13 @@ for _p in (ROOT, SHARED, GEN):
 
 from shared.schemas import validate_attempt  # noqa: E402
 from shared.manifests import sha256_bytes, sha256_manifest  # noqa: E402
-from generators.seeds import (GENERATOR_VERSION, make_rng,  # noqa: E402
-                              make_instance_id, parse_instance_id,
-                              build_instance_record)
+from generators.seeds import (
+    GENERATOR_VERSION,
+    make_rng,  # noqa: E402
+    make_instance_id,
+    parse_instance_id,
+    build_instance_record,
+)
 
 SUITE = "code-bench-25-hidden"
 FAMILY_IDS = ("HH1", "HH2", "HH3", "HH4", "HH5", "HH6")
@@ -79,25 +83,22 @@ def resolve_params(family, seed, index=1):
                 break
         target = rng.randint(1, 199)
         var = HH1_VAR_NAMES[rng.randrange(len(HH1_VAR_NAMES))]
-        return {"coefficient": coefficient, "target": target,
-                "modulus": modulus, "variable": var}
+        return {"coefficient": coefficient, "target": target, "modulus": modulus, "variable": var}
     if family == "HH2":
-        return {"base": rng.randint(2, 50),
-                "exponent": rng.randint(10, 60),
-                "modulus": rng.randint(101, 997)}
+        return {
+            "base": rng.randint(2, 50),
+            "exponent": rng.randint(10, 60),
+            "modulus": rng.randint(101, 997),
+        }
     if family == "HH3":
-        return {"items": [rng.randint(1, 99) for _ in range(5)],
-                "modulus": rng.randint(101, 997)}
+        return {"items": [rng.randint(1, 99) for _ in range(5)], "modulus": rng.randint(101, 997)}
     if family == "HH4":
         base = rng.randint(101, 499)
-        return {"a": base * rng.randint(2, 9),
-                "b": base * rng.randint(2, 9)}
+        return {"a": base * rng.randint(2, 9), "b": base * rng.randint(2, 9)}
     if family == "HH5":
-        return {"n": rng.randint(10 ** 6, 10 ** 9),
-                "base": rng.randint(2, 16)}
+        return {"n": rng.randint(10**6, 10**9), "base": rng.randint(2, 16)}
     if family == "HH6":
-        return {"d": rng.randint(3, 49),
-                "n": rng.randint(10 ** 5, 10 ** 6)}
+        return {"d": rng.randint(3, 49), "n": rng.randint(10**5, 10**6)}
     raise KeyError("unknown hidden family: %r" % (family,))
 
 
@@ -115,8 +116,7 @@ def oracle_value(family, params):
         inv = pow(params["coefficient"], -1, params["modulus"])
         return str((inv * params["target"]) % params["modulus"])
     if family == "HH2":
-        return str(pow(params["base"], params["exponent"],
-                       params["modulus"]))
+        return str(pow(params["base"], params["exponent"], params["modulus"]))
     if family == "HH3":
         total = sum((i + 1) * v for i, v in enumerate(params["items"]))
         return str(total % params["modulus"])
@@ -134,54 +134,66 @@ def oracle_value(family, params):
 
 def _canary_line():
     """Integrity tag appended to every hidden prompt (SPEC 38)."""
-    return ("Benchmark integrity tag (ignore, reply integer only): "
-            + CANARY)
+    return "Benchmark integrity tag (ignore, reply integer only): " + CANARY
 
 
 def prompt_text(family, params):
     """Prompt builder. Contains the question, never the oracle answer."""
     if family == "HH1":
-        return ("Solve for %(v)s: %(a)d * %(v)s == %(b)d (mod %(m)d). "
-                "There is a unique solution with 0 <= %(v)s < %(m)d. "
-                "Reply with ONLY the final integer, no explanation. "
-                "%(canary)s"
-                % {"v": params["variable"], "a": params["coefficient"],
-                   "b": params["target"], "m": params["modulus"],
-                   "canary": _canary_line()})
+        return (
+            "Solve for %(v)s: %(a)d * %(v)s == %(b)d (mod %(m)d). "
+            "There is a unique solution with 0 <= %(v)s < %(m)d. "
+            "Reply with ONLY the final integer, no explanation. "
+            "%(canary)s"
+            % {
+                "v": params["variable"],
+                "a": params["coefficient"],
+                "b": params["target"],
+                "m": params["modulus"],
+                "canary": _canary_line(),
+            }
+        )
     if family == "HH2":
-        return ("Compute (%(b)d ** %(e)d) mod %(m)d. "
-                "Reply with ONLY the final integer, no explanation. "
-                "%(canary)s"
-                % {"b": params["base"], "e": params["exponent"],
-                   "m": params["modulus"], "canary": _canary_line()})
+        return (
+            "Compute (%(b)d ** %(e)d) mod %(m)d. "
+            "Reply with ONLY the final integer, no explanation. "
+            "%(canary)s"
+            % {
+                "b": params["base"],
+                "e": params["exponent"],
+                "m": params["modulus"],
+                "canary": _canary_line(),
+            }
+        )
     if family == "HH3":
         items = ", ".join(str(v) for v in params["items"])
-        return ("Given the list [%s], compute the weighted checksum "
-                "sum((position) * value) for positions 1..5, "
-                "then take it mod %d. "
-                "Reply with ONLY the final integer, no explanation. "
-                "%s"
-                % (items, params["modulus"], _canary_line()))
+        return (
+            "Given the list [%s], compute the weighted checksum "
+            "sum((position) * value) for positions 1..5, "
+            "then take it mod %d. "
+            "Reply with ONLY the final integer, no explanation. "
+            "%s" % (items, params["modulus"], _canary_line())
+        )
     if family == "HH4":
-        return ("Compute lcm(%(a)d, %(b)d) (least common multiple). "
-                "Reply with ONLY the final integer, no explanation. "
-                "%(canary)s"
-                % {"a": params["a"], "b": params["b"],
-                   "canary": _canary_line()})
+        return (
+            "Compute lcm(%(a)d, %(b)d) (least common multiple). "
+            "Reply with ONLY the final integer, no explanation. "
+            "%(canary)s" % {"a": params["a"], "b": params["b"], "canary": _canary_line()}
+        )
     if family == "HH5":
-        return ("Express %(n)d in base %(b)d, then compute the sum of "
-                "its base-%(b)d digits. "
-                "Reply with ONLY the final integer, no explanation. "
-                "%(canary)s"
-                % {"n": params["n"], "b": params["base"],
-                   "canary": _canary_line()})
+        return (
+            "Express %(n)d in base %(b)d, then compute the sum of "
+            "its base-%(b)d digits. "
+            "Reply with ONLY the final integer, no explanation. "
+            "%(canary)s" % {"n": params["n"], "b": params["base"], "canary": _canary_line()}
+        )
     if family == "HH6":
-        return ("Compute the sum of all multiples of %(d)d in "
-                "[1, %(n)d]. "
-                "Reply with ONLY the final integer, no explanation. "
-                "%(canary)s"
-                % {"d": params["d"], "n": params["n"],
-                   "canary": _canary_line()})
+        return (
+            "Compute the sum of all multiples of %(d)d in "
+            "[1, %(n)d]. "
+            "Reply with ONLY the final integer, no explanation. "
+            "%(canary)s" % {"d": params["d"], "n": params["n"], "canary": _canary_line()}
+        )
     raise KeyError(family)
 
 
@@ -195,8 +207,9 @@ def make_instance(family, seed, index=1):
         raise KeyError("unknown hidden family: %r" % (family,))
     params = resolve_params(family, seed, index)
     oracle = {"value": oracle_value(family, params)}
-    record = build_instance_record(family, seed, GENERATOR_VERSION,
-                                   params, oracle, variant=HIDDEN_VARIANT)
+    record = build_instance_record(
+        family, seed, GENERATOR_VERSION, params, oracle, variant=HIDDEN_VARIANT
+    )
     prompt = prompt_text(family, params)
     return {
         "task_family_id": family,
@@ -232,45 +245,54 @@ def check_family(family, reply, instance):
     return ok, "expected=%r got=%r" % (expected, got[:80])
 
 
-def run_family(family, chat, run_id, model_id, trial_id=1, index=1,
-               seed=0):
+def run_family(family, chat, run_id, model_id, trial_id=1, index=1, seed=0):
     """Run one hidden instance; returns schema-valid (attempt, response)."""
     instance = make_instance(family, seed, index)
     text, secs, usage = "", 0.0, {}
     error_kind, err_msg, log = None, None, ""
     passed = False
     try:
-        text, secs, usage = chat(prompt_messages(
-            family, instance["parameters"]))
+        text, secs, usage = chat(prompt_messages(family, instance["parameters"]))
         passed, log = check_family(family, text, instance)
     except Exception as e:  # harness-side failure -> ERROR, never FAIL
         error_kind, err_msg = "missing-tool", str(e)[:300]
         log = "executor-error: %s" % err_msg
     status = "PASS" if passed else ("ERROR" if error_kind else "FAIL")
     attempt = {
-        "run_id": run_id, "model_id": model_id,
-        "task_family_id": family, "instance_id": instance["instance_id"],
-        "variant_class": HIDDEN_VARIANT, "trial_id": trial_id,
-        "primary_status": status, "score": 1.0 if status == "PASS" else 0.0,
+        "run_id": run_id,
+        "model_id": model_id,
+        "task_family_id": family,
+        "instance_id": instance["instance_id"],
+        "variant_class": HIDDEN_VARIANT,
+        "trial_id": trial_id,
+        "primary_status": status,
+        "score": 1.0 if status == "PASS" else 0.0,
         "eligible_for_task_score": status != "ERROR",
         "eligible_for_pass_rate": status != "ERROR",
         "eligible_for_efficiency": status in ("PASS", "PARTIAL", "FAIL"),
         "eligible_for_calibration": False,
-        "primary_failure": None if status == "PASS" else (
-            "HARNESS_ERROR" if status == "ERROR" else "WRONG_RESULT"),
-        "secondary_failure_tags": [], "seed": seed,
+        "primary_failure": None
+        if status == "PASS"
+        else ("HARNESS_ERROR" if status == "ERROR" else "WRONG_RESULT"),
+        "secondary_failure_tags": [],
+        "seed": seed,
         "secs": round(secs, 1) if isinstance(secs, (int, float)) else secs,
-        "log": str(log)[-500:], "sample": (text or "")[:600],
+        "log": str(log)[-500:],
+        "sample": (text or "")[:600],
         "prompt_sha256": instance["prompt_sha256"],
         "manifest_sha256": instance["manifest_sha256"],
     }
     if err_msg:
         attempt["error"] = err_msg
-    response = {"instance_id": instance["instance_id"], "trial_id": trial_id,
-                "messages": prompt_messages(family, instance["parameters"]),
-                "reply": text, "usage": usage if isinstance(usage, dict) else {},
-                "oracle_hash": instance["oracle_hash"],
-                "generalization_level": instance["generalization_level"]}
+    response = {
+        "instance_id": instance["instance_id"],
+        "trial_id": trial_id,
+        "messages": prompt_messages(family, instance["parameters"]),
+        "reply": text,
+        "usage": usage if isinstance(usage, dict) else {},
+        "oracle_hash": instance["oracle_hash"],
+        "generalization_level": instance["generalization_level"],
+    }
     return validate_attempt(attempt), response
 
 
@@ -284,11 +306,18 @@ def prompt_pack_sha256():
     parts = []
     for family in FAMILY_IDS:
         manifest = load_manifest(family)
-        parts.append(json.dumps({
-            "generator": manifest["generator"],
-            "id": manifest["id"],
-            "oracle": manifest["oracle"],
-        }, sort_keys=True, ensure_ascii=False, separators=(",", ":")))
+        parts.append(
+            json.dumps(
+                {
+                    "generator": manifest["generator"],
+                    "id": manifest["id"],
+                    "oracle": manifest["oracle"],
+                },
+                sort_keys=True,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+        )
     blob = "|".join(parts)
     return sha256_bytes(blob.encode("utf-8"))
 

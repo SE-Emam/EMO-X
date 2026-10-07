@@ -58,9 +58,18 @@ class ProgressRenderTests(unittest.TestCase):
         p.start_attempt("T1")
         p.finish_attempt("PASS")
         snap = events[-1]
-        for key in ("suite", "suite_idx", "total_suites", "done",
-                    "total", "title", "passed", "failed",
-                    "elapsed_s", "eta_s"):
+        for key in (
+            "suite",
+            "suite_idx",
+            "total_suites",
+            "done",
+            "total",
+            "title",
+            "passed",
+            "failed",
+            "elapsed_s",
+            "eta_s",
+        ):
             self.assertIn(key, snap)
         self.assertEqual(snap["done"], 1)
         self.assertEqual(snap["passed"], 1)
@@ -78,17 +87,17 @@ class ProgressRenderTests(unittest.TestCase):
         p.finish_attempt("PASS")
         self.assertIn("[run 3/4", p.render())
         snap = p.snapshot()
-        self.assertEqual((snap["run_done"], snap["run_total"],
-                          snap["run_passed"], snap["run_failed"]),
-                         (3, 4, 2, 1))
+        self.assertEqual(
+            (snap["run_done"], snap["run_total"], snap["run_passed"], snap["run_failed"]),
+            (3, 4, 2, 1),
+        )
 
     def test_null_add_suite_total_noop(self):
         NullProgress().add_suite_total(5)
 
     def test_monotonic_done(self):
         seen = []
-        p = ProgressReporter(enabled=False,
-                             on_event=lambda s: seen.append(s["done"]))
+        p = ProgressReporter(enabled=False, on_event=lambda s: seen.append(s["done"]))
         p.start_run()
         p.start_suite("s", total_attempts=3)
         for i in range(3):
@@ -109,15 +118,21 @@ class ProgressNeutralityTests(unittest.TestCase):
                 shutil.rmtree(root, ignore_errors=True)
                 roots.append(root)
                 stream = io.StringIO() if i == 0 else None
-                prog = ProgressReporter(
-                    stream=stream, enabled=(i == 0))
+                prog = ProgressReporter(stream=stream, enabled=(i == 0))
                 rundir, _ = run_suite(
-                    "dynamic-code", stub_chat_factory("progress-test"),
-                    "m", "stub", seed=1, instances=1, trials=1,
+                    "dynamic-code",
+                    stub_chat_factory("progress-test"),
+                    "m",
+                    "stub",
+                    seed=1,
+                    instances=1,
+                    trials=1,
                     fault_rate=0.0,
                     out_root=os.path.join(root, "raw"),
-                    families=["DC1"], progress=prog,
-                    run_id="RUN-PROGRESS-TEST")
+                    families=["DC1"],
+                    progress=prog,
+                    run_id="RUN-PROGRESS-TEST",
+                )
                 hashes.append(_hash_events(rundir))
                 if i == 0:
                     # The bar actually drew something.

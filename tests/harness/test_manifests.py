@@ -16,15 +16,22 @@ from schemas import SchemaError
 
 
 def good_manifest():
-    return {"id": "H3", "version": "1.0", "name": "modular_arithmetic",
-            "category": "reasoning", "capabilities": ["generalization"],
-            "generator": {"type": "parametric"},
-            "difficulty": {"base": 3}, "execution": {"type": "python"},
-            "oracle": {"type": "deterministic"},
-            "scoring": {"correctness": 1.0}, "variants": ["canonical"],
-            "timeouts": {"execution_seconds": 30},
-            "network": {"allowed": False},
-            "filesystem": {"sandbox_only": True}}
+    return {
+        "id": "H3",
+        "version": "1.0",
+        "name": "modular_arithmetic",
+        "category": "reasoning",
+        "capabilities": ["generalization"],
+        "generator": {"type": "parametric"},
+        "difficulty": {"base": 3},
+        "execution": {"type": "python"},
+        "oracle": {"type": "deterministic"},
+        "scoring": {"correctness": 1.0},
+        "variants": ["canonical"],
+        "timeouts": {"execution_seconds": 30},
+        "network": {"allowed": False},
+        "filesystem": {"sandbox_only": True},
+    }
 
 
 class TestManifests(unittest.TestCase):
@@ -37,8 +44,7 @@ class TestManifests(unittest.TestCase):
         self.assertEqual(out["name"], "modular_arithmetic")
 
     def test_load_from_file(self):
-        with tempfile.NamedTemporaryFile("w", suffix=".json",
-                                         delete=False) as f:
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
             json.dump(good_manifest(), f)
             path = f.name
         try:
@@ -74,8 +80,9 @@ class TestManifests(unittest.TestCase):
             f.write(b"prompt-pack-bytes")
             path = f.name
         try:
-            self.assertEqual(manifests.sha256_file(path),
-                             manifests.sha256_bytes(b"prompt-pack-bytes"))
+            self.assertEqual(
+                manifests.sha256_file(path), manifests.sha256_bytes(b"prompt-pack-bytes")
+            )
         finally:
             os.unlink(path)
 

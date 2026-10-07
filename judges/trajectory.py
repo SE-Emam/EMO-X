@@ -53,8 +53,7 @@ def validate_failure_record(primary, secondary_tags=None):
         raise ValueError("duplicate secondary tags (C26)")
     if primary in secondary_tags:
         raise ValueError("primary must not repeat as secondary (C77)")
-    return {"primary_failure": primary,
-            "secondary_failure_tags": secondary_tags}
+    return {"primary_failure": primary, "secondary_failure_tags": secondary_tags}
 
 
 def trajectory_scores(flags):
@@ -65,21 +64,22 @@ def trajectory_scores(flags):
     Returns {name: 0/1/None} (None = not applicable, C90).
     """
     out = {}
-    out["verification"] = (None if flags.get("verification_applicable")
-                           is False else int(bool(flags.get("verified"))))
+    out["verification"] = (
+        None if flags.get("verification_applicable") is False else int(bool(flags.get("verified")))
+    )
     if flags.get("verification_applicable") is False:
         out["verification"] = None
-    out["clean_stop"] = (None if flags.get("completion_reached") is False
-                         else int(bool(flags.get("clean_stop"))))
+    out["clean_stop"] = (
+        None if flags.get("completion_reached") is False else int(bool(flags.get("clean_stop")))
+    )
     if flags.get("completion_reached") is False:
         out["clean_stop"] = None
     out["state_awareness"] = (
-        None if not flags.get("drift_injected")
-        else int(bool(flags.get("drift_detected"))))
+        None if not flags.get("drift_injected") else int(bool(flags.get("drift_detected")))
+    )
     out["correct_replan"] = (
-        None if not flags.get("replan_required")
-        else int(bool(flags.get("correct_replan"))))
-    out["action_discipline_flag"] = int(
-        bool(flags.get("no_redundant_actions")))
+        None if not flags.get("replan_required") else int(bool(flags.get("correct_replan")))
+    )
+    out["action_discipline_flag"] = int(bool(flags.get("no_redundant_actions")))
     out["side_effect_safe"] = int(bool(flags.get("side_effect_safe", True)))
     return out

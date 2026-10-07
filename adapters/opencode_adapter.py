@@ -29,8 +29,7 @@ import sys
 try:
     from _log import configure, get_logger  # noqa: E402  (P1-02 logging)
 except ImportError:  # standalone `python adapters/x.py`: shared/ off path
-    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                    "..", "shared"))
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "shared"))
     from _log import configure, get_logger  # noqa: E402
 
 log = get_logger("opencode_adapter")
@@ -84,21 +83,25 @@ def probe():
         return info
     info["binary"] = exe
     try:
-        p = subprocess.run([exe, "run", "--help"], capture_output=True,
-                           text=True, timeout=30)
+        p = subprocess.run([exe, "run", "--help"], capture_output=True, text=True, timeout=30)
         help_text = (p.stdout or "") + (p.stderr or "")
     except Exception as e:  # noqa: BLE001 - report, never raise, in probe
         info["error"] = "failed to probe `opencode run --help`: %s" % e
         return info
-    info["run_subcommand"] = (p.returncode == 0)
-    info["json_format"] = ("--format" in help_text and "json" in help_text)
-    info["model_flag"] = ("--model" in help_text)
-    info["dir_flag"] = ("--dir" in help_text)
+    info["run_subcommand"] = p.returncode == 0
+    info["json_format"] = "--format" in help_text and "json" in help_text
+    info["model_flag"] = "--model" in help_text
+    info["dir_flag"] = "--dir" in help_text
     if p.returncode != 0:
-        info["error"] = "`opencode run --help` exited %d; non-interactive `opencode run` unavailable." % p.returncode
+        info["error"] = (
+            "`opencode run --help` exited %d; non-interactive `opencode run` unavailable."
+            % p.returncode
+        )
         return info
     if "--format" not in help_text or "json" not in help_text:
-        info["error"] = "this opencode version lacks `run --format json`; cannot convert trajectory to trace JSON."
+        info["error"] = (
+            "this opencode version lacks `run --format json`; cannot convert trajectory to trace JSON."
+        )
         return info
     info["ok"] = True
     return info
@@ -107,8 +110,7 @@ def probe():
 def harness_spec(model_id, task_dir, timeout_s=TIMEOUT_S):
     """Full harness spec that MUST be stored alongside every result."""
     cap = probe()
-    argv = [_binary() or "opencode", "run", "--format", "json",
-            "--dir", task_dir]
+    argv = [_binary() or "opencode", "run", "--format", "json", "--dir", task_dir]
     if model_id:
         argv += ["--model", model_id]
     argv += [TASK_PROMPT]
@@ -121,14 +123,17 @@ def harness_spec(model_id, task_dir, timeout_s=TIMEOUT_S):
         "prompt_user": TASK_PROMPT,
         "prompt_system": "(opencode-native; harness-controlled, not frozen)",
         "tool_list": "(opencode-native; NOT restricted by this adapter. "
-                     "Closest Batch-4 mapping: ls/read/run/edit -> "
-                     "opencode read/edit/bash/ls. Native set differs, hence "
-                     "non-comparable.)",
+        "Closest Batch-4 mapping: ls/read/run/edit -> "
+        "opencode read/edit/bash/ls. Native set differs, hence "
+        "non-comparable.)",
         "tools_restricted_by_adapter": False,
         "stop_rule": STOP_RULE,
-        "budget": {"timeout_s": timeout_s, "max_steps": None,
-                   "note": "no step-budget flag observed in `opencode run --help`; "
-                           "wall-clock timeout only."},
+        "budget": {
+            "timeout_s": timeout_s,
+            "max_steps": None,
+            "note": "no step-budget flag observed in `opencode run --help`; "
+            "wall-clock timeout only.",
+        },
         "task_dir": task_dir,
         "comparability": COMPARABILITY,
     }
@@ -174,8 +179,7 @@ def run_episode(task_dir, model_id, timeout_s=TIMEOUT_S):
     argv += [TASK_PROMPT]
 
     try:
-        p = subprocess.run(argv, capture_output=True, text=True,
-                           timeout=timeout_s)
+        p = subprocess.run(argv, capture_output=True, text=True, timeout=timeout_s)
     except subprocess.TimeoutExpired as e:
         try:
             from _base import decode_bytes, timeout_trace
@@ -186,26 +190,43 @@ def run_episode(task_dir, model_id, timeout_s=TIMEOUT_S):
         steps = _normalize_events(out)
         diff, files, _ = _final_diff(task_dir)
         return timeout_trace(
-            ADAPTER_NAME, model_id, task_dir, steps, err, timeout_s,
-            harness_spec(model_id, task_dir, timeout_s), COMPARABILITY,
-            diff=diff, files=files)
+            ADAPTER_NAME,
+            model_id,
+            task_dir,
+            steps,
+            err,
+            timeout_s,
+            harness_spec(model_id, task_dir, timeout_s),
+            COMPARABILITY,
+            diff=diff,
+            files=files,
+        )
 
     steps = _normalize_events(p.stdout)
     diff, files, _ = _final_diff(task_dir)
-    return {"adapter": ADAPTER_NAME, "model_id": model_id,
-            "task_dir": task_dir,
-            "harness": harness_spec(model_id, task_dir, timeout_s),
-            "steps": steps, "final_diff": diff, "diff_files": files,
-            "stopped_cleanly": bool(p.returncode == 0),
-            "timed_out": False, "exit_code": p.returncode,
-            "stderr_tail": (p.stderr or "")[-500:],
-            "comparability": COMPARABILITY}
+    return {
+        "adapter": ADAPTER_NAME,
+        "model_id": model_id,
+        "task_dir": task_dir,
+        "harness": harness_spec(model_id, task_dir, timeout_s),
+        "steps": steps,
+        "final_diff": diff,
+        "diff_files": files,
+        "stopped_cleanly": bool(p.returncode == 0),
+        "timed_out": False,
+        "exit_code": p.returncode,
+        "stderr_tail": (p.stderr or "")[-500:],
+        "comparability": COMPARABILITY,
+    }
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="opencode adapter probe/runner")
-    ap.add_argument("--probe", action="store_true",
-                    help="check opencode availability; exit non-zero if unusable")
+    ap.add_argument(
+        "--probe",
+        action="store_true",
+        help="check opencode availability; exit non-zero if unusable",
+    )
     ap.add_argument("--task-dir", default=None)
     ap.add_argument("--model", default=None)
     ap.add_argument("--timeout", type=int, default=TIMEOUT_S)

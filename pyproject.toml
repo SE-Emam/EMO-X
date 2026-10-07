@@ -22,8 +22,16 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7", "coverage>=7", "build", "twine"]
-docs = ["sphinx"]
+dev = [
+  "build==1.6.1",
+  "coverage==7.16.2",
+  "mypy>=1.18,<2",
+  "pytest==9.1.1",
+  "ruff>=0.13,<1",
+  "tomli>=2,<3; python_version < '3.11'",
+  "twine==7.0.0",
+]
+docs = ["sphinx==7.4.7"]
 
 [project.scripts]
 emo = "emox.cli:main"
@@ -39,3 +47,32 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 emox = ["py.typed"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+extend-exclude = ["**/fixtures/**", "suites/gauntlet/cases.py", "notebooks/*.ipynb"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = [
+  "E501",  # Line length is handled by Ruff format.
+  "E402",  # Intentional late imports support standalone script/package execution.
+  "F401",  # Compatibility modules re-export imported names.
+  "I001",  # Existing dynamic-import blocks are not consistently sortable.
+  "UP006", # Existing typing aliases remain during gradual annotation migration.
+  "UP031", # Legacy percent-formatting remains; avoid broad behavior-sensitive rewrites.
+  "UP045", # Optional annotations are kept consistent during gradual migration.
+  "B904",  # Legacy exception chaining is deferred to focused changes.
+  "B905",  # zip lengths are intentionally allowed to differ in legacy algorithms.
+  "UP035", # Legacy typing imports remain until the public annotations are migrated.
+]
+
+[tool.mypy]
+python_version = "3.10"
+strict = false
+disallow_untyped_defs = true
+check_untyped_defs = true
+ignore_missing_imports = true
+# Directly requested files are checked; imports are dual-loaded as script/package.
+follow_imports = "skip"

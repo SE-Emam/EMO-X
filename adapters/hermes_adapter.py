@@ -5,6 +5,7 @@ full harness spec; cross-harness rows are NON-COMPARABLE regardless.
 Graceful degradation: missing binary/auth -> probe ok:false, run raises.
 stdlib only. No network calls in this file (the `hermes` binary phones home).
 """
+
 import argparse
 import json
 import os
@@ -15,8 +16,7 @@ import sys
 try:
     from _log import configure, get_logger  # noqa: E402  (P1-02 logging)
 except ImportError:  # standalone `python adapters/x.py`: shared/ off path
-    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                    "..", "shared"))
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "shared"))
     from _log import configure, get_logger  # noqa: E402
 
 log = get_logger("hermes_adapter")
@@ -38,21 +38,20 @@ def _bin():
 def probe():
     b = _bin()
     if not b:
-        return {"adapter": "hermes", "ok": False,
-                "reason": "hermes binary not found"}
+        return {"adapter": "hermes", "ok": False, "reason": "hermes binary not found"}
     try:
-        h = subprocess.run([b, "--help"], capture_output=True, text=True,
-                           timeout=30).stdout
+        h = subprocess.run([b, "--help"], capture_output=True, text=True, timeout=30).stdout
     except Exception as e:  # noqa: BLE001
         return {"adapter": "hermes", "ok": False, "reason": str(e)[:200]}
-    caps = {"non_interactive_prompt": "-z PROMPT" in h,
-            "cli_flag": "--cli" in h,
-            "workdir_flag": "--in DIR" in h,
-            "model_flag": "-m MODEL" in h,
-            "provider_flag": "--provider PROVIDER" in h,
-            "yolo_flag": "--yolo" in h}
-    return {"adapter": "hermes", "ok": all(caps.values()), "binary": b,
-            "capabilities": caps}
+    caps = {
+        "non_interactive_prompt": "-z PROMPT" in h,
+        "cli_flag": "--cli" in h,
+        "workdir_flag": "--in DIR" in h,
+        "model_flag": "-m MODEL" in h,
+        "provider_flag": "--provider PROVIDER" in h,
+        "yolo_flag": "--yolo" in h,
+    }
+    return {"adapter": "hermes", "ok": all(caps.values()), "binary": b, "capabilities": caps}
 
 
 def run_episode(task_dir, model_id, timeout=1200):
@@ -60,17 +59,16 @@ def run_episode(task_dir, model_id, timeout=1200):
     pr = probe()
     if not pr.get("ok"):
         raise RuntimeError("hermes probe failed: %s" % pr)
-    argv = [pr["binary"], "--cli", "--yolo", "--in", task_dir,
-            "-m", model_id, "-z", TASK_PROMPT]
+    argv = [pr["binary"], "--cli", "--yolo", "--in", task_dir, "-m", model_id, "-z", TASK_PROMPT]
     try:
-        p = subprocess.run(argv, capture_output=True, text=True,
-                           timeout=timeout)
+        p = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
     except subprocess.TimeoutExpired as e:
         raise RuntimeError("hermes episode timed out after %ss" % timeout) from e
     if "No access token" in (p.stdout + p.stderr):
         raise RuntimeError("hermes auth missing (Nous Portal login required)")
-    diff = subprocess.run(["git", "diff"], cwd=task_dir, capture_output=True,
-                          text=True, timeout=60).stdout
+    diff = subprocess.run(
+        ["git", "diff"], cwd=task_dir, capture_output=True, text=True, timeout=60
+    ).stdout
     trace = {
         "adapter": "hermes",
         "model_id": model_id,
@@ -83,21 +81,22 @@ def run_episode(task_dir, model_id, timeout=1200):
             "prompt_system": "(hermes-native; harness-controlled, not frozen)",
             "tool_list": "(hermes-native; NOT restricted by this adapter)",
             "stop_rule": "Process-level proxy: stopped_cleanly=true iff the hermes "
-                         "process exits 0 within timeout_s.",
+            "process exits 0 within timeout_s.",
             "budget": {"timeout_s": timeout},
             "task_dir": task_dir,
             "comparability": "NON-COMPARABLE across harnesses: this trace was "
-                             "produced by the hermes native harness (own system "
-                             "prompt, own tool set, own stop rule), NOT the frozen "
-                             "Batch-4 loop (PROMPT_PACK v1). Do not rank it against "
-                             "shared/run.py agent-loop results.",
+            "produced by the hermes native harness (own system "
+            "prompt, own tool set, own stop rule), NOT the frozen "
+            "Batch-4 loop (PROMPT_PACK v1). Do not rank it against "
+            "shared/run.py agent-loop results.",
         },
         "exit_code": p.returncode,
         "stdout_tail": p.stdout[-1500:],
         "stderr_tail": p.stderr[-1500:],
         "final_diff": diff,
-        "diff_files": [l.split()[-1] for l in diff.splitlines()
-                       if l.startswith("diff --git")],
+        "diff_files": [
+            line.split()[-1] for line in diff.splitlines() if line.startswith("diff --git")
+        ],
         "stopped_cleanly": p.returncode == 0,
         "comparability": "NON-COMPARABLE across harnesses",
     }
@@ -119,8 +118,7 @@ def main(argv=None):
     except RuntimeError as e:
         log.warning("adapter infra error: %s" % e)
         return 2
-    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                    "..", "shared"))
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "shared"))
     outdir = a.out if os.path.isabs(a.out) else os.path.join(os.getcwd(), a.out)
     os.makedirs(outdir, exist_ok=True)
     slug = "".join(c if (c.isalnum() or c in "-_.") else "_" for c in a.model)

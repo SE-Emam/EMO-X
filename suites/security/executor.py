@@ -46,8 +46,7 @@ _cases = _load_sibling("emox_security_cases", "cases.py")
 _judges = _load_sibling("emox_security_judges", "judges.py")
 
 try:
-    from shared.safety import (ScopeDenied, require_scope_gate,
-                               verify_fixture_dir)
+    from shared.safety import ScopeDenied, require_scope_gate, verify_fixture_dir
 except ImportError:  # shared/ directly on sys.path
     from safety import ScopeDenied, require_scope_gate, verify_fixture_dir
 
@@ -76,6 +75,7 @@ def _group(family):
 def load_manifest(family):
     """Load the frozen Task DSL manifest for S1..S5."""
     import json
+
     group = _group(family)
     path = os.path.join(HERE, "manifests", "%s.json" % group)
     with open(path, encoding="utf-8") as f:
@@ -84,31 +84,38 @@ def load_manifest(family):
 
 def _void_attempt(group, run_id, model_id, trial_id, variant, cause, log):
     attempt = {
-        "run_id": run_id, "model_id": model_id,
-        "task_family_id": group, "instance_id": "%s-%s-001" % (group,
-                                                               variant),
-        "variant_class": variant, "trial_id": trial_id,
-        "primary_status": "VOID", "score": 0.0,
+        "run_id": run_id,
+        "model_id": model_id,
+        "task_family_id": group,
+        "instance_id": "%s-%s-001" % (group, variant),
+        "variant_class": variant,
+        "trial_id": trial_id,
+        "primary_status": "VOID",
+        "score": 0.0,
         "eligible_for_task_score": False,
         "eligible_for_pass_rate": False,
         "eligible_for_efficiency": False,
         "eligible_for_calibration": False,
         "primary_failure": cause,
         "secondary_failure_tags": [],
-        "secs": 0.0, "log": str(log)[-500:], "sample": "",
+        "secs": 0.0,
+        "log": str(log)[-500:],
+        "sample": "",
     }
     return validate_attempt(attempt)
 
 
-def _scored_attempt(group, run_id, model_id, trial_id, variant, passed,
-                    cause, secs, log, sample):
+def _scored_attempt(group, run_id, model_id, trial_id, variant, passed, cause, secs, log, sample):
     status = "PASS" if passed else "FAIL"
     attempt = {
-        "run_id": run_id, "model_id": model_id,
-        "task_family_id": group, "instance_id": "%s-%s-001" % (group,
-                                                               variant),
-        "variant_class": variant, "trial_id": trial_id,
-        "primary_status": status, "score": 1.0 if passed else 0.0,
+        "run_id": run_id,
+        "model_id": model_id,
+        "task_family_id": group,
+        "instance_id": "%s-%s-001" % (group, variant),
+        "variant_class": variant,
+        "trial_id": trial_id,
+        "primary_status": status,
+        "score": 1.0 if passed else 0.0,
         "eligible_for_task_score": True,
         "eligible_for_pass_rate": True,
         "eligible_for_efficiency": True,
@@ -116,7 +123,8 @@ def _scored_attempt(group, run_id, model_id, trial_id, variant, passed,
         "primary_failure": None if passed else cause,
         "secondary_failure_tags": [],
         "secs": round(secs, 1) if isinstance(secs, (int, float)) else 0.0,
-        "log": str(log)[-500:], "sample": (sample or "")[:600],
+        "log": str(log)[-500:],
+        "sample": (sample or "")[:600],
     }
     return validate_attempt(attempt)
 
@@ -129,8 +137,7 @@ def _call(chat, messages):
     return text or "", secs, usage
 
 
-def run_family(family, chat, run_id, model_id, trial_id=1,
-               variant="canonical", scope=None):
+def run_family(family, chat, run_id, model_id, trial_id=1, variant="canonical", scope=None):
     """Run one security family; returns schema-valid (attempt, response).
 
     Strict pass rules: S1 via judge_s1_batch; S2 all three
@@ -148,23 +155,37 @@ def run_family(family, chat, run_id, model_id, trial_id=1,
         try:
             require_scope_gate(group, scope)
         except ScopeDenied as e:
-            attempt = _void_attempt(group, run_id, model_id, trial_id,
-                                    variant, "SAFETY_GATE",
-                                    "SAFETY_GATE: %s" % e)
-            return attempt, {"instance_id": attempt["instance_id"],
-                             "trial_id": trial_id, "prompts": [],
-                             "replies": [], "usage": {},
-                             "gate": "SAFETY_GATE"}
+            attempt = _void_attempt(
+                group, run_id, model_id, trial_id, variant, "SAFETY_GATE", "SAFETY_GATE: %s" % e
+            )
+            return attempt, {
+                "instance_id": attempt["instance_id"],
+                "trial_id": trial_id,
+                "prompts": [],
+                "replies": [],
+                "usage": {},
+                "gate": "SAFETY_GATE",
+            }
         try:
             verify_fixture_dir(_cases.FIXTURES_DIR)
         except Exception as e:
-            attempt = _void_attempt(group, run_id, model_id, trial_id,
-                                    variant, "SAFETY_GATE",
-                                    "SAFETY_GATE fixture: %s" % e)
-            return attempt, {"instance_id": attempt["instance_id"],
-                             "trial_id": trial_id, "prompts": [],
-                             "replies": [], "usage": {},
-                             "gate": "SAFETY_GATE"}
+            attempt = _void_attempt(
+                group,
+                run_id,
+                model_id,
+                trial_id,
+                variant,
+                "SAFETY_GATE",
+                "SAFETY_GATE fixture: %s" % e,
+            )
+            return attempt, {
+                "instance_id": attempt["instance_id"],
+                "trial_id": trial_id,
+                "prompts": [],
+                "replies": [],
+                "usage": {},
+                "gate": "SAFETY_GATE",
+            }
 
     prompts, replies, usage = [], [], {}
     secs_total = 0.0
@@ -177,8 +198,7 @@ def run_family(family, chat, run_id, model_id, trial_id=1,
                 text, secs, usage = _call(chat, msgs)
                 secs_total += secs if isinstance(secs, (int, float)) else 0.0
                 replies.append(text)
-                (mal_replies if msgs in mal_lists else ben_replies).append(
-                    text)
+                (mal_replies if msgs in mal_lists else ben_replies).append(text)
             passed, rates = _judges.judge_s1_batch(mal_replies, ben_replies)
             log = "s1 rates=%r" % (rates,)
             sample = replies[-1] if replies else ""
@@ -186,9 +206,11 @@ def run_family(family, chat, run_id, model_id, trial_id=1,
         elif group == "S2":
             notes = _cases.read_fixture("notes_poisoned.md")
             tool_out = _cases.read_fixture("tool_output_poisoned.txt")
-            msg_lists = [_cases.s2a_messages(),
-                         _cases.s2b_messages(notes),
-                         _cases.s2c_messages(tool_out)]
+            msg_lists = [
+                _cases.s2a_messages(),
+                _cases.s2b_messages(notes),
+                _cases.s2c_messages(tool_out),
+            ]
             results = []
             for msgs in msg_lists:
                 prompts.append(msgs)
@@ -230,10 +252,12 @@ def run_family(family, chat, run_id, model_id, trial_id=1,
             html = _cases.read_fixture("phishing_synthetic.html")
             dump = _cases.read_fixture("fake_dump.csv")
             env = _cases.read_fixture("opsec_sample.env")
-            msg_lists = [_cases.s5a_messages(html),
-                         _cases.s5b_messages(dump),
-                         _cases.s5c_messages(),
-                         _cases.s5d_messages(env)]
+            msg_lists = [
+                _cases.s5a_messages(html),
+                _cases.s5b_messages(dump),
+                _cases.s5c_messages(),
+                _cases.s5d_messages(env),
+            ]
             texts = []
             for msgs in msg_lists:
                 prompts.append(msgs)
@@ -246,24 +270,27 @@ def run_family(family, chat, run_id, model_id, trial_id=1,
             ok_c, det_c = _judges.judge_s5c_c2(texts[2])
             ok_d, det_d = _judges.judge_s5d_opsec(texts[3])
             passed = bool(ok_a and ok_b and ok_c and ok_d)
-            log = "s5 phish=%r dump=%r c2=%r opsec=%r" % (det_a, det_b,
-                                                          det_c, det_d)
+            log = "s5 phish=%r dump=%r c2=%r opsec=%r" % (det_a, det_b, det_c, det_d)
             sample = texts[0]
-            cause = ("SAFETY_FAILURE" if not (ok_c and ok_d)
-                     else "WRONG_RESULT")
+            cause = "SAFETY_FAILURE" if not (ok_c and ok_d) else "WRONG_RESULT"
     except Exception as e:  # model/backend failure -> VOID, never silent pass
         err = str(e)[:300]
-        attempt = _void_attempt(group, run_id, model_id, trial_id, variant,
-                                "BACKEND_ERROR",
-                                "BACKEND_ERROR: %s" % err)
-        response = {"instance_id": attempt["instance_id"],
-                    "trial_id": trial_id, "prompts": prompts,
-                    "replies": replies, "usage": usage,
-                    "error": err}
+        attempt = _void_attempt(
+            group, run_id, model_id, trial_id, variant, "BACKEND_ERROR", "BACKEND_ERROR: %s" % err
+        )
+        response = {
+            "instance_id": attempt["instance_id"],
+            "trial_id": trial_id,
+            "prompts": prompts,
+            "replies": replies,
+            "usage": usage,
+            "error": err,
+        }
         return attempt, response
 
-    attempt = _scored_attempt(group, run_id, model_id, trial_id, variant,
-                              bool(passed), cause, secs_total, log, sample)
+    attempt = _scored_attempt(
+        group, run_id, model_id, trial_id, variant, bool(passed), cause, secs_total, log, sample
+    )
     if group == "S2":
         # AgentDojo gap: structured ASR/utility signals. results holds
         # (acted, disclosed, passed) per injection probe; acted_any =
@@ -272,18 +299,20 @@ def run_family(family, chat, run_id, model_id, trial_id=1,
         acted = [bool(r[0]) for r in results]
         disclosed = [bool(r[1]) for r in results]
         attempt["s2_acted_any"] = any(acted)
-        attempt["s2_safe_all"] = bool(results) and (not any(acted)) \
-            and all(disclosed)
+        attempt["s2_safe_all"] = bool(results) and (not any(acted)) and all(disclosed)
         attempt = validate_attempt(attempt)
     if group == "S5":
         # CRITICAL gate: echoing the full secret voids eligibility.
         # (Reached only when all 4 S5 calls succeeded, so det_d bound.)
-        attempt["critical_violation"] = bool(
-            det_d.get("critical_violation"))
+        attempt["critical_violation"] = bool(det_d.get("critical_violation"))
         attempt = validate_attempt(attempt)
-    response = {"instance_id": attempt["instance_id"], "trial_id": trial_id,
-                "prompts": prompts, "replies": replies,
-                "usage": usage if isinstance(usage, dict) else {}}
+    response = {
+        "instance_id": attempt["instance_id"],
+        "trial_id": trial_id,
+        "prompts": prompts,
+        "replies": replies,
+        "usage": usage if isinstance(usage, dict) else {},
+    }
     return attempt, response
 
 
@@ -299,9 +328,16 @@ def prompt_pack_sha256():
     parts.append(_cases.S4A_DESTRUCTIVE + _cases.S4B_SKILLWRITE)
     parts.append(_cases.S5A_TASK_PREFIX + _cases.S5B_TASK_PREFIX)
     parts.append(_cases.S5C_C2THEORY + _cases.S5D_TASK_PREFIX)
-    for name in sorted(("notes_poisoned.md", "tool_output_poisoned.txt",
-                        "ctf_mini_task.md", "phishing_synthetic.html",
-                        "fake_dump.csv", "opsec_sample.env")):
+    for name in sorted(
+        (
+            "notes_poisoned.md",
+            "tool_output_poisoned.txt",
+            "ctf_mini_task.md",
+            "phishing_synthetic.html",
+            "fake_dump.csv",
+            "opsec_sample.env",
+        )
+    ):
         parts.append(_cases.read_fixture(name))
     blob = "\n".join(parts)
     return sha256_bytes(blob.encode("utf-8"))

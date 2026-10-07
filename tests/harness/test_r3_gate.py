@@ -24,9 +24,17 @@ if SHARED not in sys.path:
 import seal
 
 #: SPEC 32 required run-manifest fields (shared/schemas.py).
-REQUIRED_MANIFEST_FIELDS = ("benchmark_version", "suite", "prompt_pack",
-                            "prompt_sha256", "harness_sha256", "model",
-                            "backend", "seed", "trials")
+REQUIRED_MANIFEST_FIELDS = (
+    "benchmark_version",
+    "suite",
+    "prompt_pack",
+    "prompt_sha256",
+    "harness_sha256",
+    "model",
+    "backend",
+    "seed",
+    "trials",
+)
 
 R3_TRIALS = 3
 R3_SEED = 0
@@ -63,19 +71,27 @@ def check_r3_gate(manifest, coverage, csv_rate, seal_ok, seal_reason=""):
 
 
 def good_manifest(**over):
-    manifest = {"benchmark_version": "1.0", "suite": "code25",
-                "prompt_pack": "PROMPT_PACK_v1",
-                "prompt_sha256": "a" * 64, "harness_sha256": "b" * 64,
-                "model": "stub-model", "backend": "stub",
-                "seed": 0, "trials": 3}
+    manifest = {
+        "benchmark_version": "1.0",
+        "suite": "code25",
+        "prompt_pack": "PROMPT_PACK_v1",
+        "prompt_sha256": "a" * 64,
+        "harness_sha256": "b" * 64,
+        "model": "stub-model",
+        "backend": "stub",
+        "seed": 0,
+        "trials": 3,
+    }
     manifest.update(over)
     return manifest
 
 
-RAW_FILES = {"manifest.json": {"run_id": "R3-1"},
-             "events.jsonl": '{"a": 1}\n',
-             "responses.jsonl": '{"r": 1}\n',
-             "environment.json": {"env": "test"}}
+RAW_FILES = {
+    "manifest.json": {"run_id": "R3-1"},
+    "events.jsonl": '{"a": 1}\n',
+    "responses.jsonl": '{"r": 1}\n',
+    "environment.json": {"env": "test"},
+}
 
 
 def make_raw_bundle(root, run_id="R3-1", manifest=None):
@@ -107,15 +123,13 @@ class TestR3GateLogic(unittest.TestCase):
 
     def test_trials_not_3_rejected(self):
         for trials in (1, 2, 4):
-            ok, failures = check_r3_gate(good_manifest(trials=trials),
-                                         1.0, 0, True, "ok")
+            ok, failures = check_r3_gate(good_manifest(trials=trials), 1.0, 0, True, "ok")
             self.assertFalse(ok, trials)
             self.assertIn("trials", failures)
 
     def test_seed_not_frozen_rejected(self):
         for seed in (1, 42):
-            ok, failures = check_r3_gate(good_manifest(seed=seed),
-                                         1.0, 0, True, "ok")
+            ok, failures = check_r3_gate(good_manifest(seed=seed), 1.0, 0, True, "ok")
             self.assertFalse(ok, seed)
             self.assertIn("seed", failures)
 
@@ -143,20 +157,17 @@ class TestR3GateLogic(unittest.TestCase):
 
     def test_nonzero_csv_rate_rejected(self):
         for csv in (0.01, 0.5, 1.0):
-            ok, failures = check_r3_gate(good_manifest(), 1.0, csv,
-                                         True, "ok")
+            ok, failures = check_r3_gate(good_manifest(), 1.0, csv, True, "ok")
             self.assertFalse(ok, csv)
             self.assertIn("csv_rate", failures)
 
     def test_unknown_csv_rate_rejected_fail_closed(self):
-        ok, failures = check_r3_gate(good_manifest(), 1.0, None,
-                                     True, "ok")
+        ok, failures = check_r3_gate(good_manifest(), 1.0, None, True, "ok")
         self.assertFalse(ok)
         self.assertIn("csv_rate", failures)
 
     def test_bad_seal_rejected(self):
-        ok, failures = check_r3_gate(good_manifest(), 1.0, 0,
-                                     False, "tampered events.jsonl")
+        ok, failures = check_r3_gate(good_manifest(), 1.0, 0, False, "tampered events.jsonl")
         self.assertFalse(ok)
         self.assertIn("seal", failures)
 
@@ -168,8 +179,7 @@ class TestR3GateLogic(unittest.TestCase):
         manifest = good_manifest(trials=1, seed=7)
         ok, failures = check_r3_gate(manifest, 0.5, 0.2, False, "unsealed")
         self.assertFalse(ok)
-        self.assertEqual(set(failures),
-                         {"trials", "seed", "coverage", "csv_rate", "seal"})
+        self.assertEqual(set(failures), {"trials", "seed", "coverage", "csv_rate", "seal"})
 
 
 class TestR3GateWithRealSeal(unittest.TestCase):

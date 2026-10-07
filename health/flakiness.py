@@ -34,13 +34,22 @@ def flakiness_snapshot(trial_statuses):
     valid = _valid_trials(trial_statuses)
     n_valid = len(valid)
     if n_valid == 0:
-        return {"p": None, "flakiness": None, "n_valid": 0,
-                "n_total": total,
-                "reason": "NA: no valid trials (C69)"}
+        return {
+            "p": None,
+            "flakiness": None,
+            "n_valid": 0,
+            "n_total": total,
+            "reason": "NA: no valid trials (C69)",
+        }
     passes = sum(1 for s in valid if s == "PASS")
     p = passes / n_valid
-    return {"p": p, "flakiness": _flakiness(p), "n_valid": n_valid,
-            "n_total": total, "reason": "ok"}
+    return {
+        "p": p,
+        "flakiness": _flakiness(p),
+        "n_valid": n_valid,
+        "n_total": total,
+        "reason": "ok",
+    }
 
 
 def validity_snapshot(n_infra_failures, n_attempted):

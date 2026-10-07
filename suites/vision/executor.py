@@ -55,6 +55,7 @@ def load_manifest(family):
     path = os.path.join(HERE, "manifests", "%s.json" % family)
     with open(path, encoding="utf-8") as f:
         import json
+
         return json.load(f)
 
 
@@ -65,8 +66,7 @@ def prompt_pack_sha256():
     gt_path = os.path.join(VBENCH, "fixtures", "ground_truth.json")
     with open(gt_path, "rb") as f:
         parts.append(f.read().decode("utf-8"))
-    for png in ("ui_login.png", "ui_toolbar.png", "arabic_card.png",
-                "grid_count.png"):
+    for png in ("ui_login.png", "ui_toolbar.png", "arabic_card.png", "grid_count.png"):
         with open(os.path.join(VBENCH, "fixtures", png), "rb") as f:
             parts.append(hashlib.sha256(f.read()).hexdigest())
     blob = "\n".join(parts)
@@ -94,31 +94,45 @@ def _gate(chat, base_url, force=False):
     if ok:
         return None
     if hint is False:
-        return ("no vision model advertised at /models AND probe image "
-                "call failed (%s)" % detail)
+        return "no vision model advertised at /models AND probe image call failed (%s)" % detail
     return "probe image call failed (%s)" % detail
 
 
 def _void_attempt(family, run_id, model_id, trial_id, reason):
-    return validate_attempt({
-        "run_id": run_id, "model_id": model_id,
-        "task_family_id": family,
-        "instance_id": "%s-canonical-001" % family,
-        "variant_class": "canonical", "trial_id": trial_id,
-        "primary_status": "VOID", "score": 0.0,
-        "eligible_for_task_score": False,
-        "eligible_for_pass_rate": False,
-        "eligible_for_efficiency": False,
-        "eligible_for_calibration": False,
-        "primary_failure": None,
-        "secondary_failure_tags": [],
-        "error": "vision-gate: %s" % reason[:250],
-    })
+    return validate_attempt(
+        {
+            "run_id": run_id,
+            "model_id": model_id,
+            "task_family_id": family,
+            "instance_id": "%s-canonical-001" % family,
+            "variant_class": "canonical",
+            "trial_id": trial_id,
+            "primary_status": "VOID",
+            "score": 0.0,
+            "eligible_for_task_score": False,
+            "eligible_for_pass_rate": False,
+            "eligible_for_efficiency": False,
+            "eligible_for_calibration": False,
+            "primary_failure": None,
+            "secondary_failure_tags": [],
+            "error": "vision-gate: %s" % reason[:250],
+        }
+    )
 
 
-def run_family(family, chat, run_id, model_id, trial_id=1, index=1,
-               seed=0, manifest=None, variant=None, base_url="",
-               force=False):
+def run_family(
+    family,
+    chat,
+    run_id,
+    model_id,
+    trial_id=1,
+    index=1,
+    seed=0,
+    manifest=None,
+    variant=None,
+    base_url="",
+    force=False,
+):
     """Run one vision family. Returns (attempt, response), schema-valid.
 
     variant other than None/"canonical" raises TypeError (NA, DEN).
@@ -126,22 +140,27 @@ def run_family(family, chat, run_id, model_id, trial_id=1, index=1,
     """
     v = variant or "canonical"
     if v != "canonical":
-        raise TypeError("variant %r not supported for family %r"
-                        % (v, family))
+        raise TypeError("variant %r not supported for family %r" % (v, family))
     if family not in FAMILY_IDS:
         raise KeyError("unknown vision family: %r" % (family,))
     vb = _load_vbench()
     reason = _gate(chat, base_url, force)
     if reason is not None:
-        attempt = _void_attempt(family, run_id, model_id, trial_id,
-                                reason)
-        return attempt, {"instance_id": attempt["instance_id"],
-                         "trial_id": trial_id, "reply": "",
-                         "usage": {}, "void": True, "gate": reason}
+        attempt = _void_attempt(family, run_id, model_id, trial_id, reason)
+        return attempt, {
+            "instance_id": attempt["instance_id"],
+            "trial_id": trial_id,
+            "reply": "",
+            "usage": {},
+            "void": True,
+            "gate": reason,
+        }
     gt = vb.load_ground_truth()
-    tests = {name: (img, prompt, target)
-             for name, img, prompt, target in vb.build_tests(gt)
-             if name.startswith(family)}
+    tests = {
+        name: (img, prompt, target)
+        for name, img, prompt, target in vb.build_tests(gt)
+        if name.startswith(family)
+    }
     if not tests:
         raise KeyError("no vision test maps to family: %r" % (family,))
     name, (img, prompt, (kind, target)) = sorted(tests.items())[0]
@@ -152,37 +171,48 @@ def run_family(family, chat, run_id, model_id, trial_id=1, index=1,
         err = str(e)[:300]
         if vb.NO_IMAGE_RE.search(err):
             attempt = _void_attempt(
-                family, run_id, model_id, trial_id,
-                "endpoint rejects image content: %s" % err)
-            return attempt, {"instance_id": attempt["instance_id"],
-                             "trial_id": trial_id, "reply": "",
-                             "usage": {}, "void": True, "gate": err}
+                family, run_id, model_id, trial_id, "endpoint rejects image content: %s" % err
+            )
+            return attempt, {
+                "instance_id": attempt["instance_id"],
+                "trial_id": trial_id,
+                "reply": "",
+                "usage": {},
+                "void": True,
+                "gate": err,
+            }
         raise
     passed = bool(rec.get("pass"))
     status = "PASS" if passed else "FAIL"
-    attempt = validate_attempt({
-        "run_id": run_id, "model_id": model_id,
-        "task_family_id": family,
-        "instance_id": "%s-canonical-%03d" % (family, index),
-        "variant_class": "canonical", "trial_id": trial_id,
-        "primary_status": status, "score": 1.0 if passed else 0.0,
-        "eligible_for_task_score": True,
-        "eligible_for_pass_rate": True,
-        "eligible_for_efficiency": True,
-        "eligible_for_calibration": False,
-        "primary_failure": None if passed else "WRONG_RESULT",
-        "secondary_failure_tags": [],
-        "seed": seed,
-        "reasoning_mode": "provider_default",
-        "log": str(rec.get("log", ""))[:500],
-        "sample": str(rec.get("sample", ""))[:600],
-        "manifest_sha256": sha256_manifest(
-            manifest or load_manifest(family)),
-    })
-    response = {"instance_id": attempt["instance_id"],
-                "trial_id": trial_id, "messages": messages,
-                "reply": rec.get("sample", ""),
-                "usage": rec.get("usage")
-                if isinstance(rec.get("usage"), dict) else {},
-                "vision_log": rec.get("log", "")}
+    attempt = validate_attempt(
+        {
+            "run_id": run_id,
+            "model_id": model_id,
+            "task_family_id": family,
+            "instance_id": "%s-canonical-%03d" % (family, index),
+            "variant_class": "canonical",
+            "trial_id": trial_id,
+            "primary_status": status,
+            "score": 1.0 if passed else 0.0,
+            "eligible_for_task_score": True,
+            "eligible_for_pass_rate": True,
+            "eligible_for_efficiency": True,
+            "eligible_for_calibration": False,
+            "primary_failure": None if passed else "WRONG_RESULT",
+            "secondary_failure_tags": [],
+            "seed": seed,
+            "reasoning_mode": "provider_default",
+            "log": str(rec.get("log", ""))[:500],
+            "sample": str(rec.get("sample", ""))[:600],
+            "manifest_sha256": sha256_manifest(manifest or load_manifest(family)),
+        }
+    )
+    response = {
+        "instance_id": attempt["instance_id"],
+        "trial_id": trial_id,
+        "messages": messages,
+        "reply": rec.get("sample", ""),
+        "usage": rec.get("usage") if isinstance(rec.get("usage"), dict) else {},
+        "vision_log": rec.get("log", ""),
+    }
     return attempt, response

@@ -5,12 +5,19 @@ Normalized from shared/bench_lib.py WITHOUT importing or modifying it
 (bench_lib.py is legacy v1 and stays runnable).
 """
 
+import contextlib
 import os
 import re
+import selectors
 import shlex
 import shutil
 import subprocess
 import tempfile
+import time
+import uuid
+from collections import deque
+from collections.abc import Callable, Sequence
+from typing import Any
 
 
 class SandboxPathEscape(ValueError):
@@ -21,11 +28,56 @@ class SandboxTimeout(TimeoutError):
     """Raised when a sandboxed command exceeds its timeout."""
 
 
-FORBIDDEN_PREFIXES = ("/etc", "/root", "/home", "/var/run/secrets",
-                       "/proc", "/sys", "/dev", "/var/run/docker.sock")
+class SandboxRuntimeUnavailable(RuntimeError):
+    """Raised when the required Docker sandbox cannot be started."""
 
 
-def _forbidden_dynamic():
+FORBIDDEN_PREFIXES = (
+    "/etc",
+    "/root",
+    "/home",
+    "/var/run/secrets",
+    "/proc",
+    "/sys",
+    "/dev",
+    "/var/run/docker.sock",
+)
+
+_SANDBOX_ENV_KEYS = frozenset(
+    {
+        "PATH",
+        "SYSTEMROOT",
+        "WINDIR",
+        "COMSPEC",
+        "PATHEXT",
+        "LANG",
+        "LC_ALL",
+        "TZ",
+        "TMP",
+        "TEMP",
+        "TMPDIR",
+    }
+)
+_DOCKER_CLIENT_ENV_KEYS = (
+    "PATH",
+    "HOME",
+    "DOCKER_HOST",
+    "DOCKER_CONTEXT",
+    "DOCKER_CONFIG",
+    "DOCKER_TLS_VERIFY",
+    "DOCKER_CERT_PATH",
+    "DOCKER_API_VERSION",
+)
+_SANDBOX_IMAGE = "emox-sandbox:latest"
+_CONTAINER_WORKDIR = "/workspace"
+_SANDBOX_MEMORY = "1g"
+_SANDBOX_CPUS = "2"
+_SANDBOX_PIDS = "128"
+_MAX_OUTPUT_BYTES = 1_048_576
+_OUTPUT_TRUNCATION_MARKER = "[output truncated; retained last %d bytes]\n" % _MAX_OUTPUT_BYTES
+
+
+def _forbidden_dynamic() -> tuple[str, ...]:
     """Per-user secret dirs (fail-closed even when $HOME is unusual)."""
     home = os.path.expanduser("~")
     if not home or home == "~":
@@ -33,17 +85,17 @@ def _forbidden_dynamic():
     return (os.path.join(home, ".aws"), os.path.join(home, ".ssh"))
 
 
-def create_sandbox(prefix="emox_sandbox_"):
+def create_sandbox(prefix: str = "emox_sandbox_") -> str:
     """Create a sandbox-only temp dir. Returns its path. SPEC 35."""
     return tempfile.mkdtemp(prefix=prefix)
 
 
-def destroy_sandbox(path):
+def destroy_sandbox(path: str) -> None:
     """Remove a sandbox dir. SPEC 35."""
     shutil.rmtree(path, ignore_errors=True)
 
 
-def resolve_sandbox_path(root, relpath):
+def resolve_sandbox_path(root: str, relpath: str | os.PathLike[str] | None) -> str:
     """Resolve relpath inside root; raise SandboxPathEscape on escape. SPEC 35.
 
     Canonicalizes via realpath (symlinks resolved) and confines with
@@ -61,29 +113,27 @@ def resolve_sandbox_path(root, relpath):
         # Absolute paths are only allowed if already inside root.
         full = os.path.realpath(os.path.normpath(rel))
     else:
-        full = os.path.realpath(
-            os.path.normpath(os.path.join(root_real, rel.lstrip("/"))))
+        full = os.path.realpath(os.path.normpath(os.path.join(root_real, rel.lstrip("/"))))
     try:
-        inside = (full == root_real
-                  or os.path.commonpath([full, root_real]) == root_real)
+        inside = full == root_real or os.path.commonpath([full, root_real]) == root_real
     except ValueError:
-        raise SandboxPathEscape("path escape: %r" % (relpath,))
+        raise SandboxPathEscape(f"path escape: {relpath!r}")
     if not inside:
-        raise SandboxPathEscape("path escape: %r" % (relpath,))
+        raise SandboxPathEscape(f"path escape: {relpath!r}")
     for prefix in list(FORBIDDEN_PREFIXES) + list(_forbidden_dynamic()):
         resolved_prefix = os.path.realpath(prefix)
         if full == resolved_prefix or full.startswith(resolved_prefix + os.sep):
-            raise SandboxPathEscape("forbidden path: %r" % (relpath,))
+            raise SandboxPathEscape(f"forbidden path: {relpath!r}")
     return full
 
 
-def _refuse_symlink(path, relpath):
+def _refuse_symlink(path: str, relpath: object) -> None:
     """Raise SandboxPathEscape if a lexical path is (or traverses) a symlink."""
     if os.path.islink(path):
-        raise SandboxPathEscape("symlink refused: %r" % (relpath,))
+        raise SandboxPathEscape(f"symlink refused: {relpath!r}")
 
 
-def write_sandbox_file(root, relpath, content):
+def write_sandbox_file(root: str, relpath: str | os.PathLike[str], content: str) -> str:
     """Write text content to a file inside the sandbox. SPEC 35.
 
     Refuses symlinked targets (O_NOFOLLOW) so a model-planted
@@ -93,75 +143,261 @@ def write_sandbox_file(root, relpath, content):
     # Refuse symlinks on BOTH the lexical path (planted link name) and
     # the resolved path, before O_NOFOLLOW enforces it at open(2).
     root_real = os.path.realpath(root)
-    lexical = os.path.normpath(os.path.join(
-        root_real, str(relpath).lstrip("/")))
+    lexical = os.path.normpath(os.path.join(root_real, str(relpath).lstrip("/")))
     _refuse_symlink(lexical, relpath)
     _refuse_symlink(full, relpath)
     parent = os.path.dirname(full) or root
     os.makedirs(parent, exist_ok=True)
-    fd = os.open(full, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW,
-                 0o600)
+    fd = os.open(full, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(content)
     except BaseException:
-        try:
+        with contextlib.suppress(OSError):
             os.unlink(full)
-        except OSError:
-            pass
         raise
     return full
 
 
-def _clean_env():
-    """Environment for sandboxed procs: proxy-strip only (NOT net isolation).
+def _clean_env() -> dict[str, str]:
+    """Return a minimal environment for compatibility callers.
 
-    Strips proxy vars (plus EMOX_ALLOW_LOCAL, audit SEC-5) so a child
-    cannot reach the network via ambient proxy config or inherit the
-    parent's SSRF-guard bypass. This is NOT a network sandbox: direct
-    sockets from model code are still possible; true isolation (net
-    namespace/seccomp) is out of scope for the stdlib harness and must
-    not be claimed elsewhere (SPEC 24 wording fixed accordingly).
+    Docker-backed execution does not inherit this environment; the
+    container receives only fixed HOME and TMPDIR settings.
     """
-    env = dict(os.environ)
-    for key in ("http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY",
-                "ALL_PROXY", "all_proxy",
-                # Audit SEC-5: never let a sandboxed child inherit the
-                # SSRF-guard bypass; the parent's decision does not
-                # propagate into untrusted child processes.
-                "EMOX_ALLOW_LOCAL"):
-        env.pop(key, None)
+    env = {}
+    for key in _SANDBOX_ENV_KEYS:
+        value = os.environ.get(key)
+        if value is not None:
+            env[key] = value
+    env.setdefault("PATH", os.defpath)
     env["EMOX_SANDBOX"] = "1"
     return env
 
 
-def run_in_sandbox(argv, sandbox_dir=None, timeout=30, input_text=None):
-    """Run argv with cwd confined to a temp sandbox dir. SPEC 35.
+def _docker_client_env() -> dict[str, str]:
+    """Environment for the trusted Docker client, never passed to the container."""
+    env = {}
+    for key in _DOCKER_CLIENT_ENV_KEYS:
+        value = os.environ.get(key)
+        if value is not None:
+            env[key] = value
+    env.setdefault("PATH", os.defpath)
+    return env
 
-    Returns (returncode, output_tail). Raises SandboxTimeout on timeout.
-    Hardening: cwd-confined + proxy-stripped env only; NOT full network
-    or syscall isolation (see _clean_env).
+
+def _container_args(argv: Sequence[str], root: str) -> list[str]:
+    """Translate host paths inside the bound workdir to container paths."""
+    translated = []
+    for arg in argv:
+        text = str(arg)
+        if os.path.isabs(text):
+            full = os.path.realpath(text)
+            try:
+                if os.path.commonpath([full, root]) == root:
+                    relative = os.path.relpath(full, root)
+                    text = (
+                        _CONTAINER_WORKDIR
+                        if relative == "."
+                        else os.path.join(_CONTAINER_WORKDIR, relative)
+                    )
+            except ValueError:
+                pass
+        translated.append(text)
+    return translated
+
+
+def _stop_container(docker: str, name: str, env: dict[str, str]) -> None:
+    """Kill a container whose Docker client timed out."""
+    proc = subprocess.run(
+        [docker, "kill", name], capture_output=True, text=True, timeout=10, env=env
+    )
+    if proc.returncode == 0 or "No such container" in proc.stderr:
+        return
+    raise SandboxRuntimeUnavailable(
+        f"unable to stop timed-out sandbox container: {(proc.stderr or proc.stdout)[-500:]}"
+    )
+
+
+def run_in_sandbox(
+    argv: Sequence[str],
+    sandbox_dir: str | None = None,
+    timeout: float = 30,
+    input_text: str | None = None,
+) -> tuple[int, str]:
+    """Run argv in a networkless, read-only Docker sandbox. SPEC 35.
+
+    Only the dedicated temporary work directory is mounted read/write.
+    The container has no network, no Linux capabilities, and a read-only
+    root filesystem. CPU, memory, PID count, and retained output are
+    capped. Returns (returncode, output_tail).
     """
     own_dir = sandbox_dir is None
     root = sandbox_dir or create_sandbox()
+    root = os.path.realpath(root)
+    temp_root = os.path.realpath(tempfile.gettempdir())
     try:
+        confined = root != temp_root and os.path.commonpath([root, temp_root]) == temp_root
+    except ValueError:
+        confined = False
+    if not os.path.isdir(root) or not confined:
+        if own_dir:
+            destroy_sandbox(root)
+        raise SandboxPathEscape("sandbox directory must be a dedicated temp dir")
+    if "," in root:
+        if own_dir:
+            destroy_sandbox(root)
+        raise SandboxPathEscape("sandbox path contains a Docker mount delimiter")
+    os.makedirs(os.path.join(root, ".emox-tmp"), mode=0o700, exist_ok=True)
+    os.makedirs(os.path.join(root, ".emox-home"), mode=0o700, exist_ok=True)
+    env = _docker_client_env()
+    docker = shutil.which("docker", path=env["PATH"])
+    if docker is None:
+        if own_dir:
+            destroy_sandbox(root)
+        raise SandboxRuntimeUnavailable("Docker CLI not found")
+    name = "emox-sandbox-" + uuid.uuid4().hex
+    image = os.environ.get("EMOX_SANDBOX_IMAGE", _SANDBOX_IMAGE)
+    if not re.fullmatch(r"[a-z0-9][a-z0-9._:/@-]*", image):
+        if own_dir:
+            destroy_sandbox(root)
+        raise ValueError("invalid EMOX_SANDBOX_IMAGE")
+    uid = str(os.getuid()) if hasattr(os, "getuid") else "65534"
+    gid = str(os.getgid()) if hasattr(os, "getgid") else "65534"
+    command = [docker, "run"]
+    if input_text is not None:
+        command.append("--interactive")
+    command += [
+        "--rm",
+        "--init",
+        "--name",
+        name,
+        "--network=none",
+        "--read-only",
+        "--cap-drop=ALL",
+        "--security-opt=no-new-privileges",
+        f"--memory={_SANDBOX_MEMORY}",
+        f"--memory-swap={_SANDBOX_MEMORY}",
+        f"--cpus={_SANDBOX_CPUS}",
+        f"--pids-limit={_SANDBOX_PIDS}",
+        "--user",
+        uid + ":" + gid,
+        "--env",
+        "HOME=/workspace/.emox-home",
+        "--env",
+        "TMPDIR=/workspace/.emox-tmp",
+        "--workdir",
+        _CONTAINER_WORKDIR,
+        "--mount",
+        f"type=bind,src={root},dst={_CONTAINER_WORKDIR}",
+        image,
+    ] + _container_args(argv, root)
+    proc = None
+    try:
+        proc = subprocess.Popen(
+            command,
+            cwd=temp_root,
+            stdin=(subprocess.PIPE if input_text is not None else subprocess.DEVNULL),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            bufsize=0,
+            env=env,
+        )
+        stdout = proc.stdout
+        stdin = proc.stdin
+        if stdout is None:
+            raise SandboxRuntimeUnavailable("Docker sandbox output stream was not created")
+        output: deque[bytes] = deque()
+        output_size = 0
+        truncated = False
+        input_bytes = input_text.encode("utf-8") if input_text is not None else b""
+        input_offset = 0
+        output_open = True
+        selector = selectors.DefaultSelector()
+        selector.register(stdout.fileno(), selectors.EVENT_READ, "output")
+        if stdin is not None:
+            if input_bytes:
+                os.set_blocking(stdin.fileno(), False)
+                selector.register(stdin.fileno(), selectors.EVENT_WRITE, "input")
+            else:
+                stdin.close()
+        deadline = time.monotonic() + timeout
         try:
-            proc = subprocess.run(
-                argv, cwd=root, capture_output=True, text=True,
-                timeout=timeout, input=input_text, env=_clean_env())
-        except subprocess.TimeoutExpired as e:
-            raise SandboxTimeout("command timed out after %ss" % timeout) from e
-        tail = (proc.stdout + proc.stderr)[-2000:]
-        return proc.returncode, tail
+            while output_open or proc.poll() is None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    _stop_container(docker, name, env)
+                    raise SandboxTimeout(f"command timed out after {timeout}s")
+                for key, _ in selector.select(min(remaining, 0.1)):
+                    if key.data == "input":
+                        if stdin is None:
+                            raise SandboxRuntimeUnavailable(
+                                "Docker sandbox input stream was not created"
+                            )
+                        try:
+                            written = os.write(
+                                key.fd, input_bytes[input_offset : input_offset + 65536]
+                            )
+                        except BlockingIOError:
+                            continue
+                        except BrokenPipeError:
+                            written = len(input_bytes) - input_offset
+                        input_offset += written
+                        if input_offset >= len(input_bytes):
+                            selector.unregister(key.fd)
+                            stdin.close()
+                    else:
+                        chunk = os.read(key.fd, 65536)
+                        if not chunk:
+                            selector.unregister(key.fd)
+                            stdout.close()
+                            output_open = False
+                            continue
+                        truncated = truncated or output_size + len(chunk) > _MAX_OUTPUT_BYTES
+                        output.append(chunk)
+                        output_size += len(chunk)
+                        while output_size > _MAX_OUTPUT_BYTES:
+                            excess = output_size - _MAX_OUTPUT_BYTES
+                            if excess >= len(output[0]):
+                                output_size -= len(output.popleft())
+                            else:
+                                output[0] = output[0][excess:]
+                                output_size -= excess
+            returncode = proc.wait()
+        finally:
+            selector.close()
+            if stdin is not None and not stdin.closed:
+                stdin.close()
+            if not stdout.closed:
+                stdout.close()
+        output_text = b"".join(output).decode("utf-8", errors="replace")
+        if truncated:
+            output_text = _OUTPUT_TRUNCATION_MARKER + output_text
+        if returncode == 125:
+            raise SandboxRuntimeUnavailable(
+                f"Docker could not start the sandbox: {output_text[-500:]}"
+            )
+        return returncode, output_text
+    except SandboxTimeout:
+        if proc is not None and proc.poll() is None:
+            proc.kill()
+            proc.wait()
+        raise
+    except OSError as e:
+        if proc is None:
+            raise SandboxRuntimeUnavailable(f"unable to start Docker sandbox: {e}") from e
+        raise
     finally:
+        if proc is not None and proc.poll() is None:
+            proc.kill()
+            proc.wait()
         if own_dir:
             destroy_sandbox(root)
 
 
-def run_python_code(code, test="", timeout=30):
+def run_python_code(code: str, test: str = "", timeout: float = 30) -> tuple[bool, str]:
     """Run python code+test in a sandbox. Returns (ok, log_tail). SPEC 35."""
-    rc, tail = run_in_sandbox(["python3", "-c", code + "\n" + test],
-                              timeout=timeout)
+    rc, tail = run_in_sandbox(["python3", "-c", code + "\n" + test], timeout=timeout)
     return rc == 0, tail
 
 
@@ -172,14 +408,20 @@ _SAFE_ARG_RE = re.compile(r"^[\w\-./=:+]+$")
 # character inert. Blindly dropping ':' would break real debugging.
 
 
-def _confine_root(root):
+def _confine_root(root: Any) -> str:
     """Return root if it is an existing dir, else raise ValueError."""
     if not isinstance(root, str) or not os.path.isdir(root):
-        raise ValueError("sandbox root is not a directory: %r" % (root,))
+        raise ValueError(f"sandbox root is not a directory: {root!r}")
     return root
 
 
-def safe_tool_run(cmd, ctx, ls_fn, safe_fn, timeout=120):
+def safe_tool_run(
+    cmd: str,
+    ctx: Any,
+    ls_fn: Callable[..., tuple[bool, str]],
+    safe_fn: Callable[..., str],
+    timeout: float = 120,
+) -> tuple[bool, str]:
     """Execute one agent `run` command with NO shell. Audit fix D1.
 
     Closed grammar (same documented contract as before: only
@@ -205,7 +447,7 @@ def safe_tool_run(cmd, ctx, ls_fn, safe_fn, timeout=120):
     try:
         root = _confine_root(getattr(ctx, "root", None))
     except ValueError as e:
-        return False, "ERROR: %s" % e
+        return False, f"ERROR: {e}"
     head = argv[0]
     if head == "ls":
         rest = argv[1:]
@@ -225,41 +467,37 @@ def safe_tool_run(cmd, ctx, ls_fn, safe_fn, timeout=120):
             except ValueError:
                 return False, "ERROR: path escape"
             if os.path.islink(full):
-                return False, "ERROR: refusing to read symlink: %s" % p
+                return False, f"ERROR: refusing to read symlink: {p}"
             if not os.path.isfile(full):
-                return False, "ERROR: no such file: %s" % p
+                return False, f"ERROR: no such file: {p}"
             fd = os.open(full, os.O_RDONLY | os.O_NOFOLLOW)
             try:
-                with os.fdopen(fd, encoding="utf-8",
-                               errors="replace") as fh:
+                with os.fdopen(fd, encoding="utf-8", errors="replace") as fh:
                     data = fh.read()
             except OSError:
-                return False, "ERROR: refusing to read symlink: %s" % p
+                return False, f"ERROR: refusing to read symlink: {p}"
             # Audit fix 1: same 6000-char cap as tool_read (memory/context
             # bound) + unified read trail (ctx.reads, AttributeError-safe
             # for minimal test doubles).
-            outs.append(data[:6000] +
-                        ("...[truncated]" if len(data) > 6000 else ""))
-            try:
+            outs.append(data[:6000] + ("...[truncated]" if len(data) > 6000 else ""))
+            with contextlib.suppress(AttributeError):
                 ctx.reads.append(p)
-            except AttributeError:
-                pass
         return True, "\n".join(outs)
-    if head == "python3" and len(argv) >= 3 and argv[1] == "-m" and \
-            argv[2] in ("pytest", "py_compile"):
+    if (
+        head == "python3"
+        and len(argv) >= 3
+        and argv[1] == "-m"
+        and argv[2] in ("pytest", "py_compile")
+    ):
         rest = argv[3:]
         if not all(_SAFE_ARG_RE.match(a) for a in rest):
             return False, "ERROR: only pytest/py_compile/ls/cat allowed"
         if "pytest" in argv or any("tests" in a for a in rest):
-            try:
+            with contextlib.suppress(AttributeError):
                 ctx.ran_tests += 1
-            except AttributeError:
-                pass
         try:
-            proc = subprocess.run(
-                argv, cwd=root, capture_output=True, text=True,
-                timeout=timeout, env=_clean_env())
-        except subprocess.TimeoutExpired:
-            return False, "ERROR: command timed out after %ss" % timeout
-        return (proc.returncode == 0), (proc.stdout + proc.stderr)[-2500:]
+            rc, output = run_in_sandbox(argv, sandbox_dir=root, timeout=timeout)
+        except SandboxTimeout:
+            return False, f"ERROR: command timed out after {timeout}s"
+        return rc == 0, output[-2500:]
     return False, "ERROR: only pytest/py_compile/ls/cat allowed"

@@ -14,11 +14,16 @@ for path in (REPO, SHARED):
         sys.path.insert(0, path)
 
 from generators.task_dsl import example_h3_manifest, TaskDSL
-from generators.instance_factory import (build_instance, verify_oracle,
-                                         compute_oracle, render_prompt,
-                                         resolve_parameters,
-                                         prompt_leaks_oracle)
+from generators.instance_factory import (
+    build_instance,
+    verify_oracle,
+    compute_oracle,
+    render_prompt,
+    resolve_parameters,
+    prompt_leaks_oracle,
+)
 from generators.seeds import make_rng, parse_instance_id
+
 try:
     from schemas import SchemaError
 except ImportError:
@@ -59,8 +64,7 @@ class TestCanonicalInstances(unittest.TestCase):
     def test_instance_id_convention(self):
         inst = build_instance(h3_manifest(), 928174, index=1)
         self.assertEqual(inst["instance_id"], "H3-canonical-00001")
-        self.assertEqual(parse_instance_id(inst["instance_id"]),
-                         ("H3", "canonical", 1))
+        self.assertEqual(parse_instance_id(inst["instance_id"]), ("H3", "canonical", 1))
 
     def test_factory_rejects_non_canonical_variant(self):
         with self.assertRaises(SchemaError):
@@ -76,8 +80,8 @@ class TestCanonicalInstances(unittest.TestCase):
         params = inst["parameters"]
         self.assertEqual(
             inst["oracle"]["expected"],
-            pow(int(params["coefficient"]), int(params["target"]),
-                int(params["modulus"])))
+            pow(int(params["coefficient"]), int(params["target"]), int(params["modulus"])),
+        )
 
     def test_no_answer_leak(self):
         # Distinctive sentinel oracle: the prompt must not contain it.
@@ -89,9 +93,9 @@ class TestCanonicalInstances(unittest.TestCase):
     def test_parameters_within_spec_ranges(self):
         spec = h3_manifest()["generator"]["parameters"]
         inst = build_instance(h3_manifest(), 99)
-        self.assertTrue(spec["modulus"]["min"]
-                        <= inst["parameters"]["modulus"]
-                        <= spec["modulus"]["max"])
+        self.assertTrue(
+            spec["modulus"]["min"] <= inst["parameters"]["modulus"] <= spec["modulus"]["max"]
+        )
 
     def test_task_dsl_object_accepted(self):
         task = TaskDSL.from_dict(h3_manifest())
@@ -103,13 +107,11 @@ class TestParameterResolution(unittest.TestCase):
     def test_sorted_key_draw_order_stable(self):
         spec = {"z": {"min": 1, "max": 9}, "a": {"min": 1, "max": 9}}
         first = resolve_parameters(spec, make_rng(3, "1.0.0"))
-        second = resolve_parameters(
-            {"a": spec["a"], "z": spec["z"]}, make_rng(3, "1.0.0"))
+        second = resolve_parameters({"a": spec["a"], "z": spec["z"]}, make_rng(3, "1.0.0"))
         self.assertEqual(first, second)
 
     def test_choices_and_const(self):
-        spec = {"c": {"choices": ["x", "y"]}, "k": {"const": 7},
-                "plain": 42}
+        spec = {"c": {"choices": ["x", "y"]}, "k": {"const": 7}, "plain": 42}
         out = resolve_parameters(spec, make_rng(1, "1.0.0"))
         self.assertIn(out["c"], ("x", "y"))
         self.assertEqual(out["k"], 7)
@@ -117,15 +119,17 @@ class TestParameterResolution(unittest.TestCase):
 
     def test_rejects_bad_range(self):
         with self.assertRaises(SchemaError):
-            resolve_parameters({"p": {"min": 9, "max": 1}},
-                               make_rng(1, "1.0.0"))
+            resolve_parameters({"p": {"min": 9, "max": 1}}, make_rng(1, "1.0.0"))
 
     def test_generic_oracle_digest_recomputable(self):
         oracle = compute_oracle("T9", "other_task", {"alpha": 1})
         self.assertIn("params_digest", oracle)
-        inst = {"task": "T9", "parameters": {"alpha": 1},
-                "oracle": copy.deepcopy(oracle),
-                "oracle_hash": oracle_hash_of(oracle)}
+        inst = {
+            "task": "T9",
+            "parameters": {"alpha": 1},
+            "oracle": copy.deepcopy(oracle),
+            "oracle_hash": oracle_hash_of(oracle),
+        }
         self.assertTrue(verify_oracle(inst, "other_task"))
 
     def test_render_generic_prompt(self):

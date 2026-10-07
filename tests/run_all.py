@@ -64,11 +64,11 @@ def run_suite(name):
     # importable package (tests/ has no __init__.py); without it the
     # top-level defaults to the start dir and absolute imports
     # resolve via PYTHONPATH above.
-    cmd = [sys.executable, "-m", "unittest", "discover",
-           "-s", target]
+    cmd = [sys.executable, "-m", "unittest", "discover", "-s", target]
     try:
-        proc = subprocess.run(cmd, cwd=ROOT, env=suite_env(),
-                              capture_output=True, text=True, timeout=600)
+        proc = subprocess.run(
+            cmd, cwd=ROOT, env=suite_env(), capture_output=True, text=True, timeout=600
+        )
     except subprocess.TimeoutExpired:
         return False, "%-10s TIMEOUT (>600s)" % name, ""
     out = (proc.stderr or "") + (proc.stdout or "")
@@ -76,8 +76,7 @@ def run_suite(name):
     ok = proc.returncode == 0
     # unittest prints "OK" to stderr on success; surface the tail.
     status = "PASS" if ok else "FAIL"
-    return ok, "%-10s %s  [exit=%d] %s" % (name, status, proc.returncode,
-                                          last[:220]), out
+    return ok, "%-10s %s  [exit=%d] %s" % (name, status, proc.returncode, last[:220]), out
 
 
 def count_suite(name):
@@ -88,12 +87,15 @@ def count_suite(name):
     counting would undercount when `generators` is not importable).
     """
     target = os.path.join(HERE, name)
-    cmd = [sys.executable, "-c",
-           "import unittest; print(unittest.TestLoader()"
-           ".discover(%r).countTestCases())" % target]
+    cmd = [
+        sys.executable,
+        "-c",
+        "import unittest; print(unittest.TestLoader().discover(%r).countTestCases())" % target,
+    ]
     try:
-        proc = subprocess.run(cmd, cwd=ROOT, env=suite_env(),
-                              capture_output=True, text=True, timeout=120)
+        proc = subprocess.run(
+            cmd, cwd=ROOT, env=suite_env(), capture_output=True, text=True, timeout=120
+        )
     except subprocess.TimeoutExpired:
         return -1
     if proc.returncode != 0:

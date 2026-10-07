@@ -949,13 +949,13 @@ scope-gated
 
 Security execution must never require real credentials, real targets, or external infrastructure.
 
-> **Isolation scope (binding, audit H5):** sandbox isolation is
-> proxy-strip + cwd-confinement + timeouts ONLY — NOT full network or
-> syscall isolation; direct sockets from model code remain possible
-> without OS-level net namespaces (see `docs/security-model.md`,
-> `shared/sandbox.py::_clean_env`). Operators must not expose the
-> harness or MCP server to untrusted networks without OS-level
-> isolation.
+> **Isolation scope (binding):** generated-code execution requires the
+> restricted Docker sandbox in `shared/sandbox.py`: network disabled,
+> read-only container root, and only a dedicated temporary workspace
+> mounted writable. There is no host-execution fallback. Docker and the
+> configured sandbox image are trusted components; optional third-party
+> agent CLIs have separate execution boundaries and are not covered by
+> this guarantee (see `SECURITY.md` and `docs/security-model.md`).
 
 ---
 

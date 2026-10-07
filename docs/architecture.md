@@ -19,6 +19,17 @@ Task Factory (seed + generator DSL, SPEC 7-8)
   -> Report / Profile (shared/report_v2.py, SPEC 43-44)
 ```
 
+## Shared module boundaries
+
+- `shared/runner.py` orchestrates suites and maintains the compatibility
+  API for manifests, environment payloads, and raw-bundle writing.
+- `shared/environment.py` probes host runtime, toolchain, and hardware
+  metadata.
+- `shared/bundles.py` validates, streams, atomically publishes, and seals
+  raw run bundles.
+- Suite-specific task and execution behavior belongs under `suites/`;
+  `shared/` contains reusable harness services rather than suite cases.
+
 ## Capability layers (SPEC 4)
 
 L0 Core Execution, L1 Generalization, L2 Tool Use, L3 Recovery,

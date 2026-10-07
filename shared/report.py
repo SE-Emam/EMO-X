@@ -7,6 +7,7 @@ Usage:
 Reads the unified result JSON, fills REPORT_TEMPLATE.md v1 sections, runs
 qa_check() and stamps PASS/FLAGGED. Manual edits after generation void the stamp.
 """
+
 import argparse
 import datetime
 import json
@@ -35,28 +36,52 @@ def qa_check(data, tests):
     """Return (stamp, checklist_rows). stamp is PASS or FLAGGED."""
     rows = []
     names = list(tests)
-    infra = [k for k, v in tests.items()
-             if v.get("error") and ("404" in v["error"] or "timeout" in v["error"].lower()
-                                    or "urlopen" in v["error"].lower())]
-    rows.append(("completeness",
-                 "all 25 present, no infra-failures",
-                 "FAIL" if (len(names) < 25 or infra) else "PASS"))
+    infra = [
+        k
+        for k, v in tests.items()
+        if v.get("error")
+        and (
+            "404" in v["error"]
+            or "timeout" in v["error"].lower()
+            or "urlopen" in v["error"].lower()
+        )
+    ]
+    rows.append(
+        (
+            "completeness",
+            "all 25 present, no infra-failures",
+            "FAIL" if (len(names) < 25 or infra) else "PASS",
+        )
+    )
     trials = data.get("trials", 1)
-    rows.append(("trials", "trials>=1 recorded (n=3 for final claims)",
-                 "PASS" if trials >= 1 else "FAIL"))
-    noev = [k for k, v in tests.items()
-            if not v.get("pass") and not (v.get("sample") or v.get("log"))]
-    rows.append(("raw evidence", "every FAIL has sample+log",
-                 "FAIL" if noev else "PASS"))
-    rows.append(("budget compliance", "T<=512/R<=600/H<=2048 or override noted",
-                 "PASS (see notes)"))
+    rows.append(
+        ("trials", "trials>=1 recorded (n=3 for final claims)", "PASS" if trials >= 1 else "FAIL")
+    )
+    noev = [
+        k for k, v in tests.items() if not v.get("pass") and not (v.get("sample") or v.get("log"))
+    ]
+    rows.append(("raw evidence", "every FAIL has sample+log", "FAIL" if noev else "PASS"))
+    rows.append(
+        ("budget compliance", "T<=512/R<=600/H<=2048 or override noted", "PASS (see notes)")
+    )
     missing_gates = [g for g in HUMAN_GATES if g in tests and not tests[g].get("human_reviewed")]
-    rows.append(("human-review gates", "H3+T5 human-reviewed (flag set by reviewer)",
-                 "FAIL (auto-only: %s)" % ",".join(missing_gates) if missing_gates else "PASS"))
-    rows.append(("comparability", "same PROMPT_PACK+temp+harness as baseline",
-                 "PASS (pack %s)" % data.get("prompt_pack", "?")))
-    rows.append(("endpoint stability", "no 404/timeout streak mid-run",
-                 "FAIL" if infra else "PASS"))
+    rows.append(
+        (
+            "human-review gates",
+            "H3+T5 human-reviewed (flag set by reviewer)",
+            "FAIL (auto-only: %s)" % ",".join(missing_gates) if missing_gates else "PASS",
+        )
+    )
+    rows.append(
+        (
+            "comparability",
+            "same PROMPT_PACK+temp+harness as baseline",
+            "PASS (pack %s)" % data.get("prompt_pack", "?"),
+        )
+    )
+    rows.append(
+        ("endpoint stability", "no 404/timeout streak mid-run", "FAIL" if infra else "PASS")
+    )
     bad = [name for name, _, st in rows if not st.startswith("PASS")]
     stamp = "PASS" if not bad else "FLAGGED:" + ",".join(bad)
     return stamp, rows
@@ -74,6 +99,7 @@ def _row(name, v):
 def _endpoint_from_env():
     """Host-only endpoint from the same env keys the runners accept."""
     import urllib.parse as _up
+
     for key in ("OPENAI_BASE_URL", "BASE_URL", "AGENT_BASE"):
         raw = os.environ.get(key, "")
         if raw:
@@ -87,6 +113,7 @@ def _endpoint_from_env():
 def _hardware_default():
     """Local platform string (audit fix 3: never render blank hardware)."""
     import platform as _pl
+
     try:
         return _pl.platform()
     except Exception:
@@ -102,7 +129,10 @@ def generate(data_path, model=None, endpoint=None, hardware="", notes=""):
     b1 = {k: v for k, v in tests.items() if k.startswith("T")}
     b2 = {k: v for k, v in tests.items() if k.startswith("R")}
     b3 = {k: v for k, v in tests.items() if k.startswith("H")}
-    tot = lambda d: (sum(1 for v in d.values() if v.get("pass")), len(d))
+
+    def tot(d):
+        return sum(1 for value in d.values() if value.get("pass")), len(d)
+
     t = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     L = []
     A = L.append
@@ -130,7 +160,10 @@ def generate(data_path, model=None, endpoint=None, hardware="", notes=""):
         for k, v in d.items():
             A(_row(k, v))
         A("")
-    A("**Grand automated total: %d/25.** Qualitative overrides (e.g. T5) must be listed in §5, never silently merged." % sum(tot(d)[0] for d in (b1, b2, b3)))
+    A(
+        "**Grand automated total: %d/25.** Qualitative overrides (e.g. T5) must be listed in §5, never silently merged."
+        % sum(tot(d)[0] for d in (b1, b2, b3))
+    )
     A("")
     A("## 4. Efficiency (agent-loop only)")
     A("N/A for code25-only runs. See agent-loop reports for calls/failed/tokens/latency.")
@@ -144,7 +177,9 @@ def generate(data_path, model=None, endpoint=None, hardware="", notes=""):
         A("- error: `%s`" % (v.get("error") or "assertion/check failed"))
         A("- log: `%s`" % (str(v.get("log") or "")[:300]))
         A("- sample: `%s`" % (str(v.get("sample") or "")[:400]))
-        A("- class: _reviewer assigns: harness-artifact | genuine | budget-limited | unstable-needs-retest_")
+        A(
+            "- class: _reviewer assigns: harness-artifact | genuine | budget-limited | unstable-needs-retest_"
+        )
     A("")
     A("## 6. Methodology notes")
     A("- Budgets: T=512/R=600/H=2048 tokens; math via native API with think:false.")
@@ -161,7 +196,10 @@ def generate(data_path, model=None, endpoint=None, hardware="", notes=""):
     A("")
     A("## 8. Limitations & signature")
     A("- Single-run caveat: gaps <3pp = noise. Hardware-specific (2xT4, Ollama, Q8).")
-    A("- Generated by shared/report.py (%s) at %s. Manual edits void the QA stamp." % (TEMPLATE_VERSION, t))
+    A(
+        "- Generated by shared/report.py (%s) at %s. Manual edits void the QA stamp."
+        % (TEMPLATE_VERSION, t)
+    )
     return "\n".join(L) + "\n", stamp
 
 
@@ -178,8 +216,9 @@ def main(argv=None):
     outdir = a.out if os.path.isabs(a.out) else os.path.join(os.getcwd(), a.out)
     if not os.path.isdir(outdir) and os.path.basename(outdir) == "":
         outdir = os.path.join(os.path.dirname(base), "results")
-    text, stamp = generate(a.result, model=a.model, endpoint=a.endpoint,
-                           hardware=a.hardware, notes=a.notes)
+    text, stamp = generate(
+        a.result, model=a.model, endpoint=a.endpoint, hardware=a.hardware, notes=a.notes
+    )
     stem = os.path.splitext(os.path.basename(a.result))[0]
     parent = os.path.dirname(base)
     rdir = os.path.join(parent, "reports")

@@ -34,8 +34,7 @@ def configure(level: int = logging.INFO, stream=None) -> logging.Logger:
         if getattr(handler, "_emox_handler", False):
             handler.setLevel(level)
             return logger
-    handler = logging.StreamHandler(
-        stream if stream is not None else sys.stderr)
+    handler = logging.StreamHandler(stream if stream is not None else sys.stderr)
     handler.setFormatter(logging.Formatter(FORMAT))
     handler.setLevel(level)
     handler._emox_handler = True  # type: ignore[attr-defined]

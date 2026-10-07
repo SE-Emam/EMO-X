@@ -39,20 +39,32 @@ TIMEOUT = 300
 
 #: Extra hostnames always refused (metadata service aliases). IP-range
 #: classification for resolved addresses lives in _validate_base_url.
-_BLOCKED_HOSTS = frozenset((
-    "metadata.google.internal",
-))
+_BLOCKED_HOSTS = frozenset(("metadata.google.internal",))
 
 #: Networks that are never acceptable for a model base URL unless
 #: EMOX_ALLOW_LOCAL=1 (SSRF defense-in-depth). Covers loopback, RFC1918,
 #: link-local (cloud metadata), CGNAT, reserved, multicast, unspecified,
 #: and IPv4-mapped IPv6.
-_FORBIDDEN_NETS = tuple(ipaddress.ip_network(n) for n in (
-    "0.0.0.0/8", "10.0.0.0/8", "100.64.0.0/10", "127.0.0.0/8",
-    "169.254.0.0/16", "172.16.0.0/12", "192.0.0.0/24",
-    "192.168.0.0/16", "198.18.0.0/15", "224.0.0.0/4", "240.0.0.0/4",
-    "::1/128", "fc00::/7", "fe80::/10", "::ffff:0:0/96",
-))
+_FORBIDDEN_NETS = tuple(
+    ipaddress.ip_network(n)
+    for n in (
+        "0.0.0.0/8",
+        "10.0.0.0/8",
+        "100.64.0.0/10",
+        "127.0.0.0/8",
+        "169.254.0.0/16",
+        "172.16.0.0/12",
+        "192.0.0.0/24",
+        "192.168.0.0/16",
+        "198.18.0.0/15",
+        "224.0.0.0/4",
+        "240.0.0.0/4",
+        "::1/128",
+        "fc00::/7",
+        "fe80::/10",
+        "::ffff:0:0/96",
+    )
+)
 
 
 def _ip_is_forbidden(ip_text):
@@ -61,8 +73,14 @@ def _ip_is_forbidden(ip_text):
         ip = ipaddress.ip_address(ip_text)
     except ValueError:
         return True  # unparseable -> fail closed
-    if (ip.is_private or ip.is_loopback or ip.is_link_local
-            or ip.is_reserved or ip.is_multicast or ip.is_unspecified):
+    if (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_reserved
+        or ip.is_multicast
+        or ip.is_unspecified
+    ):
         return True
     for net in _FORBIDDEN_NETS:
         if ip.version == net.version and ip in net:
@@ -94,10 +112,10 @@ def _validate_base_url(base_url):
     if host.lower() in _BLOCKED_HOSTS:
         raise ValueError(
             "refusing base URL host %r (metadata alias); "
-            "set EMOX_ALLOW_LOCAL=1 to allow local endpoints" % host)
+            "set EMOX_ALLOW_LOCAL=1 to allow local endpoints" % host
+        )
     try:
-        infos = socket.getaddrinfo(host, port or None,
-                                   proto=socket.IPPROTO_TCP)
+        infos = socket.getaddrinfo(host, port or None, proto=socket.IPPROTO_TCP)
     except socket.gaierror:
         # Unresolvable host: allow through. DNS is not the SSRF control
         # here; the resolved-IP classification below is. A rebinding
@@ -110,8 +128,8 @@ def _validate_base_url(base_url):
         if _ip_is_forbidden(ip_text):
             raise ValueError(
                 "refusing base URL host %r resolving to non-public %s; "
-                "set EMOX_ALLOW_LOCAL=1 to allow local endpoints"
-                % (host, ip_text))
+                "set EMOX_ALLOW_LOCAL=1 to allow local endpoints" % (host, ip_text)
+            )
     return base_url
 
 
@@ -146,20 +164,20 @@ def resolve_config(backend="kaggle", base_url=None, model=None, api_key=None):
         mod = model or os.environ.get("MODEL") or os.environ.get("AGENT_MODEL")
         key = api_key  # tunnels need no key
     elif backend in ("openai-generic", "openai_generic", "openai"):
-        base = (base_url or os.environ.get("OPENAI_BASE_URL")
-                or os.environ.get("BASE_URL"))
-        mod = (model or os.environ.get("OPENAI_MODEL")
-               or os.environ.get("MODEL"))
-        key = (api_key or os.environ.get("OPENAI_API_KEY")
-               or os.environ.get("OPENAI_KEY") or os.environ.get("KEY"))
+        base = base_url or os.environ.get("OPENAI_BASE_URL") or os.environ.get("BASE_URL")
+        mod = model or os.environ.get("OPENAI_MODEL") or os.environ.get("MODEL")
+        key = (
+            api_key
+            or os.environ.get("OPENAI_API_KEY")
+            or os.environ.get("OPENAI_KEY")
+            or os.environ.get("KEY")
+        )
         backend = "openai-generic"
     elif backend == "cli":
         # Local CLI harness: base doubles as the binary (path or PATH
         # name), model is the CLI route id (e.g. opencode/<route>).
-        base = (base_url or os.environ.get("CLI_BIN")
-                or os.environ.get("BASE_URL") or "opencode")
-        mod = (model or os.environ.get("CLI_MODEL")
-               or os.environ.get("MODEL"))
+        base = base_url or os.environ.get("CLI_BIN") or os.environ.get("BASE_URL") or "opencode"
+        mod = model or os.environ.get("CLI_MODEL") or os.environ.get("MODEL")
         key = None  # auth lives in the CLI's own config, never here
     else:
         raise ValueError("unknown backend: %r (kaggle|colab|openai-generic|cli)" % backend)
@@ -187,8 +205,7 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
             target = urllib.parse.urljoin(req.full_url, newurl)
             _validate_base_url(target)
         except ValueError as e:
-            raise urllib.error.URLError(
-                "refusing redirect to non-public URL: %s" % e) from e
+            raise urllib.error.URLError("refusing redirect to non-public URL: %s" % e) from e
         return None
 
 
@@ -201,8 +218,8 @@ def _post_json(url, payload, api_key=None, timeout=TIMEOUT):
             _local = (_p.hostname or "") in ("localhost", "127.0.0.1", "::1")
             if _p.scheme == "http" and not _local:
                 raise RuntimeError(
-                    "refusing to send credentials over http to %s"
-                    % _redact_host(url))
+                    "refusing to send credentials over http to %s" % _redact_host(url)
+                )
         except RuntimeError:
             raise
         except Exception:
@@ -221,27 +238,31 @@ def _post_json(url, payload, api_key=None, timeout=TIMEOUT):
         # Re-raise without the response body: error surfaces carry the
         # status code and (redacted) host only, never backend output
         # that could echo credentials or prompt content.
-        raise RuntimeError("HTTP error %s for %s" % (
-            getattr(e, "code", "?"), _redact_host(url)))
+        raise RuntimeError("HTTP error %s for %s" % (getattr(e, "code", "?"), _redact_host(url)))
     except urllib.error.URLError as e:
-        raise RuntimeError("connection failed for %s: %s" % (
-            _redact_host(url), getattr(e, "reason", e)))
+        raise RuntimeError(
+            "connection failed for %s: %s" % (_redact_host(url), getattr(e, "reason", e))
+        )
     return body, round(time.time() - t0, 1)
 
 
-def chat_openai_compatible(messages, base_url, model, api_key=None,
-                           temp=0.4, max_tokens=512, timeout=TIMEOUT):
+def chat_openai_compatible(
+    messages, base_url, model, api_key=None, temp=0.4, max_tokens=512, timeout=TIMEOUT
+):
     """OpenAI-compatible chat. Returns (text, secs, usage)."""
-    payload = {"model": model, "messages": messages, "temperature": temp,
-               "stream": False, "max_tokens": max_tokens}
-    body, secs = _post_json(_strip_slash(base_url) + "/chat/completions",
-                            payload, api_key, timeout)
+    payload = {
+        "model": model,
+        "messages": messages,
+        "temperature": temp,
+        "stream": False,
+        "max_tokens": max_tokens,
+    }
+    body, secs = _post_json(_strip_slash(base_url) + "/chat/completions", payload, api_key, timeout)
     text = body["choices"][0]["message"]["content"] or ""
     return text, secs, body.get("usage", {})
 
 
-def chat_native(messages, base_url, model, temp=0.4, num_predict=600,
-                think=False, timeout=TIMEOUT):
+def chat_native(messages, base_url, model, temp=0.4, num_predict=600, think=False, timeout=TIMEOUT):
     """Ollama native chat (think flag + num_predict). Returns (text, secs, usage).
 
     Native URL derives from base by stripping a trailing '/v1'.
@@ -250,9 +271,13 @@ def chat_native(messages, base_url, model, temp=0.4, num_predict=600,
     base = _strip_slash(base_url)
     if base.endswith("/v1"):
         base = base[: -len("/v1")]
-    payload = {"model": model, "messages": messages, "stream": False,
-               "think": think,
-               "options": {"temperature": temp, "num_predict": num_predict}}
+    payload = {
+        "model": model,
+        "messages": messages,
+        "stream": False,
+        "think": think,
+        "options": {"temperature": temp, "num_predict": num_predict},
+    }
     body, secs = _post_json(base + "/api/chat", payload, None, timeout)
     text = (body.get("message") or {}).get("content") or ""
     return text, secs, {"eval": body.get("eval_count")}
@@ -270,13 +295,13 @@ def chat_cli(messages, cli_bin, model, timeout=TIMEOUT):
     import re
     import shutil
     import subprocess
-    exe = cli_bin if os.path.isfile(str(cli_bin)) \
-        else shutil.which(str(cli_bin))
+
+    exe = cli_bin if os.path.isfile(str(cli_bin)) else shutil.which(str(cli_bin))
     if not exe:
         raise RuntimeError("cli backend binary not found: %r" % (cli_bin,))
     prompt = "\n".join(
-        "%s: %s" % (m.get("role", "user"), m.get("content", ""))
-        for m in (messages or []))
+        "%s: %s" % (m.get("role", "user"), m.get("content", "")) for m in (messages or [])
+    )
     argv = [exe, "run", "--model", model, prompt]
     try:
         timeout = int(os.environ.get("CLI_TIMEOUT", str(timeout)))
@@ -284,25 +309,27 @@ def chat_cli(messages, cli_bin, model, timeout=TIMEOUT):
         pass
     t0 = time.time()
     try:
-        p = subprocess.run(argv, capture_output=True, text=True,
-                           timeout=timeout)
+        p = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
     except subprocess.TimeoutExpired as e:
-        raise RuntimeError("cli backend timeout after %ds: %s"
-                           % (timeout, model)) from e
+        raise RuntimeError("cli backend timeout after %ds: %s" % (timeout, model)) from e
     except OSError as e:
         raise RuntimeError("cli backend spawn failed: %s" % e) from e
     if p.returncode != 0:
         tail = ((p.stdout or "") + (p.stderr or ""))[-300:]
-        raise RuntimeError("cli backend exit %d: %s"
-                           % (p.returncode, tail))
+        raise RuntimeError("cli backend exit %d: %s" % (p.returncode, tail))
     text = re.sub(r"\x1b\[[0-9;]*m", "", p.stdout or "")
-    lines = [ln for ln in text.splitlines()
-             if ln.strip() and not ln.strip().startswith(">")]
+    lines = [ln for ln in text.splitlines() if ln.strip() and not ln.strip().startswith(">")]
     return "\n".join(lines).strip(), round(time.time() - t0, 1), {}
 
 
-def make_chat(backend="kaggle", base_url=None, model=None, api_key=None,
-              default_max_tokens=512, default_num_predict=600):
+def make_chat(
+    backend="kaggle",
+    base_url=None,
+    model=None,
+    api_key=None,
+    default_max_tokens=512,
+    default_num_predict=600,
+):
     """Build one chat() callable hiding backend differences.
 
     chat(messages, temp=0.4, max_tokens=512, think=None, num_predict=None):
@@ -311,19 +338,21 @@ def make_chat(backend="kaggle", base_url=None, model=None, api_key=None,
     """
     name, base, mod, key = resolve_config(backend, base_url, model, api_key)
 
-    def chat(messages, temp=0.4, max_tokens=None, think=None,
-             num_predict=None):
+    def chat(messages, temp=0.4, max_tokens=None, think=None, num_predict=None):
         mt = max_tokens if max_tokens is not None else default_max_tokens
         if name == "cli":
             return chat_cli(messages, base, mod)
         if think is None and num_predict is None:
             kw = {} if name == "openai-generic" else {}
-            return chat_openai_compatible(messages, base, mod, key,
-                                          temp=temp, max_tokens=mt, **kw)
-        return chat_native(messages, base, mod, temp=temp,
-                           num_predict=(num_predict if num_predict is not None
-                                        else default_num_predict),
-                           think=False if think is None else think)
+            return chat_openai_compatible(messages, base, mod, key, temp=temp, max_tokens=mt, **kw)
+        return chat_native(
+            messages,
+            base,
+            mod,
+            temp=temp,
+            num_predict=(num_predict if num_predict is not None else default_num_predict),
+            think=False if think is None else think,
+        )
 
     return chat
 
@@ -341,23 +370,30 @@ def get_default_chat():
 # quality. Vocabulary per field is closed; anything unverified is "unknown".
 
 CAPABILITY_FIELDS = (
-    "chat",            # supported|unsupported
-    "streaming",       # supported|unsupported  (harness always uses stream:false)
-    "tool_calls",      # native|emulated|unsupported|unknown (provider-side tool use)
+    "chat",  # supported|unsupported
+    "streaming",  # supported|unsupported  (harness always uses stream:false)
+    "tool_calls",  # native|emulated|unsupported|unknown (provider-side tool use)
     "reasoning_tokens",  # supported|unsupported|unknown
-    "seed",            # supported|unsupported|unknown (deterministic sampling)
-    "token_usage",     # exact|estimated|unknown
-    "vision",          # supported|unsupported|unknown (image input parts)
-    "stop_behavior",   # supported|unsupported|unknown (stop sequences honored)
-    "max_tokens",      # enforced|approximate|unknown
+    "seed",  # supported|unsupported|unknown (deterministic sampling)
+    "token_usage",  # exact|estimated|unknown
+    "vision",  # supported|unsupported|unknown (image input parts)
+    "stop_behavior",  # supported|unsupported|unknown (stop sequences honored)
+    "max_tokens",  # enforced|approximate|unknown
 )
 
 # Fields whose mismatch (or unknown) can shift scores. Differences outside
 # this set never change comparability on their own.
-MATERIAL_FIELDS = frozenset((
-    "tool_calls", "reasoning_tokens", "seed", "token_usage",
-    "vision", "stop_behavior", "max_tokens",
-))
+MATERIAL_FIELDS = frozenset(
+    (
+        "tool_calls",
+        "reasoning_tokens",
+        "seed",
+        "token_usage",
+        "vision",
+        "stop_behavior",
+        "max_tokens",
+    )
+)
 
 _UNKNOWN = "unknown"
 
@@ -497,16 +533,12 @@ def comparability(man_a, man_b):
         if a == b:
             continue
         if field not in MATERIAL_FIELDS:
-            return ("CONDITIONALLY_COMPARABLE",
-                    "immaterial difference in %r" % field)
+            return ("CONDITIONALLY_COMPARABLE", "immaterial difference in %r" % field)
         if _UNKNOWN in (a, b):
-            return ("CONDITIONALLY_COMPARABLE",
-                    "unverified capability %r" % field)
-        return ("NON_COMPARABLE",
-                "material conflict in %r: %r vs %r" % (field, a, b))
+            return ("CONDITIONALLY_COMPARABLE", "unverified capability %r" % field)
+        return ("NON_COMPARABLE", "material conflict in %r: %r vs %r" % (field, a, b))
     if any(man_a.get(f) == _UNKNOWN for f in MATERIAL_FIELDS):
-        return ("CONDITIONALLY_COMPARABLE",
-                "unverified material capability")
+        return ("CONDITIONALLY_COMPARABLE", "unverified material capability")
     return ("DIRECT", "identical material capabilities")
 
 
@@ -515,6 +547,7 @@ def comparability(man_a, man_b):
 # that produced it. Vocabulary is closed (SPEC 37); validation of the
 # field itself is owned by Y-1 (shared/schemas.py) — this function only
 # PRODUCES valid values.
+
 
 def reasoning_mode_for(think=None, num_predict=None, native_transport=False):
     """Map chat-call kwargs to a SPEC 37 reasoning mode. Y-5 contract.

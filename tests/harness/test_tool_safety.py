@@ -9,19 +9,20 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SHARED = os.path.normpath(os.path.join(HERE, "..", "..", "shared"))
-EPDIR = os.path.normpath(os.path.join(HERE, "..", "..", "suites",
-                                      "agent-loop"))
+EPDIR = os.path.normpath(os.path.join(HERE, "..", "..", "suites", "agent-loop"))
 for _p in (SHARED, EPDIR):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
+import pytest
 import sandbox  # noqa: E402
 
 
-class _Ctx(object):
+class _Ctx:
     def __init__(self, root):
         self.root = root
         self.ran_tests = 0
@@ -31,8 +32,8 @@ class _Ctx(object):
 
 def _ls(path, ctx):
     if not os.path.isdir(os.path.join(ctx.root, path)):
-        return False, "ERROR: not a directory: %s" % path
-    return True, "listing of %s" % path
+        return False, f"ERROR: not a directory: {path}"
+    return True, f"listing of {path}"
 
 
 def _safe(path, ctx):
@@ -54,6 +55,7 @@ class ToolRunInjectionTests(unittest.TestCase):
 
     def tearDown(self):
         import shutil
+
         shutil.rmtree(self.root, ignore_errors=True)
         for name in ("pwned.txt",):
             p = os.path.join(self.root, name)
@@ -62,78 +64,72 @@ class ToolRunInjectionTests(unittest.TestCase):
 
     def _no_shell(self, cmd):
         ok, out = sandbox.safe_tool_run(cmd, self.ctx, _ls, _safe)
-        self.assertFalse(os.path.exists(
-            os.path.join(self.root, "pwned.txt")),
-            "shell metacharacters executed: %r" % cmd)
+        assert not os.path.exists(os.path.join(self.root, "pwned.txt")), (
+            f"shell metacharacters executed: {cmd!r}"
+        )
         return ok, out
 
     def test_semicolon_injection_dead(self):
         ok, _ = self._no_shell("ls; echo PWNED > pwned.txt")
-        self.assertFalse(ok)
+        assert not ok
 
     def test_pipe_injection_dead(self):
         ok, _ = self._no_shell("cat a.txt | tee pwned.txt")
-        self.assertFalse(ok)
+        assert not ok
 
     def test_and_injection_dead(self):
         ok, _ = self._no_shell("ls && echo PWNED > pwned.txt")
-        self.assertFalse(ok)
+        assert not ok
 
     def test_dollar_subst_dead(self):
         ok, _ = self._no_shell("ls $(echo PWNED > pwned.txt)")
-        self.assertFalse(ok)
+        assert not ok
 
     def test_backtick_dead(self):
         ok, _ = self._no_shell("ls `echo PWNED > pwned.txt`")
-        self.assertFalse(ok)
+        assert not ok
 
     def test_allowed_ls_still_works(self):
         ok, out = sandbox.safe_tool_run("ls", self.ctx, _ls, _safe)
-        self.assertTrue(ok)
-        self.assertIn("listing", out)
+        assert ok
+        assert "listing" in out
 
     def test_allowed_cat_still_works(self):
-        ok, out = sandbox.safe_tool_run("cat a.txt", self.ctx, _ls,
-                                        _safe)
-        self.assertTrue(ok)
-        self.assertEqual(out, "hello")
+        ok, out = sandbox.safe_tool_run("cat a.txt", self.ctx, _ls, _safe)
+        assert ok
+        assert out == "hello"
 
     def test_allowed_pytest_executes(self):
-        ok, _ = sandbox.safe_tool_run(
-            "python3 -m py_compile a.txt", self.ctx, _ls, _safe)
+        ok, _ = sandbox.safe_tool_run("python3 -m py_compile a.txt", self.ctx, _ls, _safe)
         # py_compile on a .txt fails honestly (rc!=0), but must not
         # refuse the grammar and must not spawn a shell.
-        self.assertIn(ok, (True, False))
+        assert ok in (True, False)
 
     def test_disallowed_command_rejected(self):
-        ok, out = sandbox.safe_tool_run("rm -rf /", self.ctx, _ls,
-                                        _safe)
-        self.assertFalse(ok)
-        self.assertIn("only pytest", out)
+        ok, out = sandbox.safe_tool_run("rm -rf /", self.ctx, _ls, _safe)
+        assert not ok
+        assert "only pytest" in out
 
     def test_pytest_arg_allowlist(self):
-        ok, _ = sandbox.safe_tool_run(
-            "python3 -m pytest tests/; evil", self.ctx, _ls, _safe)
-        self.assertFalse(ok)
+        ok, _ = sandbox.safe_tool_run("python3 -m pytest tests/; evil", self.ctx, _ls, _safe)
+        assert not ok
 
     def test_ran_tests_counter(self):
-        sandbox.safe_tool_run("python3 -m pytest tests/ -x -q",
-                              self.ctx, _ls, _safe)
-        self.assertEqual(self.ctx.ran_tests, 1)
+        sandbox.safe_tool_run("python3 -m pytest tests/ -x -q", self.ctx, _ls, _safe)
+        assert self.ctx.ran_tests == 1
 
 
 class SafePathTests(unittest.TestCase):
     def test_sibling_prefix_rejected(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             _safe("../sbx_evil", _Ctx("/tmp/sbx"))
 
     def test_dotdot_rejected(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             _safe("../../etc/passwd", _Ctx("/tmp/sbx"))
 
     def test_inside_allowed(self):
-        self.assertTrue(
-            _safe("shop/tests", _Ctx("/tmp/sbx")).startswith("/tmp/sbx"))
+        assert _safe("shop/tests", _Ctx("/tmp/sbx")).startswith("/tmp/sbx")
 
 
 class CatReadTrailTests(unittest.TestCase):
@@ -149,27 +145,25 @@ class CatReadTrailTests(unittest.TestCase):
 
     def tearDown(self):
         import shutil
+
         shutil.rmtree(self.root, ignore_errors=True)
 
     def test_cat_logs_read(self):
-        ok, out = sandbox.safe_tool_run("cat small.txt", self.ctx,
-                                        _ls, _safe)
-        self.assertTrue(ok)
-        self.assertEqual(out, "hello")
-        self.assertIn("small.txt", self.ctx.reads)
+        ok, out = sandbox.safe_tool_run("cat small.txt", self.ctx, _ls, _safe)
+        assert ok
+        assert out == "hello"
+        assert "small.txt" in self.ctx.reads
 
     def test_cat_caps_large_file(self):
-        ok, out = sandbox.safe_tool_run("cat big.txt", self.ctx,
-                                        _ls, _safe)
-        self.assertTrue(ok)
-        self.assertTrue(out.endswith("...[truncated]"))
-        self.assertLessEqual(len(out), 6000 + len("...[truncated]"))
+        ok, out = sandbox.safe_tool_run("cat big.txt", self.ctx, _ls, _safe)
+        assert ok
+        assert out.endswith("...[truncated]")
+        assert len(out) <= 6000 + len("...[truncated]")
 
     def test_cat_missing_no_crash(self):
-        ok, out = sandbox.safe_tool_run("cat nope.txt", self.ctx,
-                                        _ls, _safe)
-        self.assertFalse(ok)
-        self.assertIn("no such file", out)
+        ok, out = sandbox.safe_tool_run("cat nope.txt", self.ctx, _ls, _safe)
+        assert not ok
+        assert "no such file" in out
 
 
 class ProxyIsolationTests(unittest.TestCase):
@@ -177,23 +171,46 @@ class ProxyIsolationTests(unittest.TestCase):
 
     def test_clean_env_strips_proxies(self):
         import bench_lib as L
-        os.environ["http_proxy"] = "http://evil:8080"
-        os.environ["HTTPS_PROXY"] = "http://evil:8080"
-        try:
+
+        with patch.dict(
+            os.environ,
+            {
+                "http_proxy": "http://proxy.invalid",
+                "HTTPS_PROXY": "http://proxy.invalid",
+                "OPENAI_API_KEY": "x",
+                "AWS_SECRET_ACCESS_KEY": "x",
+                "CUSTOM_TOKEN": "x",
+                "DB_PASSWORD": "x",
+                "SERVICE_CREDENTIAL": "x",
+            },
+        ):
             env = L._clean_env()
-        finally:
-            del os.environ["http_proxy"]
-            del os.environ["HTTPS_PROXY"]
-        for key in ("http_proxy", "https_proxy", "HTTP_PROXY",
-                    "HTTPS_PROXY", "ALL_PROXY", "all_proxy"):
-            self.assertNotIn(key, env)
-        self.assertEqual(env.get("EMOX_SANDBOX"), "1")
+        for key in (
+            "http_proxy",
+            "https_proxy",
+            "HTTP_PROXY",
+            "HTTPS_PROXY",
+            "ALL_PROXY",
+            "all_proxy",
+        ):
+            assert key not in env
+        assert "OPENAI_API_KEY" not in env
+        assert "AWS_SECRET_ACCESS_KEY" not in env
+        assert "CUSTOM_TOKEN" not in env
+        assert "DB_PASSWORD" not in env
+        assert "SERVICE_CREDENTIAL" not in env
+        assert env.get("EMOX_SANDBOX") == "1"
 
     def test_run_py_still_executes(self):
         import bench_lib as L
-        ok, log = L.run_py("def f():\n    return 1",
-                           "assert f() == 1; print('PY_OK')")
-        self.assertTrue(ok and "PY_OK" in log)
+
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "x"}):
+            ok, log = L.run_py(
+                "import os; assert 'OPENAI_API_KEY' not in os.environ\ndef f():\n    return 1",
+                "assert f() == 1; print('PY_OK')",
+            )
+        assert ok
+        assert "PY_OK" in log
 
 
 class SingleSourceTests(unittest.TestCase):
@@ -201,23 +218,24 @@ class SingleSourceTests(unittest.TestCase):
 
     def test_names_are_shared_objects(self):
         import importlib.util
-        root = os.path.normpath(os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+
+        root = os.path.normpath(
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
+        )
         # 'run' and 'agent_tools' resolve via shared/ (already on path).
 
-        import run as legacy_run
         import agent_tools as A
+        import run as legacy_run
+
         spec = importlib.util.spec_from_file_location(
             "episode_under_test",
-            os.path.join(root, "suites", "agent-loop", "episode.py"))
+            os.path.join(root, "suites", "agent-loop", "episode.py"),
+        )
         ep = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(ep)
-        for name in ("Ctx", "_safe", "tool_ls", "tool_read",
-                     "tool_run", "tool_edit"):
-            self.assertIs(getattr(legacy_run, name), getattr(A, name),
-                          "run.%s diverged" % name)
-            self.assertIs(getattr(ep, name), getattr(A, name),
-                          "episode.%s diverged" % name)
+        for name in ("Ctx", "_safe", "tool_ls", "tool_read", "tool_run", "tool_edit"):
+            assert getattr(legacy_run, name) is getattr(A, name), f"run.{name} diverged"
+            assert getattr(ep, name) is getattr(A, name), f"episode.{name} diverged"
 
 
 if __name__ == "__main__":

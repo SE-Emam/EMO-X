@@ -2,7 +2,8 @@
 
 Contract refs: SPEC §32 (run manifest), §33 (raw bundle), B58
 (comparison validity). Code: `shared/runner.py::build_manifest`,
-`shared/runner.py::collect_environment`.
+`shared/runner.py::collect_environment`, `shared/environment.py`, and
+`shared/bundles.py`.
 
 Every official result must be reproducible from its raw bundle alone:
 
@@ -44,11 +45,14 @@ are owned by Y-INT and flow in via `sampling`):
 | 19 | `timestamp_utc` | ISO-8601 UTC creation time |
 | 20 | `runner_version` | e.g. `2.0.0` |
 
-`environment.json` (`collect_environment()`) records:
+`environment.json` (`runner.collect_environment()`) records:
 `python`, `platform`, `architecture`,
 `toolchain{python, node, rustc, tsc, sqlite, postgres}`,
 `harness_git_sha`, `written_utc`
 (plus `benchmark_version` / `runner_version`).
+The compatibility entry point delegates toolchain and hardware probes to
+`shared/environment.py`; `shared/bundles.py` owns the atomic write and
+seal process.
 
 Covered by `tests/harness/test_rebuild_manifest.py`: every field above
 is asserted present on a real `build_manifest` + `collect_environment()`

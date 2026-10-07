@@ -19,13 +19,21 @@ __version__ = "2.0.0-rc1"
 
 #: Runtime tree dirs. Single source of truth mirrored in setup.py TREE_DIRS:
 #: the wheel ships these verbatim under emox/data/. Keep both in sync.
-_TREE_DIRS = ("shared", "suites", "prompts", "generators", "judges",
-              "health", "adapters", "mcp-server", "commands")
+_TREE_DIRS = (
+    "shared",
+    "suites",
+    "prompts",
+    "generators",
+    "judges",
+    "health",
+    "adapters",
+    "mcp-server",
+    "commands",
+)
 
 
 def _is_tree(root):
-    if not (root and os.path.isfile(
-            os.path.join(root, "shared", "run.py"))):
+    if not (root and os.path.isfile(os.path.join(root, "shared", "run.py"))):
         return False
     # Strict check: every shipped dir must be present so a partial wheel
     # or checkout fails fast here instead of mid-benchmark.
@@ -51,7 +59,8 @@ def tree_root():
         cur = parent
     raise RuntimeError(
         "EMO-X runtime tree not found. Set EMOX_ROOT to your emo-x "
-        "checkout, or reinstall the emo-x package.")
+        "checkout, or reinstall the emo-x package."
+    )
 
 
 def _boot():
@@ -74,15 +83,19 @@ def __getattr__(name):
     _boot()
     if name == "run_suite":
         from runner import run_suite
+
         return run_suite
     if name == "run_profile":
         from runner import run_profile
+
         return run_profile
     if name == "run_self_test":
         from runner import run_self_test
+
         return run_self_test
     if name == "health_snapshot":
         from runner import health_snapshot
+
         return health_snapshot
     if name == "compare_models":
         try:
@@ -92,12 +105,14 @@ def __getattr__(name):
         return compare_models
     if name == "banner":
         from splash import banner
+
         return banner
     if name == "make_chat":
         from backends import make_chat
+
         return make_chat
     if name == "splash_server_info":
         from splash import banner as _banner
-        return {"name": "emo-x", "version": __version__,
-                "splash": _banner(width=80, color=False)}
+
+        return {"name": "emo-x", "version": __version__, "splash": _banner(width=80, color=False)}
     raise AttributeError("module 'emox' has no attribute %r" % (name,))

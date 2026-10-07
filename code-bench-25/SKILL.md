@@ -82,8 +82,8 @@ model are inadmissible. See `docs/model-onboarding.md` for the
 # Every answer executes in a real toolchain (bench_lib verifiers):
 ok, log = run_py(code, "assert fib(0)==0 and fib(10)==55; print('FIB_OK')")
 ok, log = run_js(code, "if (sumArr([1,2,3,4])!==10) throw 1; console.log('JS_OK')")
-ok, log = run_rust(code)          # rustc -O, program must print PRIME_OK
-ok, log = verify_tsc(code)        # tsc --noEmit --strict (+ static fallback)
+ok, log = run_rust(code)  # rustc -O, program must print PRIME_OK
+ok, log = verify_tsc(code)  # tsc --noEmit --strict (+ static fallback)
 ok, log = verify_patch("calc.py", orig, diff, must_contain=("def sum_all", "s += i"))
 ```
 

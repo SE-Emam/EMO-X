@@ -36,39 +36,33 @@ def _load(name, path):
 
 class RunnerContractTests(unittest.TestCase):
     def test_security_wrapper_emits_gated_bundle(self):
-        sec = _load("sec_wrap_contract",
-                    os.path.join(ROOT, "security-bench", "run_security.py"))
+        sec = _load("sec_wrap_contract", os.path.join(ROOT, "security-bench", "run_security.py"))
         out = "/tmp/emox_contract_sec"
         shutil.rmtree(out, ignore_errors=True)
-        rc = sec.main(["--backend", "stub", "--only", "S1",
-                       "--trials", "1", "--out", out])
+        rc = sec.main(["--backend", "stub", "--only", "S1", "--trials", "1", "--out", out])
         self.assertEqual(rc, 0)
-        rundirs = [d for d in os.listdir(out)
-                   if d.startswith("RUN-security")]
+        rundirs = [d for d in os.listdir(out) if d.startswith("RUN-security")]
         self.assertEqual(len(rundirs), 1)
-        events = [json.loads(line) for line in open(
-            os.path.join(out, rundirs[0], "events.jsonl"))]
+        events = [json.loads(line) for line in open(os.path.join(out, rundirs[0], "events.jsonl"))]
         self.assertTrue(events)
         invariants.validate_run_semantics(events)
         rep = report_v2.build_v2_report(events, [], model_id="m")
         self.assertIn("capability_profile", rep)
 
     def test_vision_wrapper_list_and_stub_bundle(self):
-        vis = _load("vis_wrap_contract",
-                    os.path.join(ROOT, "vision-bench", "run_vision.py"))
+        vis = _load("vis_wrap_contract", os.path.join(ROOT, "vision-bench", "run_vision.py"))
         self.assertEqual(vis.main(["--list"]), 0)
         out = "/tmp/emox_contract_vis"
         shutil.rmtree(out, ignore_errors=True)
-        rc = vis.main(["--backend", "stub", "--only", "V4",
-                       "--trials", "1", "--out", out])
+        rc = vis.main(["--backend", "stub", "--only", "V4", "--trials", "1", "--out", out])
         self.assertEqual(rc, 0)
-        rundirs = [d for d in os.listdir(out)
-                   if d.startswith("RUN-vision")]
+        rundirs = [d for d in os.listdir(out) if d.startswith("RUN-vision")]
         self.assertEqual(len(rundirs), 1)
 
     def test_emo_delegates_to_run_py(self):
         sys.path.insert(0, os.path.join(ROOT, "src"))
         import emox.cli as emo_cli
+
         with self.assertRaises(SystemExit) as ctx:
             emo_cli.main(["--help"])
         self.assertEqual(ctx.exception.code, 0)
@@ -76,15 +70,30 @@ class RunnerContractTests(unittest.TestCase):
 
 class StreamingBundleTests(unittest.TestCase):
     def _manifest(self, run_id):
-        return {"run_id": run_id, "suite": "s", "prompt_pack": "v1",
-                "prompt_sha256": "a" * 64, "harness_sha256": "b" * 64,
-                "model": "m", "backend": "stub", "seed": 0, "trials": 1}
+        return {
+            "run_id": run_id,
+            "suite": "s",
+            "prompt_pack": "v1",
+            "prompt_sha256": "a" * 64,
+            "harness_sha256": "b" * 64,
+            "model": "m",
+            "backend": "stub",
+            "seed": 0,
+            "trials": 1,
+        }
 
     def _attempt(self, trial):
-        return {"run_id": "r", "model_id": "m", "task_family_id": "T",
-                "instance_id": "T-1", "variant_class": "canonical",
-                "trial_id": trial, "primary_status": "FAIL", "score": 0.0,
-                "primary_failure": "WRONG_RESULT"}
+        return {
+            "run_id": "r",
+            "model_id": "m",
+            "task_family_id": "T",
+            "instance_id": "T-1",
+            "variant_class": "canonical",
+            "trial_id": trial,
+            "primary_status": "FAIL",
+            "score": 0.0,
+            "primary_failure": "WRONG_RESULT",
+        }
 
     def test_crash_leaves_no_partial_run_dir(self):
         out = "/tmp/emox_stream_test"
@@ -102,8 +111,7 @@ class StreamingBundleTests(unittest.TestCase):
         shutil.rmtree(out, ignore_errors=True)
         os.makedirs(out)
         with self.assertRaises(ValueError):
-            runner.write_raw_bundle(
-                out, self._manifest("RUN-mm"), [self._attempt(1)], [])
+            runner.write_raw_bundle(out, self._manifest("RUN-mm"), [self._attempt(1)], [])
 
 
 class UnsupportedVariantNATests(unittest.TestCase):
@@ -113,15 +121,26 @@ class UnsupportedVariantNATests(unittest.TestCase):
         out = "/tmp/emox_na_test"
         shutil.rmtree(out, ignore_errors=True)
         rundir, s = runner.run_suite(
-            "code25", runner.stub_chat_factory("na-test"), "m", "stub",
-            0, 1, 1, 0.25, out, families=["T5"])
-        events = [json.loads(line) for line in open(
-            os.path.join(rundir, "events.jsonl")) if line.strip()]
+            "code25",
+            runner.stub_chat_factory("na-test"),
+            "m",
+            "stub",
+            0,
+            1,
+            1,
+            0.25,
+            out,
+            families=["T5"],
+        )
+        events = [
+            json.loads(line) for line in open(os.path.join(rundir, "events.jsonl")) if line.strip()
+        ]
         self.assertTrue(events)
         for e in events:
             self.assertEqual(e["variant_class"], "canonical")
             self.assertNotEqual(e["primary_status"], "VOID")
         shutil.rmtree(out, ignore_errors=True)
+
 
 if __name__ == "__main__":
     unittest.main()

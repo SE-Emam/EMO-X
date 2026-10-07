@@ -31,7 +31,8 @@ class NoveltyRobustnessTests(unittest.TestCase):
 
     def test_benchmark_mean_over_eligible(self):
         val = scoring.novelty_robustness_benchmark(
-            [(1.0, 0.9, 0.2), (0.96, 0.92, 0.94), (None, 0.5, 0.5)])
+            [(1.0, 0.9, 0.2), (0.96, 0.92, 0.94), (None, 0.5, 0.5)]
+        )
         lo = scoring.novelty_robustness(1.0, 0.9, 0.2)
         hi = scoring.novelty_robustness(0.96, 0.92, 0.94)
         self.assertAlmostEqual(val, (lo + hi) / 2)
@@ -41,6 +42,7 @@ class NoveltyRobustnessTests(unittest.TestCase):
 class HumanMinutesWiringTests(unittest.TestCase):
     def test_manifests_carry_estimates(self):
         import json
+
         checked = 0
         for root, _, files in os.walk(os.path.join(_ROOT, "suites")):
             for f in files:
@@ -55,30 +57,44 @@ class HumanMinutesWiringTests(unittest.TestCase):
     def test_runner_enriches_responses(self):
         import runner
         from runner import stub_chat_factory
+
         out = os.path.join(_ROOT, "results", "raw")
         _, summary = runner.run_suite(
-            "dynamic-code", stub_chat_factory("hm-test"), "m", "stub",
-            seed=1, instances=1, trials=1, fault_rate=0.0,
-            out_root=out, families=["DC1"])
+            "dynamic-code",
+            stub_chat_factory("hm-test"),
+            "m",
+            "stub",
+            seed=1,
+            instances=1,
+            trials=1,
+            fault_rate=0.0,
+            out_root=out,
+            families=["DC1"],
+        )
         import json as _json
+
         rundir = summary["run_dir"]
         try:
-            events = [_json.loads(l) for l in
-                      open(os.path.join(rundir, "events.jsonl"))
-                      if l.strip()]
-            resps = [_json.loads(l) for l in
-                     open(os.path.join(rundir, "responses.jsonl"))
-                     if l.strip()]
+            events = [
+                _json.loads(line)
+                for line in open(os.path.join(rundir, "events.jsonl"))
+                if line.strip()
+            ]
+            resps = [
+                _json.loads(line)
+                for line in open(os.path.join(rundir, "responses.jsonl"))
+                if line.strip()
+            ]
             self.assertTrue(events)
-            self.assertTrue(all(
-                r.get("human_minutes") == 8 for r in resps))
+            self.assertTrue(all(r.get("human_minutes") == 8 for r in resps))
             hm = [t for t in resps if t.get("human_minutes") is not None]
             rate = scoring.human_minutes_rate(
-                [{"human_minutes": r["human_minutes"], "score": 0.0}
-                 for r in hm])
+                [{"human_minutes": r["human_minutes"], "score": 0.0} for r in hm]
+            )
             self.assertEqual(rate, 0.0)  # stub always FAILs: 0 minutes earned
         finally:
             import shutil
+
             shutil.rmtree(rundir, ignore_errors=True)
 
 

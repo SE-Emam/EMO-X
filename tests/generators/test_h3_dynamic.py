@@ -11,8 +11,7 @@ import unittest
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(os.path.dirname(_HERE))
-for _p in (_ROOT, os.path.join(_ROOT, "generators"),
-           os.path.join(_ROOT, "shared")):
+for _p in (_ROOT, os.path.join(_ROOT, "generators"), os.path.join(_ROOT, "shared")):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
@@ -40,9 +39,10 @@ class H3DynamicTests(unittest.TestCase):
             kinds.add(inst["oracle"]["oracle_type"])
             p = inst["parameters"]
             self.assertEqual(_gcd(p["coefficient"], p["modulus"]), 1)
-            self.assertEqual(inst["oracle"]["expected"],
-                             (pow(p["coefficient"], -1, p["modulus"])
-                              * p["target"]) % p["modulus"])
+            self.assertEqual(
+                inst["oracle"]["expected"],
+                (pow(p["coefficient"], -1, p["modulus"]) * p["target"]) % p["modulus"],
+            )
         self.assertEqual(len(prompts), 5)  # H3-A..E all differ
         self.assertEqual(kinds, {"deterministic"})
 
@@ -73,6 +73,7 @@ class H3DynamicTests(unittest.TestCase):
 
     def test_bad_variant_rejected(self):
         from schemas import SchemaError
+
         with self.assertRaises(SchemaError):
             build_h3_equation(1, variant="canonical", index=1)
 
@@ -80,32 +81,48 @@ class H3DynamicTests(unittest.TestCase):
         sys.path.insert(0, os.path.join(_ROOT, "suites", "code-bench-25"))
         sys.path.insert(0, os.path.join(_ROOT, "suites"))
         import executor as exc
+
         self.assertIn("perturbed", exc.VARIANTS)
         self.assertIn("novel", exc.VARIANTS)
 
         def chat_ok(messages, **kw):
             inst = build_h3_equation(
-                9, variant="perturbed", index=1,
-                subtype=exc._h3_math_subtype("perturbed"))
+                9, variant="perturbed", index=1, subtype=exc._h3_math_subtype("perturbed")
+            )
             return "x = %d" % inst["oracle"]["expected"], 0.1, {}
 
-        rec, _ = exc.run_family("H3", chat_ok, run_id="R", model_id="m",
-                                trial_id=1, index=1, seed=9,
-                                variant="perturbed")
+        rec, _ = exc.run_family(
+            "H3",
+            chat_ok,
+            run_id="R",
+            model_id="m",
+            trial_id=1,
+            index=1,
+            seed=9,
+            variant="perturbed",
+        )
         self.assertEqual(rec["primary_status"], "PASS")
         self.assertEqual(rec["variant_class"], "perturbed")
 
         def chat_bad(messages, **kw):
             return "x = 999999", 0.1, {}
 
-        rec, _ = exc.run_family("H3", chat_bad, run_id="R", model_id="m",
-                                trial_id=1, index=2, seed=9,
-                                variant="novel")
+        rec, _ = exc.run_family(
+            "H3", chat_bad, run_id="R", model_id="m", trial_id=1, index=2, seed=9, variant="novel"
+        )
         self.assertEqual(rec["primary_status"], "FAIL")
 
         with self.assertRaises(TypeError):  # skip contract (DEN: NA)
-            exc.run_family("H4", chat_ok, run_id="R", model_id="m",
-                           trial_id=1, index=1, seed=9, variant="novel")
+            exc.run_family(
+                "H4",
+                chat_ok,
+                run_id="R",
+                model_id="m",
+                trial_id=1,
+                index=1,
+                seed=9,
+                variant="novel",
+            )
 
 
 if __name__ == "__main__":

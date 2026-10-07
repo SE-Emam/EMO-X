@@ -63,8 +63,7 @@ def make_manifest(run_id, model="stub-model", seed=1234):
         seed,
         2,
         run_id,
-        sampling={"temperature": 0.4, "top_p": 0.9,
-                  "top_k": 40, "context": 8192},
+        sampling={"temperature": 0.4, "top_p": 0.9, "top_k": 40, "context": 8192},
     )
 
 
@@ -79,8 +78,7 @@ class TestRebuildManifest(unittest.TestCase):
         for field in ENV_FIELDS:
             self.assertIn(field, env, "environment missing: %s" % field)
         for field in TOOLCHAIN_FIELDS:
-            self.assertIn(field, env["toolchain"],
-                          "toolchain missing: %s" % field)
+            self.assertIn(field, env["toolchain"], "toolchain missing: %s" % field)
 
     def test_toolchain_unknown_tolerant(self):
         tc = runner.collect_toolchain()  # must never raise
@@ -91,8 +89,7 @@ class TestRebuildManifest(unittest.TestCase):
             self.assertIsInstance(val, str, field)
             self.assertTrue(val, "toolchain.%s must never be empty" % field)
             self.assertIsInstance(env["toolchain"][field], str, field)
-            self.assertTrue(env["toolchain"][field],
-                            "env toolchain.%s empty" % field)
+            self.assertTrue(env["toolchain"][field], "env toolchain.%s empty" % field)
 
     def test_model_sha256_stable(self):
         a = make_manifest("RUN-x-1", model="stub-model")

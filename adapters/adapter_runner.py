@@ -20,7 +20,6 @@ import argparse
 import datetime
 import os
 import re
-import subprocess
 import sys
 import tempfile
 
@@ -32,6 +31,7 @@ for _p in (ADAPTERS_DIR, SHARED_DIR):
         sys.path.insert(0, _p)
 
 import bench_lib as L  # noqa: E402  (reuses save_result result writer)
+import sandbox  # noqa: E402
 from _log import configure, get_logger  # noqa: E402  (P1-02 stdlib logging)
 
 log = get_logger("adapter_runner")
@@ -47,14 +47,14 @@ def _load_adapter(name):
     elif name == "pi":
         import pi_adapter as mod
     else:
-        raise RuntimeError("unknown adapter %r (choose from %s)"
-                           % (name, "/".join(ADAPTERS)))
+        raise RuntimeError("unknown adapter {!r} (choose from {})".format(name, "/".join(ADAPTERS)))
     return mod
 
 
 def _fresh_task_dir():
     """Materialize the Batch-4 shop/ fixture (shared/run.py::build_repo)."""
     import run as run_mod
+
     task_dir = tempfile.mkdtemp(prefix="adapter_shop_")
     run_mod.build_repo(task_dir)
     return task_dir
@@ -63,19 +63,21 @@ def _fresh_task_dir():
 def _verify_tests(task_dir):
     """Post-episode pytest check. Returns (tests_green, pytest_tail)."""
     try:
-        p = subprocess.run(["python3", "-m", "pytest", "shop/tests/", "-q"],
-                           cwd=task_dir, capture_output=True, text=True,
-                           timeout=120)
-        return bool(p.returncode == 0), (p.stdout + p.stderr)[-600:]
+        rc, output = sandbox.run_in_sandbox(
+            ["python3", "-m", "pytest", "shop/tests/", "-q"],
+            sandbox_dir=task_dir,
+            timeout=120,
+        )
+        return rc == 0, output[-600:]
     except Exception as e:  # noqa: BLE001 - verification must not crash the run
-        return False, "verify failed: %s" % e
+        return False, f"verify failed: {e}"
 
 
 def run_once(adapter_name, model_id, task_dir, timeout_s):
     mod = _load_adapter(adapter_name)
     trace = mod.run_episode(task_dir, model_id, timeout_s)
     tests_green, pytest_tail = _verify_tests(task_dir)
-    record = {
+    return {
         "adapter": adapter_name,
         "model": model_id,
         "task": "shop/ (Batch-4 fixture: fix source until pytest green)",
@@ -89,45 +91,57 @@ def run_once(adapter_name, model_id, task_dir, timeout_s):
         "comparability": trace.get("comparability"),
         "task_dir": task_dir,
     }
-    return record
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Run one third-party adapter episode")
     ap.add_argument("--adapter", required=True, choices=list(ADAPTERS))
-    ap.add_argument("--model", required=True,
-                    help="model id passed through (opencode: provider/model; pi: pattern)")
+    ap.add_argument(
+        "--model",
+        required=True,
+        help="model id passed through (opencode: provider/model; pi: pattern)",
+    )
     ap.add_argument("--out", default=os.path.join(ROOT, "results") + os.sep)
-    ap.add_argument("--task-dir", default=None,
-                    help="existing shop/ fixture dir (default: build a fresh one)")
-    ap.add_argument("--timeout", type=int, default=600,
-                    help="wall-clock budget per episode in seconds")
+    ap.add_argument(
+        "--task-dir",
+        default=None,
+        help="existing shop/ fixture dir (default: build a fresh one)",
+    )
+    ap.add_argument(
+        "--timeout",
+        type=int,
+        default=600,
+        help="wall-clock budget per episode in seconds",
+    )
     args = ap.parse_args(argv)
 
     task_dir = args.task_dir or _fresh_task_dir()
     configure()
     if not os.path.isdir(task_dir):
-        log.warning("adapter_runner error: task_dir does not exist: %s"
-                    % task_dir)
+        log.warning(f"adapter_runner error: task_dir does not exist: {task_dir}")
         return 2
     try:
         record = run_once(args.adapter, args.model, task_dir, args.timeout)
     except RuntimeError as e:
-        log.warning("adapter_runner error: %s" % e)
+        log.warning(f"adapter_runner error: {e}")
         return 2
 
     os.makedirs(args.out, exist_ok=True)
     stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     slug = re.sub(r"[^A-Za-z0-9_.-]+", "_", args.model)
-    path = os.path.join(args.out, "adapter-%s_%s_%s.json"
-                        % (args.adapter, slug, stamp))
-    L.save_result(path, "agent-loop-%s" % args.adapter, record)
-    log.info("adapter=%s model=%s tests_green=%s stopped_cleanly=%s" % (
-        args.adapter, args.model, record["tests_green"],
-        record["trace"].get("stopped_cleanly")))
-    log.info("task_dir=%s" % task_dir)
-    log.info("saved %s" % path)
-    log.info("NOTE: %s" % record["comparability"])
+    path = os.path.join(args.out, f"adapter-{args.adapter}_{slug}_{stamp}.json")
+    L.save_result(path, f"agent-loop-{args.adapter}", record)
+    log.info(
+        "adapter={} model={} tests_green={} stopped_cleanly={}".format(
+            args.adapter,
+            args.model,
+            record["tests_green"],
+            record["trace"].get("stopped_cleanly"),
+        )
+    )
+    log.info(f"task_dir={task_dir}")
+    log.info(f"saved {path}")
+    log.info("NOTE: {}".format(record["comparability"]))
     return 0
 
 

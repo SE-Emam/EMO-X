@@ -29,8 +29,7 @@ def _load(name, path):
     return mod
 
 
-EPISODE = _load("agent_episode_scenarios",
-                os.path.join(ROOT, "suites", "agent-loop", "episode.py"))
+EPISODE = _load("agent_episode_scenarios", os.path.join(ROOT, "suites", "agent-loop", "episode.py"))
 
 
 class ScenarioRegistryTests(unittest.TestCase):
@@ -45,12 +44,10 @@ class ScenarioRegistryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             EPISODE.scenario_for("nope")
         with self.assertRaises(ValueError):
-            EPISODE.run_episode(lambda *a, **k: ("", 0, 0),
-                                scenario="nope")
+            EPISODE.run_episode(lambda *a, **k: ("", 0, 0), scenario="nope")
 
     def test_families_map(self):
-        self.assertEqual(EPISODE.SCENARIO_FAMILIES,
-                         {"AG": "shop", "AG2": "ledger"})
+        self.assertEqual(EPISODE.SCENARIO_FAMILIES, {"AG": "shop", "AG2": "ledger"})
 
 
 class LedgerOracleTests(unittest.TestCase):
@@ -60,16 +57,23 @@ class LedgerOracleTests(unittest.TestCase):
             EPISODE.build_ledger_repo(root)
             before = subprocess.run(
                 ["python3", "-m", "pytest", "ledger/tests/", "-q"],
-                cwd=root, capture_output=True, text=True, timeout=120)
+                cwd=root,
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
             self.assertNotEqual(before.returncode, 0)
             path = os.path.join(root, "ledger", "paginate.py")
             src = open(path).read()
             self.assertIn("start + 1:start + size + 1", src)
-            open(path, "w").write(src.replace(
-                "start + 1:start + size + 1", "start:start + size"))
+            open(path, "w").write(src.replace("start + 1:start + size + 1", "start:start + size"))
             after = subprocess.run(
                 ["python3", "-m", "pytest", "ledger/tests/", "-q"],
-                cwd=root, capture_output=True, text=True, timeout=120)
+                cwd=root,
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
             self.assertEqual(after.returncode, 0, after.stdout[-500:])
         finally:
             shutil.rmtree(root, ignore_errors=True)
@@ -77,39 +81,54 @@ class LedgerOracleTests(unittest.TestCase):
 
 class ScenarioAttemptTests(unittest.TestCase):
     def _result(self, **over):
-        rec = {"trace": [{"step": 1, "tool": "read"},
-                         {"step": 2, "tool": "edit"},
-                         {"step": 3, "tool": "run"}],
-               "files_read": ["ledger/paginate.py"],
-               "files_edited": ["ledger/paginate.py"],
-               "diff_files": ["ledger/paginate.py"],
-               "failed_calls": 0, "tests_green": True, "tool_calls": 3,
-               "ran_tests_n": 2, "forbidden_touched": [],
-               "hallucinated_paths": 0, "success": True,
-               "terminal_state": {"terminal_state": "CLEAN_STOP",
-                                  "verified": True, "pending_actions": 0,
-                                  "forbidden_edits": 0}}
+        rec = {
+            "trace": [
+                {"step": 1, "tool": "read"},
+                {"step": 2, "tool": "edit"},
+                {"step": 3, "tool": "run"},
+            ],
+            "files_read": ["ledger/paginate.py"],
+            "files_edited": ["ledger/paginate.py"],
+            "diff_files": ["ledger/paginate.py"],
+            "failed_calls": 0,
+            "tests_green": True,
+            "tool_calls": 3,
+            "ran_tests_n": 2,
+            "forbidden_touched": [],
+            "hallucinated_paths": 0,
+            "success": True,
+            "terminal_state": {
+                "terminal_state": "CLEAN_STOP",
+                "verified": True,
+                "pending_actions": 0,
+                "forbidden_edits": 0,
+            },
+        }
         rec.update(over)
         return rec
 
     def test_ledger_a_metrics(self):
         a = EPISODE.score_a1_a15(self._result(), None, "ledger")
-        for key in ("A1_recon_before_edit", "A3_intended_file",
-                    "A9_tests_green", "A12_diff_clean",
-                    "A13_efficient", "A14_stop_cleanly", "A15_success"):
+        for key in (
+            "A1_recon_before_edit",
+            "A3_intended_file",
+            "A9_tests_green",
+            "A12_diff_clean",
+            "A13_efficient",
+            "A14_stop_cleanly",
+            "A15_success",
+        ):
             self.assertTrue(a[key], key)
 
     def test_attempt_ids_per_scenario(self):
-        shop = EPISODE.episode_attempt(self._result(), "r", "m",
-                                       scenario="shop")
-        led = EPISODE.episode_attempt(self._result(), "r", "m",
-                                      scenario="ledger")
+        shop = EPISODE.episode_attempt(self._result(), "r", "m", scenario="shop")
+        led = EPISODE.episode_attempt(self._result(), "r", "m", scenario="ledger")
         self.assertEqual(
-            (shop["task_family_id"], shop["instance_id"]),
-            ("AG", "AG-canonical-00001"))
+            (shop["task_family_id"], shop["instance_id"]), ("AG", "AG-canonical-00001")
+        )
         self.assertEqual(
-            (led["task_family_id"], led["instance_id"]),
-            ("AG2", "AG2-canonical-00001"))
+            (led["task_family_id"], led["instance_id"]), ("AG2", "AG2-canonical-00001")
+        )
         self.assertEqual(led["scenario"], "ledger")
 
     def test_runner_smoke_both_families(self):
@@ -117,10 +136,18 @@ class ScenarioAttemptTests(unittest.TestCase):
         shutil.rmtree(out, ignore_errors=True)
         for family in ("AG", "AG2"):
             rundir, _ = runner.run_suite(
-                "agent-loop", runner.stub_chat_factory("scen-test"),
-                "m", "stub", 0, 1, 1, 0.25, out, families=[family])
-            events = [json.loads(line) for line in open(
-                os.path.join(rundir, "events.jsonl"))]
+                "agent-loop",
+                runner.stub_chat_factory("scen-test"),
+                "m",
+                "stub",
+                0,
+                1,
+                1,
+                0.25,
+                out,
+                families=[family],
+            )
+            events = [json.loads(line) for line in open(os.path.join(rundir, "events.jsonl"))]
             self.assertTrue(events)
             invariants.validate_run_semantics(events)
             self.assertEqual(events[0]["task_family_id"], family)

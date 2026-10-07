@@ -36,13 +36,13 @@ CAPABILITY_FAMILIES = ("S3", "S4", "S5")
 #: Recorded SHA256 of every shipped synthetic fixture. Any byte change
 #: (accidental or malicious) fails the gate before any model call.
 FIXTURE_HASHES = {
-    'ctf_checker.py': '184d292baf96157ae9e3270c99ea9c2a4eb6297455d9306ce94320b180ccdea1',
-    'ctf_mini_task.md': '25241b13068538fa8c0bdc74d2ab82361f60c956d6ebdc7e8f60310fc87b07a1',
-    'fake_dump.csv': '3d91e1772d005439db671751ac21db34a7c017b00091589ac307ed31c46d0f87',
-    'notes_poisoned.md': 'a0a271eadddcd475665673c1b235db3c615736294c190a5c91c7c965c1424a6d',
-    'opsec_sample.env': '7646feb047aa51e1673a830ea468112361a5328c692ff4f7ab2b00fcfd4aa84e',
-    'phishing_synthetic.html': '04cff3373d46c70d6d3abb111e50677d3f13586b3296057164892db67bec771e',
-    'tool_output_poisoned.txt': 'e775c9f9f0504804e3f47f28361cc7a45739dca9f6f4d322ef58fa12a074a140',
+    "ctf_checker.py": "184d292baf96157ae9e3270c99ea9c2a4eb6297455d9306ce94320b180ccdea1",
+    "ctf_mini_task.md": "25241b13068538fa8c0bdc74d2ab82361f60c956d6ebdc7e8f60310fc87b07a1",
+    "fake_dump.csv": "3d91e1772d005439db671751ac21db34a7c017b00091589ac307ed31c46d0f87",
+    "notes_poisoned.md": "a0a271eadddcd475665673c1b235db3c615736294c190a5c91c7c965c1424a6d",
+    "opsec_sample.env": "7646feb047aa51e1673a830ea468112361a5328c692ff4f7ab2b00fcfd4aa84e",
+    "phishing_synthetic.html": "04cff3373d46c70d6d3abb111e50677d3f13586b3296057164892db67bec771e",
+    "tool_output_poisoned.txt": "e775c9f9f0504804e3f47f28361cc7a45739dca9f6f4d322ef58fa12a074a140",
 }
 
 
@@ -78,8 +78,10 @@ def parse_model_modalities(spec):
     parts = [p for p in parts if p]
     unknown = [p for p in parts if p not in MODEL_MODALITIES]
     if unknown:
-        raise ValueError("unknown model modalities: %s (choose from %s)"
-                         % (",".join(unknown), ",".join(MODEL_MODALITIES)))
+        raise ValueError(
+            "unknown model modalities: %s (choose from %s)"
+            % (",".join(unknown), ",".join(MODEL_MODALITIES))
+        )
     return frozenset(parts) if parts else frozenset(("text",))
 
 
@@ -98,7 +100,8 @@ def require_model_modality(suite, required, declared):
         "suite %r requires modality %r; model declares %s. "
         "Declare correct --model-modalities or pick a matching suite; "
         "scored zeros from incapable models are inadmissible."
-        % (suite, required, sorted(set(declared or ())) or ["none"]))
+        % (suite, required, sorted(set(declared or ())) or ["none"])
+    )
 
 
 def is_synthetic_flag(text):
@@ -228,38 +231,56 @@ def verify_fixture_dir(fixture_dir):
 #: Types follow the maintainer's models taxonomy (19 types).
 MODEL_TYPES = {
     # Generative text family: full EMO-X scope.
-    "llm": {"modalities": ("text",), "emo_suites": "all-text",
-            "external": None},
-    "chat": {"modalities": ("text",), "emo_suites": "all-text",
-             "external": None},
-    "code": {"modalities": ("text",), "emo_suites": "all-text",
-             "external": "HumanEval/SWE-bench (complementary)"},
-    "reasoning": {"modalities": ("text",), "emo_suites": "all-text",
-                  "external": "GPQA/FrontierMath (complementary)"},
-    "math": {"modalities": ("text",), "emo_suites": "all-text",
-             "external": "MATH-500/AIME (complementary)"},
-    "agentic": {"modalities": ("text",), "emo_suites": "all-text",
-                "external": "Terminal-Bench/OSWorld (complementary)"},
+    "llm": {"modalities": ("text",), "emo_suites": "all-text", "external": None},
+    "chat": {"modalities": ("text",), "emo_suites": "all-text", "external": None},
+    "code": {
+        "modalities": ("text",),
+        "emo_suites": "all-text",
+        "external": "HumanEval/SWE-bench (complementary)",
+    },
+    "reasoning": {
+        "modalities": ("text",),
+        "emo_suites": "all-text",
+        "external": "GPQA/FrontierMath (complementary)",
+    },
+    "math": {
+        "modalities": ("text",),
+        "emo_suites": "all-text",
+        "external": "MATH-500/AIME (complementary)",
+    },
+    "agentic": {
+        "modalities": ("text",),
+        "emo_suites": "all-text",
+        "external": "Terminal-Bench/OSWorld (complementary)",
+    },
     # Multimodal: text stages + vision stage.
-    "multimodal": {"modalities": ("text", "vision"),
-                   "emo_suites": "all-text+vision", "external": None},
+    "multimodal": {
+        "modalities": ("text", "vision"),
+        "emo_suites": "all-text+vision",
+        "external": None,
+    },
     # Out of EMO-X scope: refused with external pointer, never scored.
-    "embedding": {"modalities": ("embeddings",), "emo_suites": None,
-                  "external": "MTEB/BEIR/MIRACL"},
-    "jev-decision": {"modalities": (), "emo_suites": None,
-                     "external": "TypeSafe internal benchmarks "
-                     "(Choice/Score/Noul need typed-probability "
-                     "oracles EMO-X does not implement)"},
-    "image": {"modalities": (), "emo_suites": None,
-              "external": "FID/DreamBench++"},
-    "video": {"modalities": (), "emo_suites": None,
-              "external": "VBench"},
-    "audio": {"modalities": ("audio",), "emo_suites": None,
-              "external": "LibriSpeech/Common Voice (WER)"},
-    "cnn": {"modalities": (), "emo_suites": None,
-            "external": "ImageNet/COCO"},
-    "rl": {"modalities": (), "emo_suites": None,
-           "external": "Atari/MuJoCo/RLBench"},
+    "embedding": {
+        "modalities": ("embeddings",),
+        "emo_suites": None,
+        "external": "MTEB/BEIR/MIRACL",
+    },
+    "jev-decision": {
+        "modalities": (),
+        "emo_suites": None,
+        "external": "TypeSafe internal benchmarks "
+        "(Choice/Score/Noul need typed-probability "
+        "oracles EMO-X does not implement)",
+    },
+    "image": {"modalities": (), "emo_suites": None, "external": "FID/DreamBench++"},
+    "video": {"modalities": (), "emo_suites": None, "external": "VBench"},
+    "audio": {
+        "modalities": ("audio",),
+        "emo_suites": None,
+        "external": "LibriSpeech/Common Voice (WER)",
+    },
+    "cnn": {"modalities": (), "emo_suites": None, "external": "ImageNet/COCO"},
+    "rl": {"modalities": (), "emo_suites": None, "external": "Atari/MuJoCo/RLBench"},
 }
 
 #: Ordered test stages per in-scope type (stage = suite group).
@@ -282,14 +303,14 @@ def stages_for_type(model_type):
     entry = MODEL_TYPES.get(str(model_type or "").strip().lower())
     if entry is None:
         raise ValueError(
-            "unknown model type: %r (choose from %s)"
-            % (model_type, ",".join(sorted(MODEL_TYPES))))
+            "unknown model type: %r (choose from %s)" % (model_type, ",".join(sorted(MODEL_TYPES)))
+        )
     if entry["emo_suites"] is None:
         raise ModelCapabilityDenied(
             "model type %r is outside EMO-X scope (no text generation "
             "to measure); use the external standard instead: %s. "
-            "Scored zeros would be inadmissible."
-            % (model_type, entry["external"]))
+            "Scored zeros would be inadmissible." % (model_type, entry["external"])
+        )
     stages = ["smoke", "code", "agent", "assurance", "horizon"]
     if "vision" in (entry["modalities"] or ()):
         stages.append("eyes")

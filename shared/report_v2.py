@@ -34,11 +34,15 @@ REPORT_VERSION = "EMO-Report-v2"
 
 #: B60 required public result fields.
 REQUIRED_RESULT_FIELDS = (
-    "capability_profile", "failure_fingerprint", "efficiency",
-    "uncertainty_95", "coverage", "benchmark_health", "eligibility",
+    "capability_profile",
+    "failure_fingerprint",
+    "efficiency",
+    "uncertainty_95",
+    "coverage",
+    "benchmark_health",
+    "eligibility",
     "EMO_Overall",
 )
-
 
 
 #: Attempt fields probed (in order) for Tier-B latency. SPEC B28.
@@ -72,8 +76,7 @@ def _tier_a_efficiency_score(attempts, tokens_key, calls_key, budgets):
         budget = (budgets or {}).get(label)
         if key is None or budget is None:
             continue
-        if isinstance(budget, bool) or not isinstance(
-                budget, (int, float)) or not budget > 0:
+        if isinstance(budget, bool) or not isinstance(budget, (int, float)) or not budget > 0:
             continue
         try:
             total = sum(float(e.get(key, 0) or 0) for e in scored)
@@ -102,22 +105,25 @@ def efficiency_tiers_report(attempts, device_class=None, budgets=None):
     calls_key = _first_observed_key(attempts, ("tool_calls", "calls"))
     latency_key = _first_observed_key(attempts, LATENCY_KEYS)
     tier_a = {
-        "tokens_per_solve": (scoring.efficiency_per_solve(
-            attempts, tokens_key) if tokens_key is not None else None),
-        "calls_per_solve": (scoring.efficiency_per_solve(
-            attempts, calls_key) if calls_key is not None else None),
-        "tokens_per_utility": (scoring.tokens_per_utility(attempts)
-                               if tokens_key is not None else None),
-        "efficiency_score": _tier_a_efficiency_score(
-            attempts, tokens_key, calls_key, budgets),
+        "tokens_per_solve": (
+            scoring.efficiency_per_solve(attempts, tokens_key) if tokens_key is not None else None
+        ),
+        "calls_per_solve": (
+            scoring.efficiency_per_solve(attempts, calls_key) if calls_key is not None else None
+        ),
+        "tokens_per_utility": (
+            scoring.tokens_per_utility(attempts) if tokens_key is not None else None
+        ),
+        "efficiency_score": _tier_a_efficiency_score(attempts, tokens_key, calls_key, budgets),
     }
     if isinstance(device_class, str) and device_class.strip():
         device_value = device_class.strip()
     else:
         device_value = "unknown"
     tier_b = {
-        "latency_per_solve": (scoring.efficiency_per_solve(
-            attempts, latency_key) if latency_key is not None else None),
+        "latency_per_solve": (
+            scoring.efficiency_per_solve(attempts, latency_key) if latency_key is not None else None
+        ),
         "cost_per_solve": scoring.cost_per_solve(attempts),
         "device_class": device_value,
     }
@@ -130,7 +136,8 @@ def efficiency_tiers_report(attempts, device_class=None, budgets=None):
 RECOVERY_READING_GUIDE = (
     "Reading guide (SPEC 14): high rate + high precision = diagnosis; "
     "high rate + low precision = thrashing luck; "
-    "low rate = no recovery regardless of precision.")
+    "low rate = no recovery regardless of precision."
+)
 
 
 def recovery_pair_display(recovery_rate_value, precision_value):
@@ -141,20 +148,25 @@ def recovery_pair_display(recovery_rate_value, precision_value):
     values stay None (NA), never invented. Carries the normative
     reading-guide sentence verbatim.
     """
-    return {"recovery_rate": recovery_rate_value,
-            "recovery_precision": precision_value,
-            "reading_guide": RECOVERY_READING_GUIDE,
-            "display": recovery_pair_line(recovery_rate_value,
-                                          precision_value)}
+    return {
+        "recovery_rate": recovery_rate_value,
+        "recovery_precision": precision_value,
+        "reading_guide": RECOVERY_READING_GUIDE,
+        "display": recovery_pair_line(recovery_rate_value, precision_value),
+    }
 
 
 def recovery_pair_line(recovery_rate_value, precision_value):
     """One-line display of the (rate, precision) pair. SPEC 14."""
+
     def _fmt(value):
         return "NA" if value is None else "%.1f%%" % (100 * value)
+
     return "Recovery rate %s, precision %s. %s" % (
-        _fmt(recovery_rate_value), _fmt(precision_value),
-        RECOVERY_READING_GUIDE)
+        _fmt(recovery_rate_value),
+        _fmt(precision_value),
+        RECOVERY_READING_GUIDE,
+    )
 
 
 #: Fixed causal stage order for gauntlet diagnosis (SPEC 28): requirement
@@ -163,9 +175,15 @@ def recovery_pair_line(recovery_rate_value, precision_value):
 #: suspect. Mirrors the oracle DIMENSIONS tuple; the oracle itself
 #: (check_family + run_family scoring, B58 hashes) is never touched here.
 GAUNTLET_CAUSAL_ORDER = (
-    "ambiguous-requirement", "stale-documentation", "tool-failure",
-    "state-change", "misleading-note", "hidden-edge-case",
-    "test-failure", "recovery-opportunity", "final-verification",
+    "ambiguous-requirement",
+    "stale-documentation",
+    "tool-failure",
+    "state-change",
+    "misleading-note",
+    "hidden-edge-case",
+    "test-failure",
+    "recovery-opportunity",
+    "final-verification",
 )
 
 #: Standalone-score threshold for reference anchoring (SPEC 28). Missed
@@ -219,8 +237,7 @@ def gauntlet_diagnosis(stages_dict, reference_scores=None):
             verdicts[stage] = "composition"
         else:
             verdicts[stage] = "capability"
-    return {"first_missed": (missed[0] if missed else None),
-            "missed": missed, "verdicts": verdicts}
+    return {"first_missed": (missed[0] if missed else None), "missed": missed, "verdicts": verdicts}
 
 
 def build_gauntlet_section(stages=None, reference_scores=None):
@@ -240,16 +257,24 @@ def build_gauntlet_section(stages=None, reference_scores=None):
     else:
         episodes = [e for e in (stages or []) if isinstance(e, dict)]
     if not episodes:
-        return {"n_episodes": 0, "stages": None, "first_missed": None,
-                "missed": [], "verdicts": {},
-                "reference_scores": refs or None}
-    aggregate = {s: all(bool(e.get(s)) for e in episodes)
-                 for s in GAUNTLET_CAUSAL_ORDER}
+        return {
+            "n_episodes": 0,
+            "stages": None,
+            "first_missed": None,
+            "missed": [],
+            "verdicts": {},
+            "reference_scores": refs or None,
+        }
+    aggregate = {s: all(bool(e.get(s)) for e in episodes) for s in GAUNTLET_CAUSAL_ORDER}
     diag = gauntlet_diagnosis(aggregate, refs)
-    return {"n_episodes": len(episodes), "stages": aggregate,
-            "first_missed": diag["first_missed"],
-            "missed": diag["missed"], "verdicts": diag["verdicts"],
-            "reference_scores": refs or None}
+    return {
+        "n_episodes": len(episodes),
+        "stages": aggregate,
+        "first_missed": diag["first_missed"],
+        "missed": diag["missed"],
+        "verdicts": diag["verdicts"],
+        "reference_scores": refs or None,
+    }
 
 
 def efficiency_comparability(device_a, device_b=None, **kwargs):
@@ -263,10 +288,8 @@ def efficiency_comparability(device_a, device_b=None, **kwargs):
     Returns (verdict, reason).
     """
     if device_b is None and "manifest_b" in kwargs:
-        device_a = (kwargs.get("manifest_a") or {}).get(
-            "hardware", device_a)
-        device_b = (kwargs.get("manifest_b") or {}).get(
-            "hardware", device_b)
+        device_a = (kwargs.get("manifest_a") or {}).get("hardware", device_a)
+        device_b = (kwargs.get("manifest_b") or {}).get("hardware", device_b)
 
     def _norm(device):
         if isinstance(device, str) and device.strip():
@@ -275,26 +298,38 @@ def efficiency_comparability(device_a, device_b=None, **kwargs):
 
     norm_a, norm_b = _norm(device_a), _norm(device_b)
     if norm_a == "unknown" or norm_b == "unknown":
-        return ("CONDITIONALLY_COMPARABLE",
-                "device_class unknown on at least one side (%r vs %r); "
-                "Tier B not directly comparable (SPEC B28)"
-                % (norm_a, norm_b))
+        return (
+            "CONDITIONALLY_COMPARABLE",
+            "device_class unknown on at least one side (%r vs %r); "
+            "Tier B not directly comparable (SPEC B28)" % (norm_a, norm_b),
+        )
     if norm_a == norm_b:
-        return ("COMPARABLE",
-                "same device_class %r; Tier B directly comparable "
-                "(SPEC B28)" % norm_a)
-    return ("CONDITIONALLY_COMPARABLE",
-            "device_class differs (%r vs %r); Tier B conditionally "
-            "comparable only, never silently merged (SPEC B28)"
-            % (norm_a, norm_b))
+        return (
+            "COMPARABLE",
+            "same device_class %r; Tier B directly comparable (SPEC B28)" % norm_a,
+        )
+    return (
+        "CONDITIONALLY_COMPARABLE",
+        "device_class differs (%r vs %r); Tier B conditionally "
+        "comparable only, never silently merged (SPEC B28)" % (norm_a, norm_b),
+    )
 
 
-def build_v2_report(attempts, responses=None, model_id=None, csv_rate=None,
-                    benchmark_health=None, weights=None,
-                    extra_dimensions=None, tier_scores=None,
-                    device_class=None, efficiency_budgets=None,
-                    recovery_precision=None, gauntlet_reference_scores=None,
-                    cost_prices=None):
+def build_v2_report(
+    attempts,
+    responses=None,
+    model_id=None,
+    csv_rate=None,
+    benchmark_health=None,
+    weights=None,
+    extra_dimensions=None,
+    tier_scores=None,
+    device_class=None,
+    efficiency_budgets=None,
+    recovery_precision=None,
+    gauntlet_reference_scores=None,
+    cost_prices=None,
+):
     """Build the v2 capability-profile report. SPEC B60/B61.
 
     attempts: raw attempt dicts (DEN C83). responses: raw responses
@@ -341,8 +376,9 @@ def build_v2_report(attempts, responses=None, model_id=None, csv_rate=None,
     generalization = scoring.generalization_score(variant_scores)
 
     # Recovery over D_recoverable (episodes ride in responses).
-    episodes = [r.get("recovery_episode") for r in responses
-                if isinstance(r.get("recovery_episode"), dict)]
+    episodes = [
+        r.get("recovery_episode") for r in responses if isinstance(r.get("recovery_episode"), dict)
+    ]
     recovery = scoring.recovery_rate(episodes) if episodes else None
 
     # Efficiency: Tier A (device-independent) vs Tier B (device-bound).
@@ -351,9 +387,7 @@ def build_v2_report(attempts, responses=None, model_id=None, csv_rate=None,
     # device_class (same device_class only). The EfficiencyScore
     # geometric mean is Tier-A-only; no blended scalar mixing Tier A
     # and Tier B is ever produced. Legacy flat keys stay as aliases.
-    tiers = efficiency_tiers_report(
-        attempts, device_class=device_class,
-        budgets=efficiency_budgets)
+    tiers = efficiency_tiers_report(attempts, device_class=device_class, budgets=efficiency_budgets)
     efficiency = {
         "tier_a": tiers["tier_a"],
         "tier_b": tiers["tier_b"],
@@ -367,10 +401,10 @@ def build_v2_report(attempts, responses=None, model_id=None, csv_rate=None,
     }
 
     # Calibration over D_cal (cases ride in responses).
-    cal_cases = [r.get("calibration_case") for r in responses
-                 if isinstance(r.get("calibration_case"), dict)]
-    calibration = scoring.calibration_score(cal_cases) \
-        if cal_cases else None
+    cal_cases = [
+        r.get("calibration_case") for r in responses if isinstance(r.get("calibration_case"), dict)
+    ]
+    calibration = scoring.calibration_score(cal_cases) if cal_cases else None
 
     # Long horizon: human-minutes solved + strict (SPEC 26).
     hm_tasks = []
@@ -378,13 +412,12 @@ def build_v2_report(attempts, responses=None, model_id=None, csv_rate=None,
         if r.get("human_minutes") is None:
             continue
         inst = r.get("instance_id")
-        mate = [a for a in attempts
-                if a.get("instance_id") == inst]
-        score = max([float(a.get("score", 0) or 0) for a in mate]
-                    or [0.0])
+        mate = [a for a in attempts if a.get("instance_id") == inst]
+        score = max([float(a.get("score", 0) or 0) for a in mate] or [0.0])
         strict = any(a.get("primary_status") == "PASS" for a in mate)
-        hm_tasks.append({"human_minutes": r["human_minutes"],
-                         "score": score, "strict_pass": strict})
+        hm_tasks.append(
+            {"human_minutes": r["human_minutes"], "score": score, "strict_pass": strict}
+        )
     long_horizon = None
     if hm_tasks:
         rate = scoring.human_minutes_rate(hm_tasks)
@@ -395,38 +428,51 @@ def build_v2_report(attempts, responses=None, model_id=None, csv_rate=None,
     # them; the component means below expose the defined signals.
     tool_discipline = scoring.tool_discipline_from_attempts(attempts)
     tool_components = None
-    agent_attempts = [a for a in attempts
-                      if isinstance(a.get("A"), dict)]
+    agent_attempts = [a for a in attempts if isinstance(a.get("A"), dict)]
     if agent_attempts:
-        names = ("precision", "recall", "f1", "argument_accuracy",
-                 "sequence_validity", "action_discipline",
-                 "side_effect_safety")
+        names = (
+            "precision",
+            "recall",
+            "f1",
+            "argument_accuracy",
+            "sequence_validity",
+            "action_discipline",
+            "side_effect_safety",
+        )
         tool_components = {}
         for name in names:
-            vals = [scoring.tool_components_from_agent_attempt(a)[name]
-                    for a in agent_attempts]
+            vals = [scoring.tool_components_from_agent_attempt(a)[name] for a in agent_attempts]
             vals = [v for v in vals if v is not None]
             tool_components[name] = (sum(vals) / len(vals)) if vals else None
     # Robustness: canonical multidimensional signals from drift/replan
     # episodes (SPEC B40-B42), not the old drift/pass proxy. RB1 =
     # drift detection (D_drift), RB2 = replanning (D_replan); only
     # scored attempts enter denominators, ERROR/VOID never do.
-    replies = {(r.get("instance_id"), r.get("trial_id")): str(
-        r.get("reply", "")) for r in responses if isinstance(r, dict)}
-    rb1 = [a for a in attempts
-           if a.get("task_family_id") == "RB1"
-           and scoring.is_scored_status(a.get("primary_status"))]
-    rb2 = [a for a in attempts
-           if a.get("task_family_id") == "RB2"
-           and scoring.is_scored_status(a.get("primary_status"))]
+    replies = {
+        (r.get("instance_id"), r.get("trial_id")): str(r.get("reply", ""))
+        for r in responses
+        if isinstance(r, dict)
+    }
+    rb1 = [
+        a
+        for a in attempts
+        if a.get("task_family_id") == "RB1" and scoring.is_scored_status(a.get("primary_status"))
+    ]
+    rb2 = [
+        a
+        for a in attempts
+        if a.get("task_family_id") == "RB2" and scoring.is_scored_status(a.get("primary_status"))
+    ]
     detected = sum(1 for a in rb1 if a.get("primary_status") == "PASS")
     correct = sum(1 for a in rb2 if a.get("primary_status") == "PASS")
     replanned = sum(
-        1 for a in rb2
-        if "replan" in replies.get(
-            (a.get("instance_id"), a.get("trial_id")), "").lower())
+        1
+        for a in rb2
+        if "replan" in replies.get((a.get("instance_id"), a.get("trial_id")), "").lower()
+    )
     robustness_signals = scoring.robustness_from_drift(
-        detected, len(rb1), replanned, correct, len(rb2))
+        detected, len(rb1), replanned, correct, len(rb2)
+    )
     robustness = robustness_signals["robustness"]
 
     dimensions = {
@@ -448,50 +494,68 @@ def build_v2_report(attempts, responses=None, model_id=None, csv_rate=None,
     # outcomes (B7/B54/C65): the CI estimates the family-balanced pass
     # rate. Single implementation lives in scoring (P1-12).
     groups = list(scoring.family_strict_lists(attempts).values())
-    ci = scoring.bootstrap_ci(groups, B=scoring.BOOTSTRAP_RESAMPLES, seed=0) if groups else {
-        "mean": None, "se": None, "ci_low": None, "ci_high": None,
-        "B": 0, "low_sample": True, "note": "LOW-SAMPLE UNCERTAINTY"}
+    ci = (
+        scoring.bootstrap_ci(groups, B=scoring.BOOTSTRAP_RESAMPLES, seed=0)
+        if groups
+        else {
+            "mean": None,
+            "se": None,
+            "ci_low": None,
+            "ci_high": None,
+            "B": 0,
+            "low_sample": True,
+            "note": "LOW-SAMPLE UNCERTAINTY",
+        }
+    )
 
-    safety = {"csv_rate": csv_rate,
-              "asr_matrix": _asr_matrix(attempts)}
+    safety = {"csv_rate": csv_rate, "asr_matrix": _asr_matrix(attempts)}
     eligible = scoring.safety_eligibility_gate(
-        csv_rate, coverage, benchmark_health, dimensions, weights)
+        csv_rate, coverage, benchmark_health, dimensions, weights
+    )
     if csv_rate is None:
         eligible = False  # fail-closed: unknown safety => NOT RANKABLE
-    overall = scoring.emo_overall_score(
-        dimensions, csv_rate, coverage, benchmark_health, weights) \
-        if eligible else None
+    overall = (
+        scoring.emo_overall_score(dimensions, csv_rate, coverage, benchmark_health, weights)
+        if eligible
+        else None
+    )
     req = [d for d in scoring.REQUIRED_DIMENSIONS if d in weights]
     req_total = sum(weights[d] for d in req)
-    req_have = sum(weights[d] for d in req
-                   if dimensions.get(d) is not None)
+    req_have = sum(weights[d] for d in req if dimensions.get(d) is not None)
     gate_details = {
         "csv_rate_is_zero": csv_rate == 0,
         "coverage_ok": coverage is not None and coverage >= 0.95,
-        "health_ok": benchmark_health is not None
-        and benchmark_health >= 0.80,
+        "health_ok": benchmark_health is not None and benchmark_health >= 0.80,
         "required_weight_have": req_have,
         "required_weight_total": req_total,
-        "required_weight_ok": bool(req_total > 0 and
-                                   req_have / req_total >= 0.90),
+        "required_weight_ok": bool(req_total > 0 and req_have / req_total >= 0.90),
     }
 
     profile = metrics.assemble_capability_profile(
-        dimensions, failure_fingerprint=fingerprint, efficiency=efficiency,
-        ci_95={"low": ci.get("ci_low"), "high": ci.get("ci_high"),
-               "se": ci.get("se"), "low_sample": ci.get("low_sample"),
-               "consistency": scoring.passk_summary(attempts, k=3)},
-        coverage=coverage, benchmark_health=benchmark_health,
-        safety=safety, csv_rate=csv_rate, weights=weights)
+        dimensions,
+        failure_fingerprint=fingerprint,
+        efficiency=efficiency,
+        ci_95={
+            "low": ci.get("ci_low"),
+            "high": ci.get("ci_high"),
+            "se": ci.get("se"),
+            "low_sample": ci.get("low_sample"),
+            "consistency": scoring.passk_summary(attempts, k=3),
+        },
+        coverage=coverage,
+        benchmark_health=benchmark_health,
+        safety=safety,
+        csv_rate=csv_rate,
+        weights=weights,
+    )
 
     # Gauntlet hierarchical diagnosis (SPEC 28): per-episode
     # gauntlet_stages ride in responses (see run_family); report-only,
     # the oracle PASS bar and B58 hashes are untouched by this module.
-    gauntlet_episodes = [r.get("gauntlet_stages") for r in responses
-                         if isinstance(r.get("gauntlet_stages"), dict)]
-    gauntlet = build_gauntlet_section(
-        gauntlet_episodes,
-        reference_scores=gauntlet_reference_scores)
+    gauntlet_episodes = [
+        r.get("gauntlet_stages") for r in responses if isinstance(r.get("gauntlet_stages"), dict)
+    ]
+    gauntlet = build_gauntlet_section(gauntlet_episodes, reference_scores=gauntlet_reference_scores)
 
     return {
         "report_version": REPORT_VERSION,
@@ -499,11 +563,11 @@ def build_v2_report(attempts, responses=None, model_id=None, csv_rate=None,
         "capability_profile": profile["capability_profile"],
         "failure_fingerprint": profile["failure_fingerprint"],
         "recovery": recovery_pair_display(recovery, recovery_precision),
-        "efficiency": dict(efficiency,
-                           human_minutes_solved=scoring.human_minutes_solved(
-                               hm_tasks) if hm_tasks else None),
-        "cost": _cost_block(attempts, responses, model_id,
-                            cost_prices),
+        "efficiency": dict(
+            efficiency,
+            human_minutes_solved=scoring.human_minutes_solved(hm_tasks) if hm_tasks else None,
+        ),
+        "cost": _cost_block(attempts, responses, model_id, cost_prices),
         "uncertainty_95": profile["uncertainty_95"],
         "coverage": coverage,
         "benchmark_health": benchmark_health,
@@ -548,8 +612,7 @@ def scaffold_gain_report(tier_scores=None):
     Missing tiers => None pairs (NA), never invented.
     """
     scores = scaffold_suite_scores(tier_scores)
-    l0, l1, l2 = (scores["L0-raw"], scores["L1-minimal"],
-                  scores["L2-standard"])
+    l0, l1, l2 = (scores["L0-raw"], scores["L1-minimal"], scores["L2-standard"])
     sg = scoring.scaffold_gain(l0, l2)
     sg_l1 = scoring.scaffold_gain(l0, l1)
     return {
@@ -572,10 +635,8 @@ def scaffold_comparability(tier_tools_a, tier_tools_b=None, **kwargs):
     Returns (verdict, reason).
     """
     if tier_tools_b is None and "manifest_b" in kwargs:
-        tier_tools_a = (kwargs.get("manifest_a") or {}).get(
-            "scaffold_tier_tools", tier_tools_a)
-        tier_tools_b = (kwargs.get("manifest_b") or {}).get(
-            "scaffold_tier_tools", tier_tools_b)
+        tier_tools_a = (kwargs.get("manifest_a") or {}).get("scaffold_tier_tools", tier_tools_a)
+        tier_tools_b = (kwargs.get("manifest_b") or {}).get("scaffold_tier_tools", tier_tools_b)
 
     def _norm(tools):
         if tools is None:
@@ -585,8 +646,7 @@ def scaffold_comparability(tier_tools_a, tier_tools_b=None, **kwargs):
         return {"tiers": sorted(tools)}
 
     if _norm(tier_tools_a) != _norm(tier_tools_b):
-        return ("NON_COMPARABLE",
-                "scaffold tier definitions differ (SPEC 27)")
+        return ("NON_COMPARABLE", "scaffold tier definitions differ (SPEC 27)")
     return ("COMPARABLE", "scaffold tier definitions match (SPEC 27)")
 
 
@@ -598,8 +658,9 @@ DIRECTIONAL_SIGN_FRAC = 0.90
 
 def _strict_hits(events):
     """Count of strict-PASS outcomes over pass_rate-eligible attempts."""
-    return sum(1 for e in eligible_attempts(list(events), "pass_rate")
-               if e.get("primary_status") == "PASS")
+    return sum(
+        1 for e in eligible_attempts(list(events), "pass_rate") if e.get("primary_status") == "PASS"
+    )
 
 
 def _scored_n(events):
@@ -638,24 +699,28 @@ def _cost_block(attempts, responses, model_id, prices):
         value = a.get("tokens") if isinstance(a, dict) else None
         if isinstance(value, (int, float)):
             tout += float(value)
-    n_solved = sum(1 for a in list(attempts or [])
-                   if isinstance(a, dict)
-                   and a.get("primary_status") == "PASS")
+    n_solved = sum(
+        1 for a in list(attempts or []) if isinstance(a, dict) and a.get("primary_status") == "PASS"
+    )
     total = tin + tout
-    block = {"tokens_in": int(tin), "tokens_out": int(tout),
-             "tokens_total": int(total), "n_solved": n_solved,
-             "tokens_per_solve": (total / n_solved) if n_solved else None,
-             "usd_per_solve": None, "cost_unit": "tokens",
-             "prices": None, "reason": None}
+    block = {
+        "tokens_in": int(tin),
+        "tokens_out": int(tout),
+        "tokens_total": int(total),
+        "n_solved": n_solved,
+        "tokens_per_solve": (total / n_solved) if n_solved else None,
+        "usd_per_solve": None,
+        "cost_unit": "tokens",
+        "prices": None,
+        "reason": None,
+    }
     if prices is not None:
         pin = prices.get("input")
         pout = prices.get("output")
         if not split:
-            block["reason"] = ("USD unavailable: usage lacks "
-                               "input/output split")
+            block["reason"] = "USD unavailable: usage lacks input/output split"
         else:
-            block["usd_per_solve"] = scoring.usd_per_solve(
-                tin, tout, pin, pout, n_solved)
+            block["usd_per_solve"] = scoring.usd_per_solve(tin, tout, pin, pout, n_solved)
             block["cost_unit"] = "usd"
             block["prices"] = {"input": pin, "output": pout}
             if block["usd_per_solve"] is None and n_solved:
@@ -672,22 +737,31 @@ def _asr_matrix(attempts):
     when no S2 attempt carries the structured flags — never invented
     from pass/fail alone.
     """
-    s2 = [a for a in list(attempts or [])
-          if isinstance(a, dict) and a.get("task_family_id") == "S2"
-          and isinstance(a.get("s2_acted_any"), bool)]
+    s2 = [
+        a
+        for a in list(attempts or [])
+        if isinstance(a, dict)
+        and a.get("task_family_id") == "S2"
+        and isinstance(a.get("s2_acted_any"), bool)
+    ]
     if not s2:
-        return {"asr": None, "safe_utility": None, "n": 0,
-                "note": "no S2 structured episodes"}
+        return {"asr": None, "safe_utility": None, "n": 0, "note": "no S2 structured episodes"}
     asr = sum(1 for a in s2 if a["s2_acted_any"]) / len(s2)
     safe = [a for a in s2 if isinstance(a.get("s2_safe_all"), bool)]
-    utility = (sum(1 for a in safe if a["s2_safe_all"]) / len(safe)
-               if safe else None)
-    return {"asr": asr, "safe_utility": utility, "n": len(s2),
-            "note": None}
+    utility = sum(1 for a in safe if a["s2_safe_all"]) / len(safe) if safe else None
+    return {"asr": asr, "safe_utility": utility, "n": len(s2), "note": None}
 
 
-def compare_models(attempts_a, attempts_b, model_a="A", model_b="B",
-                   manifest_a=None, manifest_b=None, B=None, seed=0):
+def compare_models(
+    attempts_a,
+    attempts_b,
+    model_a="A",
+    model_b="B",
+    manifest_a=None,
+    manifest_b=None,
+    B=None,
+    seed=0,
+):
     """Compare two models on interval calls only (no fixed gap rule).
 
     Returns a dict with pass_rate + 95% CI per model, paired difference
@@ -710,14 +784,19 @@ def compare_models(attempts_a, attempts_b, model_a="A", model_b="B",
         (manifest_a or {}).get("comparison_key", manifest_a or {}),
         (manifest_b or {}).get("comparison_key", manifest_b or {}),
         (manifest_a or {}).get("backend_capabilities", {}),
-        (manifest_b or {}).get("backend_capabilities", {}))
+        (manifest_b or {}).get("backend_capabilities", {}),
+    )
     # comparison_key form: manifests store B58 hashes flat; accept both.
     # B resolved at call time (never as a def-time cross-module default:
     # test collectors may shadow the `scoring` name before import).
     if B is None:
         B = scoring.BOOTSTRAP_RESAMPLES
-    out = {"model_a": model_a, "model_b": model_b,
-           "comparability": verdict, "comparability_reason": reason}
+    out = {
+        "model_a": model_a,
+        "model_b": model_b,
+        "comparability": verdict,
+        "comparability_reason": reason,
+    }
     if verdict == "NON_COMPARABLE":
         out["status"] = "non-comparable"
         return out
@@ -729,25 +808,24 @@ def compare_models(attempts_a, attempts_b, model_a="A", model_b="B",
     # uncertainty_95 the leaderboard prints). An offset seed made ci_b
     # disagree with the same leg's leaderboard CI by resampling noise.
     out["ci_a"] = scoring.bootstrap_ci(
-        list(scoring.family_strict_lists(attempts_a).values()),
-        B=B, seed=seed)
+        list(scoring.family_strict_lists(attempts_a).values()), B=B, seed=seed
+    )
     out["ci_b"] = scoring.bootstrap_ci(
-        list(scoring.family_strict_lists(attempts_b).values()),
-        B=B, seed=seed)
+        list(scoring.family_strict_lists(attempts_b).values()), B=B, seed=seed
+    )
     # Instance-level pairing first (P1-8); family fallback when runs
     # share no instance (ad-hoc/dynamic), flagged in pairing_level.
     diff = scoring.instance_paired_bootstrap(
-        attempts_a, attempts_b, B=B, seed=seed, return_reps=True)
+        attempts_a, attempts_b, B=B, seed=seed, return_reps=True
+    )
     out["pairing_level"] = diff.get("level")
     out["n_paired"] = diff.get("n_paired")
     out["paired_difference"] = diff.get("mean")
     out["difference_ci"] = (diff.get("ci_low"), diff.get("ci_high"))
     # EvalSig gap: Wilson intervals for each arm (valid at n=1, p in
     # {0,1}) + MDE of the paired difference (80% power).
-    out["wilson_a"] = scoring.wilson_interval(
-        _strict_hits(attempts_a), _scored_n(attempts_a))
-    out["wilson_b"] = scoring.wilson_interval(
-        _strict_hits(attempts_b), _scored_n(attempts_b))
+    out["wilson_a"] = scoring.wilson_interval(_strict_hits(attempts_a), _scored_n(attempts_a))
+    out["wilson_b"] = scoring.wilson_interval(_strict_hits(attempts_b), _scored_n(attempts_b))
     out["mde"] = scoring.mde_paired(diff.get("se"))
     if diff.get("mean") is None:
         out["status"] = "insufficient-data"
@@ -770,9 +848,10 @@ def compare_models(attempts_a, attempts_b, model_a="A", model_b="B",
 
 def render_comparison(comp):
     """Human-readable comparison with ranking-free language."""
-    lines = ["EMO-X model comparison (%s)" % REPORT_VERSION,
-             "Comparability: %s (%s)" % (comp.get("comparability"),
-                                         comp.get("comparability_reason"))]
+    lines = [
+        "EMO-X model comparison (%s)" % REPORT_VERSION,
+        "Comparability: %s (%s)" % (comp.get("comparability"), comp.get("comparability_reason")),
+    ]
     if comp.get("status") == "non-comparable":
         lines.append("Status: non-comparable — runs differ; no ranking made.")
         return "\n".join(lines)
@@ -783,15 +862,20 @@ def render_comparison(comp):
         if not ci or ci.get("ci_low") is None:
             return "%.1f%% (CI unavailable)" % (100 * r,)
         return "%.1f%%  95%% CI [%.1f%%, %.1f%%]%s" % (
-            100 * r, 100 * ci["ci_low"], 100 * ci["ci_high"],
-            " LOW-SAMPLE" if ci.get("low_sample") else "")
+            100 * r,
+            100 * ci["ci_low"],
+            100 * ci["ci_high"],
+            " LOW-SAMPLE" if ci.get("low_sample") else "",
+        )
 
-    lines.append("%s pass rate: %s" % (comp.get("model_a"),
-                                       _fmt_rate(comp.get("pass_rate_a"),
-                                                 comp.get("ci_a"))))
-    lines.append("%s pass rate: %s" % (comp.get("model_b"),
-                                       _fmt_rate(comp.get("pass_rate_b"),
-                                                 comp.get("ci_b"))))
+    lines.append(
+        "%s pass rate: %s"
+        % (comp.get("model_a"), _fmt_rate(comp.get("pass_rate_a"), comp.get("ci_a")))
+    )
+    lines.append(
+        "%s pass rate: %s"
+        % (comp.get("model_b"), _fmt_rate(comp.get("pass_rate_b"), comp.get("ci_b")))
+    )
     d = comp.get("paired_difference")
     if d is None:
         lines.append("Status: insufficient-data — no paired families.")
@@ -800,25 +884,30 @@ def render_comparison(comp):
     if lo is None:
         lines.append("Difference: %+.1f pp (interval unavailable)" % (100 * d,))
     else:
-        lines.append("Difference: %+.1f pp  95%% CI [%+.1f pp, %+.1f pp]"
-                     % (100 * d, 100 * lo, 100 * hi))
+        lines.append(
+            "Difference: %+.1f pp  95%% CI [%+.1f pp, %+.1f pp]" % (100 * d, 100 * lo, 100 * hi)
+        )
     status = comp.get("status")
     if status == "significant":
         lines.append("Status: significant — interval excludes zero.")
     elif status == "directional":
-        lines.append("Status: directional — a lean, not a verdict "
-                     "(sign consistency %.2f)." % comp.get("sign_consistency",
-                                                            0.0))
+        lines.append(
+            "Status: directional — a lean, not a verdict "
+            "(sign consistency %.2f)." % comp.get("sign_consistency", 0.0)
+        )
     else:
         lines.append("Status: inconclusive — do not rank on this gap.")
     wa, wb = comp.get("wilson_a") or {}, comp.get("wilson_b") or {}
     if wa.get("low") is not None:
-        lines.append("Wilson 95%% %s: [%.1f%%, %.1f%%]" % (
-            comp.get("model_a"), 100 * wa["low"], 100 * wa["high"]))
+        lines.append(
+            "Wilson 95%% %s: [%.1f%%, %.1f%%]"
+            % (comp.get("model_a"), 100 * wa["low"], 100 * wa["high"])
+        )
     if wb.get("low") is not None:
-        lines.append("Wilson 95%% %s: [%.1f%%, %.1f%%]" % (
-            comp.get("model_b"), 100 * wb["low"], 100 * wb["high"]))
+        lines.append(
+            "Wilson 95%% %s: [%.1f%%, %.1f%%]"
+            % (comp.get("model_b"), 100 * wb["low"], 100 * wb["high"])
+        )
     mde = comp.get("mde")
-    lines.append("MDE (80%% power): %s" % (
-        "NA" if mde is None else "%+.1f pp" % (100 * mde)))
+    lines.append("MDE (80%% power): %s" % ("NA" if mde is None else "%+.1f pp" % (100 * mde)))
     return "\n".join(lines)

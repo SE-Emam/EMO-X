@@ -12,11 +12,15 @@ on:
 jobs:
   harness:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+      fail-fast: false
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
       - uses: astral-sh/setup-uv@v6
       - name: Build isolated execution sandbox
         run: docker build -f Dockerfile.sandbox -t emox-sandbox:latest .

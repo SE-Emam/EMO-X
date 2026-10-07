@@ -14,6 +14,14 @@ if SHARED not in sys.path:
 import backends
 
 
+def _have_cli_bin():
+    """Pretend the CLI binary exists: these tests mock subprocess.run,
+    so the pre-flight shutil.which check must not depend on the real
+    PATH (CI runners lack the `opencode` binary)."""
+    from unittest import mock as _mock
+    return _mock.patch("shutil.which", return_value="/bin/opencode")
+
+
 class CliBackendTests(unittest.TestCase):
     def _ok(self, stdout="\x1b[0m\n> build · m\nHello\n"):
         proc = mock.Mock()
@@ -23,8 +31,8 @@ class CliBackendTests(unittest.TestCase):
         return proc
 
     def test_strips_ansi_and_status_lines(self):
-        with mock.patch.object(subprocess, "run",
-                               return_value=self._ok()) as run:
+        with _have_cli_bin(), mock.patch.object(subprocess, "run",
+                                                return_value=self._ok()) as run:
             text, secs, usage = backends.chat_cli(
                 [{"role": "user", "content": "hi"}], "opencode",
                 "opencode/m")
@@ -35,15 +43,15 @@ class CliBackendTests(unittest.TestCase):
             self.assertIn("--model", argv)
 
     def test_no_shell_used(self):
-        with mock.patch.object(subprocess, "run",
-                               return_value=self._ok()) as run:
+        with _have_cli_bin(), mock.patch.object(subprocess, "run",
+                                                 return_value=self._ok()) as run:
             backends.chat_cli([{"role": "user", "content": "hi"}],
                               "opencode", "m")
             _, kwargs = run.call_args
             self.assertNotIn("shell", kwargs)
 
     def test_timeout_raises(self):
-        with mock.patch.object(
+        with _have_cli_bin(), mock.patch.object(
                 subprocess, "run",
                 side_effect=subprocess.TimeoutExpired("x", 1)):
             with self.assertRaises(RuntimeError):
@@ -54,7 +62,8 @@ class CliBackendTests(unittest.TestCase):
         proc = mock.Mock()
         proc.returncode = 1
         proc.stdout, proc.stderr = "", "API key expired."
-        with mock.patch.object(subprocess, "run", return_value=proc):
+        with _have_cli_bin(), mock.patch.object(subprocess, "run",
+                                                 return_value=proc):
             with self.assertRaises(RuntimeError):
                 backends.chat_cli([{"role": "user", "content": "hi"}],
                                   "opencode", "m")

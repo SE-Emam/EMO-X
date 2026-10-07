@@ -1,4 +1,4 @@
-"""Regression tests for the live-data audit fixes (v2.0.1).
+"""Regression tests for output hygiene.
 
 Covers:
   1. strip_special_tokens: special-token tails must not fail

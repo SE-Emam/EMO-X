@@ -1,4 +1,4 @@
-"""Tests for the S4b/S5d oracle fixes (channel hygiene + critical gate)."""
+"""Tests for the S4b/S5d oracle gates (channel hygiene + critical gate)."""
 
 import os
 import sys

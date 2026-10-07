@@ -11,13 +11,16 @@ for _p in (_ROOT, os.path.join(_ROOT, "judges")):
         sys.path.insert(0, _p)
 
 from judge_audit import (  # noqa: E402
-    PERTURBATIONS, audit_judge, audit_mark, perturb)
+    PERTURBATIONS,
+    audit_judge,
+    audit_mark,
+    perturb,
+)
 
 
 def stable_judge(case):
     """Verdict from evidence keywords only: immune to padding/order."""
-    text = (case.get("prompt", "") + " " +
-            " ".join(case.get("candidates", []) or [])).lower()
+    text = (case.get("prompt", "") + " " + " ".join(case.get("candidates", []) or [])).lower()
     return "PASS" if "correct-evidence" in text else "FAIL"
 
 
@@ -28,11 +31,13 @@ def order_biased_judge(case):
 
 
 CASES = [
-    {"id": "c1",
-     "prompt": "correct-evidence. " + "Background detail. " * 10,
-     "candidates": ["PASS", "FAIL"], "alt_language": "قيّم: الدليل موجود."},
-    {"id": "c2", "prompt": "Rate: nothing relevant here.",
-     "candidates": ["FAIL", "PASS"]},
+    {
+        "id": "c1",
+        "prompt": "correct-evidence. " + "Background detail. " * 10,
+        "candidates": ["PASS", "FAIL"],
+        "alt_language": "قيّم: الدليل موجود.",
+    },
+    {"id": "c2", "prompt": "Rate: nothing relevant here.", "candidates": ["FAIL", "PASS"]},
 ]
 
 

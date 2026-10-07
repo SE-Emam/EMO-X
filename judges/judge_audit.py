@@ -21,16 +21,23 @@ Usage:
 import re
 
 #: Perturbations every audited judge must survive.
-PERTURBATIONS = ("order_swap", "verbosity_pad", "truncate_tail",
-                 "conflicting_restatement", "language_dual")
+PERTURBATIONS = (
+    "order_swap",
+    "verbosity_pad",
+    "truncate_tail",
+    "conflicting_restatement",
+    "language_dual",
+)
 
 _VERBOSITY_PAD = (
     "\n\nNote: the response above is detailed and thorough, well formatted "
-    "with clear structure and careful reasoning throughout its length. " * 3)
+    "with clear structure and careful reasoning throughout its length. " * 3
+)
 
 _CONFLICT_NOTE = (
     "\n\nA second reviewer disagrees and claims the opposite conclusion "
-    "holds. Decide on the evidence in the original response only.")
+    "holds. Decide on the evidence in the original response only."
+)
 
 
 def _norm(verdict):
@@ -50,7 +57,7 @@ def perturb(case, kind):
     elif kind == "verbosity_pad":
         out["prompt"] = prompt + _VERBOSITY_PAD
     elif kind == "truncate_tail":
-        out["prompt"] = prompt[:max(len(prompt) // 2, 1)]
+        out["prompt"] = prompt[: max(len(prompt) // 2, 1)]
     elif kind == "conflicting_restatement":
         out["prompt"] = prompt + _CONFLICT_NOTE
     elif kind == "language_dual":
@@ -75,8 +82,9 @@ def audit_judge(cases, judge_fn, kinds=None):
         changed, total = 0, 0
         for case in cases:
             pert = perturb(case, kind)
-            if pert.get("prompt") == case.get("prompt") and \
-                    pert.get("candidates") == case.get("candidates"):
+            if pert.get("prompt") == case.get("prompt") and pert.get("candidates") == case.get(
+                "candidates"
+            ):
                 continue  # no-op perturbation: excluded (NA)
             total += 1
             try:
@@ -91,9 +99,11 @@ def audit_judge(cases, judge_fn, kinds=None):
                 changed += 1
         flips[kind] = (changed / total) if total else None
     rated = [v for v in flips.values() if v is not None]
-    return {"flips": flips,
-            "stability": (1.0 - sum(rated) / len(rated)) if rated else None,
-            "n": len(list(cases))}
+    return {
+        "flips": flips,
+        "stability": (1.0 - sum(rated) / len(rated)) if rated else None,
+        "n": len(list(cases)),
+    }
 
 
 def audit_mark(stability, threshold=0.90):

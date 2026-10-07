@@ -193,10 +193,7 @@ def stub_chat_factory(note="stub"):
     """
 
     def chat(messages, **kwargs):
-        text = (
-            f"STUB-REPLY ({note}): no model attached; "
-            "this run validates harness plumbing only."
-        )
+        text = f"STUB-REPLY ({note}): no model attached; this run validates harness plumbing only."
         return text, 0.0, {"stub": True}
 
     return chat
@@ -272,9 +269,7 @@ def build_manifest(
         "harness_sha256": harness_sha256,
         "harness_git_sha": _git_sha(),
         "backend": backend,
-        "provider_profile": (
-            provider_profile or backend_capabilities.get("provider_profile")
-        ),
+        "provider_profile": (provider_profile or backend_capabilities.get("provider_profile")),
         "backend_capabilities": backend_capabilities,
         "model": model,
         "model_sha256": sha256_bytes(("model:" + str(model)).encode()),
@@ -332,9 +327,7 @@ def collect_environment():
     }
 
 
-def _void_attempt(
-    run_id, model_id, family, instance_id, variant, trial_id, cause, detail
-):
+def _void_attempt(run_id, model_id, family, instance_id, variant, trial_id, cause, detail):
     """Schema-valid VOID attempt for round-level failures (Y-1).
 
     cause: one of STATUS_CAUSES keys (classify_cause maps to VOID/ERROR).
@@ -460,9 +453,7 @@ def _run_suite_loop(
                         # (bypass capability gate; failures then ERROR).
                         if "force" in _supported_params(executor.run_family):
                             call_kwargs["force"] = force
-                        attempt, response = executor.run_family(
-                            family, chat, **call_kwargs
-                        )
+                        attempt, response = executor.run_family(family, chat, **call_kwargs)
                     except Exception as e:
                         # Scope refusals are round-level errors, not VOID
                         # attempts (Y-4/Y-7: no bundle, clean CLI error).
@@ -472,10 +463,7 @@ def _run_suite_loop(
                         # attempt. Emitting VOID here would corrupt the
                         # coverage denominator with non-attempts.
                         msg = str(e)
-                        if (
-                            type(e).__name__ == "TypeError"
-                            and "not supported for family" in msg
-                        ):
+                        if type(e).__name__ == "TypeError" and "not supported for family" in msg:
                             prog.finish_attempt("SKIPPED-NA")
                             continue
                         # Fail-open rounds are forbidden: record VOID and
@@ -568,9 +556,7 @@ def run_suite(
             require_model_modality,
         )
     declared = parse_model_modalities(model_modalities)
-    require_model_modality(
-        suite, SUITE_MODALITIES.get(suite, DEFAULT_SUITE_MODALITY), declared
-    )
+    require_model_modality(suite, SUITE_MODALITIES.get(suite, DEFAULT_SUITE_MODALITY), declared)
     if model_type is not None:
         try:
             from safety import stages_for_type
@@ -585,9 +571,7 @@ def run_suite(
             raise VoidRun(f"round VOID: {e}")
     # Hidden suites refuse BEFORE any model call, with no bundle (Y-4).
     hidden_gate = getattr(executor, "require_hidden_scope", None)
-    if hidden_gate is not None and scope != getattr(
-        executor, "HIDDEN_SCOPE", "hidden-ok"
-    ):
+    if hidden_gate is not None and scope != getattr(executor, "HIDDEN_SCOPE", "hidden-ok"):
         hidden_gate(scope)
     fams = list(families) if families else suite_families(suite, executor)
     run_id = run_id or make_run_id("RUN-{}".format(suite.replace("-", "")))
@@ -779,19 +763,13 @@ def health_snapshot(out_root=None):
                         attempts.append(json.loads(line))
     by_task_status = {}
     for a in attempts:
-        by_task_status.setdefault(a.get("task_family_id"), []).append(
-            a.get("primary_status")
-        )
+        by_task_status.setdefault(a.get("task_family_id"), []).append(a.get("primary_status"))
     n_error = sum(1 for a in attempts if a.get("primary_status") == "ERROR")
     tasks = {}
     for task, statuses in by_task_status.items():
         tasks[task] = {"flakiness": flakiness_snapshot(statuses)}
     matrix = build_model_task_matrix(attempts) if attempts else {}
-    disc = (
-        {t: discrimination_snapshot(matrix, t) for t in by_task_status}
-        if matrix
-        else {}
-    )
+    disc = {t: discrimination_snapshot(matrix, t) for t in by_task_status} if matrix else {}
     # Contamination pairs (P2-14): per-family (canonical, novel) pass
     # rates over scored attempts; novel = novel/adversarial/hidden
     # variants. Retention collapse flags the TASK for rotation.

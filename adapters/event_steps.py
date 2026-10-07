@@ -32,23 +32,28 @@ def normalize_jsonl_events(stdout, trunc=2000):
         if not isinstance(ev, dict):
             raw.append(line)
             continue
-        tool = (ev.get("tool") or ev.get("function") or ev.get("name")
-                or ev.get("type") or "event")
+        tool = ev.get("tool") or ev.get("function") or ev.get("name") or ev.get("type") or "event"
         args = ev.get("args") or ev.get("input") or ev.get("params") or {}
         result = ev.get("result") or ev.get("output") or ev.get("text") or ev
         if isinstance(result, (dict, list)):
             result = json.dumps(result, ensure_ascii=False)[:trunc]
-        steps.append({"tool": str(tool)[:80],
-                      "args": args if isinstance(args, dict)
-                      else {"value": str(args)[:trunc]},
-                      "result": str(result)[:trunc]})
+        steps.append(
+            {
+                "tool": str(tool)[:80],
+                "args": args if isinstance(args, dict) else {"value": str(args)[:trunc]},
+                "result": str(result)[:trunc],
+            }
+        )
     if raw:
-        steps.append({"tool": "raw_output",
-                      "args": {},
-                      "result": "\n".join(raw)[-trunc:]})
+        steps.append({"tool": "raw_output", "args": {}, "result": "\n".join(raw)[-trunc:]})
     if not steps:
-        steps.append({"tool": "raw_output", "args": {},
-                      "result": (stdout or "")[-trunc:] or "(empty CLI output)"})
+        steps.append(
+            {
+                "tool": "raw_output",
+                "args": {},
+                "result": (stdout or "")[-trunc:] or "(empty CLI output)",
+            }
+        )
     for i, s in enumerate(steps, 1):
         s["index"] = i
     return steps

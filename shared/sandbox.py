@@ -16,6 +16,8 @@ import tempfile
 import time
 import uuid
 from collections import deque
+from collections.abc import Callable, Sequence
+from typing import Any
 
 
 class SandboxPathEscape(ValueError):
@@ -72,12 +74,10 @@ _SANDBOX_MEMORY = "1g"
 _SANDBOX_CPUS = "2"
 _SANDBOX_PIDS = "128"
 _MAX_OUTPUT_BYTES = 1_048_576
-_OUTPUT_TRUNCATION_MARKER = (
-    "[output truncated; retained last %d bytes]\n" % _MAX_OUTPUT_BYTES
-)
+_OUTPUT_TRUNCATION_MARKER = "[output truncated; retained last %d bytes]\n" % _MAX_OUTPUT_BYTES
 
 
-def _forbidden_dynamic():
+def _forbidden_dynamic() -> tuple[str, ...]:
     """Per-user secret dirs (fail-closed even when $HOME is unusual)."""
     home = os.path.expanduser("~")
     if not home or home == "~":
@@ -85,17 +85,17 @@ def _forbidden_dynamic():
     return (os.path.join(home, ".aws"), os.path.join(home, ".ssh"))
 
 
-def create_sandbox(prefix="emox_sandbox_"):
+def create_sandbox(prefix: str = "emox_sandbox_") -> str:
     """Create a sandbox-only temp dir. Returns its path. SPEC 35."""
     return tempfile.mkdtemp(prefix=prefix)
 
 
-def destroy_sandbox(path):
+def destroy_sandbox(path: str) -> None:
     """Remove a sandbox dir. SPEC 35."""
     shutil.rmtree(path, ignore_errors=True)
 
 
-def resolve_sandbox_path(root, relpath):
+def resolve_sandbox_path(root: str, relpath: str | os.PathLike[str] | None) -> str:
     """Resolve relpath inside root; raise SandboxPathEscape on escape. SPEC 35.
 
     Canonicalizes via realpath (symlinks resolved) and confines with
@@ -113,9 +113,7 @@ def resolve_sandbox_path(root, relpath):
         # Absolute paths are only allowed if already inside root.
         full = os.path.realpath(os.path.normpath(rel))
     else:
-        full = os.path.realpath(
-            os.path.normpath(os.path.join(root_real, rel.lstrip("/")))
-        )
+        full = os.path.realpath(os.path.normpath(os.path.join(root_real, rel.lstrip("/"))))
     try:
         inside = full == root_real or os.path.commonpath([full, root_real]) == root_real
     except ValueError:
@@ -129,13 +127,13 @@ def resolve_sandbox_path(root, relpath):
     return full
 
 
-def _refuse_symlink(path, relpath):
+def _refuse_symlink(path: str, relpath: object) -> None:
     """Raise SandboxPathEscape if a lexical path is (or traverses) a symlink."""
     if os.path.islink(path):
         raise SandboxPathEscape(f"symlink refused: {relpath!r}")
 
 
-def write_sandbox_file(root, relpath, content):
+def write_sandbox_file(root: str, relpath: str | os.PathLike[str], content: str) -> str:
     """Write text content to a file inside the sandbox. SPEC 35.
 
     Refuses symlinked targets (O_NOFOLLOW) so a model-planted
@@ -161,7 +159,7 @@ def write_sandbox_file(root, relpath, content):
     return full
 
 
-def _clean_env():
+def _clean_env() -> dict[str, str]:
     """Return a minimal environment for compatibility callers.
 
     Docker-backed execution does not inherit this environment; the
@@ -177,7 +175,7 @@ def _clean_env():
     return env
 
 
-def _docker_client_env():
+def _docker_client_env() -> dict[str, str]:
     """Environment for the trusted Docker client, never passed to the container."""
     env = {}
     for key in _DOCKER_CLIENT_ENV_KEYS:
@@ -188,7 +186,7 @@ def _docker_client_env():
     return env
 
 
-def _container_args(argv, root):
+def _container_args(argv: Sequence[str], root: str) -> list[str]:
     """Translate host paths inside the bound workdir to container paths."""
     translated = []
     for arg in argv:
@@ -209,7 +207,7 @@ def _container_args(argv, root):
     return translated
 
 
-def _stop_container(docker, name, env):
+def _stop_container(docker: str, name: str, env: dict[str, str]) -> None:
     """Kill a container whose Docker client timed out."""
     proc = subprocess.run(
         [docker, "kill", name], capture_output=True, text=True, timeout=10, env=env
@@ -221,7 +219,12 @@ def _stop_container(docker, name, env):
     )
 
 
-def run_in_sandbox(argv, sandbox_dir=None, timeout=30, input_text=None):
+def run_in_sandbox(
+    argv: Sequence[str],
+    sandbox_dir: str | None = None,
+    timeout: float = 30,
+    input_text: str | None = None,
+) -> tuple[int, str]:
     """Run argv in a networkless, read-only Docker sandbox. SPEC 35.
 
     Only the dedicated temporary work directory is mounted read/write.
@@ -234,9 +237,7 @@ def run_in_sandbox(argv, sandbox_dir=None, timeout=30, input_text=None):
     root = os.path.realpath(root)
     temp_root = os.path.realpath(tempfile.gettempdir())
     try:
-        confined = (
-            root != temp_root and os.path.commonpath([root, temp_root]) == temp_root
-        )
+        confined = root != temp_root and os.path.commonpath([root, temp_root]) == temp_root
     except ValueError:
         confined = False
     if not os.path.isdir(root) or not confined:
@@ -305,9 +306,7 @@ def run_in_sandbox(argv, sandbox_dir=None, timeout=30, input_text=None):
         stdout = proc.stdout
         stdin = proc.stdin
         if stdout is None:
-            raise SandboxRuntimeUnavailable(
-                "Docker sandbox output stream was not created"
-            )
+            raise SandboxRuntimeUnavailable("Docker sandbox output stream was not created")
         output: deque[bytes] = deque()
         output_size = 0
         truncated = False
@@ -354,9 +353,7 @@ def run_in_sandbox(argv, sandbox_dir=None, timeout=30, input_text=None):
                             stdout.close()
                             output_open = False
                             continue
-                        truncated = (
-                            truncated or output_size + len(chunk) > _MAX_OUTPUT_BYTES
-                        )
+                        truncated = truncated or output_size + len(chunk) > _MAX_OUTPUT_BYTES
                         output.append(chunk)
                         output_size += len(chunk)
                         while output_size > _MAX_OUTPUT_BYTES:
@@ -388,9 +385,7 @@ def run_in_sandbox(argv, sandbox_dir=None, timeout=30, input_text=None):
         raise
     except OSError as e:
         if proc is None:
-            raise SandboxRuntimeUnavailable(
-                f"unable to start Docker sandbox: {e}"
-            ) from e
+            raise SandboxRuntimeUnavailable(f"unable to start Docker sandbox: {e}") from e
         raise
     finally:
         if proc is not None and proc.poll() is None:
@@ -400,7 +395,7 @@ def run_in_sandbox(argv, sandbox_dir=None, timeout=30, input_text=None):
             destroy_sandbox(root)
 
 
-def run_python_code(code, test="", timeout=30):
+def run_python_code(code: str, test: str = "", timeout: float = 30) -> tuple[bool, str]:
     """Run python code+test in a sandbox. Returns (ok, log_tail). SPEC 35."""
     rc, tail = run_in_sandbox(["python3", "-c", code + "\n" + test], timeout=timeout)
     return rc == 0, tail
@@ -413,14 +408,20 @@ _SAFE_ARG_RE = re.compile(r"^[\w\-./=:+]+$")
 # character inert. Blindly dropping ':' would break real debugging.
 
 
-def _confine_root(root):
+def _confine_root(root: Any) -> str:
     """Return root if it is an existing dir, else raise ValueError."""
     if not isinstance(root, str) or not os.path.isdir(root):
         raise ValueError(f"sandbox root is not a directory: {root!r}")
     return root
 
 
-def safe_tool_run(cmd, ctx, ls_fn, safe_fn, timeout=120):
+def safe_tool_run(
+    cmd: str,
+    ctx: Any,
+    ls_fn: Callable[..., tuple[bool, str]],
+    safe_fn: Callable[..., str],
+    timeout: float = 120,
+) -> tuple[bool, str]:
     """Execute one agent `run` command with NO shell. Audit fix D1.
 
     Closed grammar (same documented contract as before: only

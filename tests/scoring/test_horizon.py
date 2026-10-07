@@ -22,23 +22,28 @@ class TestHorizon(unittest.TestCase):
         self.assertIsNone(scoring.survival_at_k(0, 0))
 
     def test_human_minutes(self):
-        tasks = [{"human_minutes": 10, "score": 1.0},
-                 {"human_minutes": 20, "score": 0.5},
-                 {"human_minutes": None, "score": 1.0}]
+        tasks = [
+            {"human_minutes": 10, "score": 1.0},
+            {"human_minutes": 20, "score": 0.5},
+            {"human_minutes": None, "score": 1.0},
+        ]
         self.assertAlmostEqual(scoring.human_minutes_solved(tasks), 20.0)
-        strict = [{"human_minutes": 10, "strict_pass": True},
-                  {"human_minutes": 20, "strict_pass": False}]
+        strict = [
+            {"human_minutes": 10, "strict_pass": True},
+            {"human_minutes": 20, "strict_pass": False},
+        ]
         self.assertAlmostEqual(scoring.human_minutes_strict(strict), 10.0)
-        self.assertAlmostEqual(scoring.human_minutes_rate(tasks),
-                               20.0 / 30.0)
+        self.assertAlmostEqual(scoring.human_minutes_rate(tasks), 20.0 / 30.0)
         self.assertIsNone(scoring.human_minutes_solved([]))
 
     def test_time_horizon_valid(self):
         # easy tasks pass, hard tasks fail -> decreasing curve, valid
-        tasks = [{"human_minutes": 1, "n_attempts": 10, "n_success": 9},
-                 {"human_minutes": 2, "n_attempts": 10, "n_success": 8},
-                 {"human_minutes": 10, "n_attempts": 10, "n_success": 3},
-                 {"human_minutes": 30, "n_attempts": 10, "n_success": 1}]
+        tasks = [
+            {"human_minutes": 1, "n_attempts": 10, "n_success": 9},
+            {"human_minutes": 2, "n_attempts": 10, "n_success": 8},
+            {"human_minutes": 10, "n_attempts": 10, "n_success": 3},
+            {"human_minutes": 30, "n_attempts": 10, "n_success": 1},
+        ]
         out = scoring.time_horizon_fit(tasks)
         self.assertTrue(out["valid"])
         self.assertTrue(out["converged"])
@@ -49,17 +54,21 @@ class TestHorizon(unittest.TestCase):
 
     def test_time_horizon_beta_nonneg_invalid(self):
         # harder tasks succeed MORE -> beta >= 0 -> invalid (B46)
-        tasks = [{"human_minutes": 1, "n_attempts": 10, "n_success": 1},
-                 {"human_minutes": 2, "n_attempts": 10, "n_success": 3},
-                 {"human_minutes": 10, "n_attempts": 10, "n_success": 8},
-                 {"human_minutes": 30, "n_attempts": 10, "n_success": 9}]
+        tasks = [
+            {"human_minutes": 1, "n_attempts": 10, "n_success": 1},
+            {"human_minutes": 2, "n_attempts": 10, "n_success": 3},
+            {"human_minutes": 10, "n_attempts": 10, "n_success": 8},
+            {"human_minutes": 30, "n_attempts": 10, "n_success": 9},
+        ]
         out = scoring.time_horizon_fit(tasks)
         self.assertFalse(out["valid"])
         self.assertIsNone(out["h50"])
 
     def test_time_horizon_excludes_missing(self):
-        tasks = [{"human_minutes": None, "n_attempts": 5, "n_success": 3},
-                 {"human_minutes": 5, "n_attempts": 0, "n_success": 0}]
+        tasks = [
+            {"human_minutes": None, "n_attempts": 5, "n_success": 3},
+            {"human_minutes": 5, "n_attempts": 0, "n_success": 0},
+        ]
         out = scoring.time_horizon_fit(tasks)
         self.assertFalse(out["valid"])  # C64: nothing eligible
         self.assertFalse(out["converged"])
@@ -67,10 +76,12 @@ class TestHorizon(unittest.TestCase):
     def test_non_convergent_fit_is_invalid(self):
         # starving the solver of iterations must fail closed, never
         # read as a valid fit (auditor P1-15).
-        tasks = [{"human_minutes": 1, "n_attempts": 10, "n_success": 9},
-                 {"human_minutes": 2, "n_attempts": 10, "n_success": 8},
-                 {"human_minutes": 10, "n_attempts": 10, "n_success": 3},
-                 {"human_minutes": 30, "n_attempts": 10, "n_success": 1}]
+        tasks = [
+            {"human_minutes": 1, "n_attempts": 10, "n_success": 9},
+            {"human_minutes": 2, "n_attempts": 10, "n_success": 8},
+            {"human_minutes": 10, "n_attempts": 10, "n_success": 3},
+            {"human_minutes": 30, "n_attempts": 10, "n_success": 1},
+        ]
         out = scoring.time_horizon_fit(tasks, max_iter=1)
         self.assertFalse(out["converged"])
         self.assertFalse(out["valid"])

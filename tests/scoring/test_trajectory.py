@@ -33,8 +33,7 @@ class TestStopVerifyDrift(unittest.TestCase):
 
     def test_stale_replan(self):
         self.assertAlmostEqual(scoring.stale_plan_rate(2, 4), 0.5)
-        self.assertAlmostEqual(
-            scoring.correct_replanning_rate(3, 4), 0.75)
+        self.assertAlmostEqual(scoring.correct_replanning_rate(3, 4), 0.75)
         self.assertIsNone(scoring.stale_plan_rate(0, 0))
         self.assertIsNone(scoring.correct_replanning_rate(0, 0))
 
@@ -46,64 +45,49 @@ class TestStopVerifyDrift(unittest.TestCase):
             {"primary_status": "VOID", "primary_failure": None},
         ]
         fp = scoring.failure_fingerprint(events)
-        self.assertAlmostEqual(fp["WRONG_TOOL"] + fp["WRONG_RESULT"],
-                               2 / 3)
+        self.assertAlmostEqual(fp["WRONG_TOOL"] + fp["WRONG_RESULT"], 2 / 3)
         self.assertEqual(scoring.failure_fingerprint([]), {})
 
 
 class TestTrajectoryJudge(unittest.TestCase):
     def test_precedence_c25(self):
         self.assertEqual(
-            trajectory.classify_primary_failure(
-                ["WRONG_RESULT", "WRONG_TOOL"]), "WRONG_TOOL")
-        self.assertEqual(
-            trajectory.classify_primary_failure(["STALE_PLAN"]),
-            "STALE_PLAN")
+            trajectory.classify_primary_failure(["WRONG_RESULT", "WRONG_TOOL"]), "WRONG_TOOL"
+        )
+        self.assertEqual(trajectory.classify_primary_failure(["STALE_PLAN"]), "STALE_PLAN")
         self.assertIsNone(trajectory.classify_primary_failure([]))
 
     def test_exactly_one_primary(self):
-        rec = trajectory.validate_failure_record(
-            "WRONG_TOOL", ["WRONG_ARGUMENT"])
+        rec = trajectory.validate_failure_record("WRONG_TOOL", ["WRONG_ARGUMENT"])
         self.assertEqual(rec["primary_failure"], "WRONG_TOOL")
         with self.assertRaises(ValueError):
-            trajectory.validate_failure_record(
-                "WRONG_TOOL", ["WRONG_TOOL"])
+            trajectory.validate_failure_record("WRONG_TOOL", ["WRONG_TOOL"])
         with self.assertRaises(ValueError):
             trajectory.validate_failure_record(None, ["WRONG_TOOL"])
 
     def test_deterministic_oracles(self):
-        self.assertEqual(
-            deterministic.exact_match("a", "a")["verdict"], "PASS")
-        self.assertEqual(
-            deterministic.exact_match("a", "b")["verdict"], "FAIL")
-        self.assertEqual(
-            deterministic.numeric_match("1.0", 1.0, 0.01)["verdict"],
-            "PASS")
-        self.assertEqual(
-            deterministic.set_match([1, 2], [2, 1])["verdict"], "PASS")
+        self.assertEqual(deterministic.exact_match("a", "a")["verdict"], "PASS")
+        self.assertEqual(deterministic.exact_match("a", "b")["verdict"], "FAIL")
+        self.assertEqual(deterministic.numeric_match("1.0", 1.0, 0.01)["verdict"], "PASS")
+        self.assertEqual(deterministic.set_match([1, 2], [2, 1])["verdict"], "PASS")
 
     def test_execution_oracles(self):
         self.assertEqual(execution.tests_verdict(5, 5)["verdict"], "PASS")
-        self.assertEqual(execution.tests_verdict(3, 5)["verdict"],
-                         "PARTIAL")
+        self.assertEqual(execution.tests_verdict(3, 5)["verdict"], "PARTIAL")
         self.assertEqual(execution.tests_verdict(0, 0)["verdict"], "VOID")
-        self.assertEqual(
-            execution.exit_code_verdict(0)["verdict"], "PASS")
+        self.assertEqual(execution.exit_code_verdict(0)["verdict"], "PASS")
 
     def test_llm_judge_reliability_hooks(self):
         rep = llm_judge.reliability_report(
-            ["PASS", "FAIL", "PASS"], ["PASS", "FAIL", "FAIL"],
-            kind="binary")
+            ["PASS", "FAIL", "PASS"], ["PASS", "FAIL", "FAIL"], kind="binary"
+        )
         self.assertIn("reliability", rep)
         self.assertIn(rep["mark"], ("OK", "LOW-CONFIDENCE"))
-        bad = llm_judge.reliability_report([1, 1, 1, 1],
-                                           [1, 0, 1, 0], kind="binary")
+        bad = llm_judge.reliability_report([1, 1, 1, 1], [1, 0, 1, 0], kind="binary")
         self.assertEqual(bad["mark"], "LOW-CONFIDENCE")
         self.assertFalse(bad["usable_as_headline"])
-        self.assertEqual(
-            llm_judge.parse_judge_verdict("pass")["verdict"], "PASS")
-        self.assertEqual(
-            llm_judge.parse_judge_verdict("???")["verdict"], "INVALID")
+        self.assertEqual(llm_judge.parse_judge_verdict("pass")["verdict"], "PASS")
+        self.assertEqual(llm_judge.parse_judge_verdict("???")["verdict"], "INVALID")
 
 
 if __name__ == "__main__":

@@ -20,9 +20,16 @@ import trajectory
 
 
 def ev(task, inst, status, score, **kw):
-    d = {"run_id": "R", "model_id": "M", "task_family_id": task,
-         "instance_id": inst, "variant_class": "canonical",
-         "trial_id": 1, "primary_status": status, "score": score}
+    d = {
+        "run_id": "R",
+        "model_id": "M",
+        "task_family_id": task,
+        "instance_id": inst,
+        "variant_class": "canonical",
+        "trial_id": 1,
+        "primary_status": status,
+        "score": score,
+    }
     d.update(kw)
     return d
 
@@ -75,11 +82,9 @@ class TestGoldenEdgeTableC82(unittest.TestCase):
         self.assertIsNone(scoring.recovery_rate([]))
 
     def test_missing_human_time_excluded(self):
-        out = scoring.time_horizon_fit(
-            [{"human_minutes": None, "n_attempts": 3, "n_success": 1}])
+        out = scoring.time_horizon_fit([{"human_minutes": None, "n_attempts": 3, "n_success": 1}])
         self.assertFalse(out["valid"])
-        self.assertIsNone(scoring.human_minutes_solved(
-            [{"human_minutes": None, "score": 1.0}]))
+        self.assertIsNone(scoring.human_minutes_solved([{"human_minutes": None, "score": 1.0}]))
 
     def test_missing_confidence_excluded(self):
         cases = [{"confidence": None, "outcome": 1}]
@@ -94,11 +99,9 @@ class TestGoldenEdgeTableC82(unittest.TestCase):
 
     def test_model_timeout_is_zero(self):
         # model-caused TIMEOUT is scored 0, FAIL-equivalent (C7)
-        events = [ev("T", "i1", "TIMEOUT", 0.0),
-                  ev("T", "i2", "PASS", 1.0)]
+        events = [ev("T", "i1", "TIMEOUT", 0.0), ev("T", "i2", "PASS", 1.0)]
         self.assertAlmostEqual(scoring.pass_rate(events), 0.5)
-        prim = trajectory.classify_primary_failure(["TIMEOUT",
-                                                    "WRONG_RESULT"])
+        prim = trajectory.classify_primary_failure(["TIMEOUT", "WRONG_RESULT"])
         self.assertEqual(prim, "TIMEOUT")  # precedence C25
 
     def test_invalid_scored_zero(self):

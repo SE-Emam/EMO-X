@@ -26,8 +26,7 @@ def make_instance_id(family, variant=CANONICAL_VARIANT, index=1):
     return "%s-%s-%05d" % (family, variant, index)
 
 
-def make_instance(family, prompt_text, manifest,
-                  variant=CANONICAL_VARIANT, index=1, seed=0):
+def make_instance(family, prompt_text, manifest, variant=CANONICAL_VARIANT, index=1, seed=0):
     """Build a canonical instance record with recorded seed + hashes."""
     instance_id = make_instance_id(family, variant, index)
     return {

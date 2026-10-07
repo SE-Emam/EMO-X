@@ -32,8 +32,7 @@ except ImportError:  # standalone `python adapters/x.py`
         from event_steps import normalize_jsonl_events
         from _base import final_diff, decode_bytes, timeout_trace
     except ImportError:
-        sys.path.insert(0, os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "..", "shared"))
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "shared"))
         from _log import configure as _configure, get_logger
         from event_steps import normalize_jsonl_events
         from _base import final_diff, decode_bytes, timeout_trace
@@ -80,18 +79,21 @@ def configure(bin=None, argv_template=None):
     if argv_template is not None:
         _config["argv_template"] = argv_template
     elif not _config["argv_template"]:
-        _config["argv_template"] = (os.environ.get("GENERIC_CLI_ARGV")
-                                    or "run --model {model} {prompt}")
+        _config["argv_template"] = (
+            os.environ.get("GENERIC_CLI_ARGV") or "run --model {model} {prompt}"
+        )
     return dict(_config)
 
 
 def _resolve():
     cfg = configure()
     if not cfg["bin"]:
-        return None, "generic adapter unconfigured: set --bin or " \
-            "GENERIC_CLI_BIN (plus --argv-template/GENERIC_CLI_ARGV)"
-    exe = cfg["bin"] if os.path.isfile(cfg["bin"]) \
-        else shutil.which(cfg["bin"])
+        return (
+            None,
+            "generic adapter unconfigured: set --bin or "
+            "GENERIC_CLI_BIN (plus --argv-template/GENERIC_CLI_ARGV)",
+        )
+    exe = cfg["bin"] if os.path.isfile(cfg["bin"]) else shutil.which(cfg["bin"])
     if not exe:
         return None, "generic adapter binary not found: %r" % cfg["bin"]
     return {"bin": exe, "template": cfg["argv_template"]}, None
@@ -122,8 +124,7 @@ def _build_argv(resolved, model_id, task_dir):
     splits on whitespace (documented, never silently re-joined).
     """
     parts = shlex.split(resolved["template"])
-    return [p.format(prompt=GENERIC_TASK, model=model_id or "",
-                     dir=task_dir) for p in parts]
+    return [p.format(prompt=GENERIC_TASK, model=model_id or "", dir=task_dir) for p in parts]
 
 
 def harness_spec(model_id, task_dir, timeout_s=TIMEOUT_S):
@@ -140,8 +141,7 @@ def harness_spec(model_id, task_dir, timeout_s=TIMEOUT_S):
         "tool_list": "(CLI-harness-controlled, see cli_capabilities)",
         "tools_restricted_by_adapter": False,
         "stop_rule": STOP_RULE,
-        "budget": {"timeout_s": timeout_s, "max_steps": None,
-                   "note": "wall-clock timeout only."},
+        "budget": {"timeout_s": timeout_s, "max_steps": None, "note": "wall-clock timeout only."},
         "task_dir": task_dir,
         "comparability": COMPARABILITY,
     }
@@ -162,33 +162,44 @@ def run_episode(task_dir, model_id, timeout_s=TIMEOUT_S):
         raise RuntimeError(err)
     if not os.path.isdir(task_dir):
         raise RuntimeError("task_dir does not exist: %s" % task_dir)
-    argv = [resolved["bin"]] + _build_argv(
-        resolved, model_id, task_dir)
+    argv = [resolved["bin"]] + _build_argv(resolved, model_id, task_dir)
     try:
-        p = subprocess.run(argv, cwd=task_dir, capture_output=True,
-                           text=True, timeout=timeout_s)
+        p = subprocess.run(argv, cwd=task_dir, capture_output=True, text=True, timeout=timeout_s)
     except subprocess.TimeoutExpired as e:
         out = decode_bytes(e.stdout)
         err_text = decode_bytes(e.stderr)
         steps = normalize_jsonl_events(out, trunc=TRUNC_STEP)
         diff, files, _ = final_diff(task_dir, trunc_diff=TRUNC_DIFF)
         return timeout_trace(
-            ADAPTER_NAME, model_id, task_dir, steps, err_text,
-            timeout_s, harness_spec(model_id, task_dir, timeout_s),
-            COMPARABILITY, diff=diff, files=files)
+            ADAPTER_NAME,
+            model_id,
+            task_dir,
+            steps,
+            err_text,
+            timeout_s,
+            harness_spec(model_id, task_dir, timeout_s),
+            COMPARABILITY,
+            diff=diff,
+            files=files,
+        )
     if p.returncode != 0:
-        raise RuntimeError("CLI exit %d: %s"
-                           % (p.returncode, (p.stderr or "")[-300:]))
+        raise RuntimeError("CLI exit %d: %s" % (p.returncode, (p.stderr or "")[-300:]))
     steps = normalize_jsonl_events(p.stdout, trunc=TRUNC_STEP)
     diff, files, _ = final_diff(task_dir, trunc_diff=TRUNC_DIFF)
-    return {"adapter": ADAPTER_NAME, "model_id": model_id,
-            "task_dir": task_dir,
-            "harness": harness_spec(model_id, task_dir, timeout_s),
-            "steps": steps, "final_diff": diff, "diff_files": files,
-            "stopped_cleanly": True, "timed_out": False,
-            "exit_code": p.returncode,
-            "stderr_tail": (p.stderr or "")[-500:],
-            "comparability": COMPARABILITY}
+    return {
+        "adapter": ADAPTER_NAME,
+        "model_id": model_id,
+        "task_dir": task_dir,
+        "harness": harness_spec(model_id, task_dir, timeout_s),
+        "steps": steps,
+        "final_diff": diff,
+        "diff_files": files,
+        "stopped_cleanly": True,
+        "timed_out": False,
+        "exit_code": p.returncode,
+        "stderr_tail": (p.stderr or "")[-500:],
+        "comparability": COMPARABILITY,
+    }
 
 
 def main(argv=None):

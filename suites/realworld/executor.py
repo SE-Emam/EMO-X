@@ -233,11 +233,7 @@ def run_rw_episode(family, chat, max_steps=AGENT_MAX_STEPS):
                 break
             lat += dt
             toks += ev if isinstance(ev, int) else 0
-            fn, params = (
-                ep.parse_tool_call(text)
-                if hasattr(ep, "parse_tool_call")
-                else (None, {})
-            )
+            fn, params = ep.parse_tool_call(text) if hasattr(ep, "parse_tool_call") else (None, {})
             if fn is None:
                 try:
                     from bench_lib import parse_tool_call as _ptc
@@ -394,9 +390,7 @@ def run_family(
         raise TypeError(f"variant {v!r} not supported for family {family!r}")
     if family not in FAMILY_IDS:
         raise KeyError(f"unknown realworld family: {family!r}")
-    result, trajectory = run_rw_episode(
-        family, chat, max_steps=max_steps or AGENT_MAX_STEPS
-    )
+    result, trajectory = run_rw_episode(family, chat, max_steps=max_steps or AGENT_MAX_STEPS)
     passed = bool(result.get("success"))
     status = "PASS" if passed else "FAIL"
     attempt = validate_attempt(

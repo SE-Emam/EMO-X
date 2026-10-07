@@ -112,9 +112,7 @@ def _validate_diff_paths(diff):
 # imports the legacy CLI-entangled modules.
 
 CODE_FENCE_RE = re.compile(r"```(\w*)\n(.*?)```", re.S)
-CALL_RE = re.compile(
-    r"<tool_call>\s*<function=([\w.]+)>\s*(.*?)</function>\s*</tool_call>", re.S
-)
+CALL_RE = re.compile(r"<tool_call>\s*<function=([\w.]+)>\s*(.*?)</function>\s*</tool_call>", re.S)
 PARAM_RE = re.compile(r"<parameter=([\w]+)>\s*(.*?)\s*</parameter>", re.S)
 
 
@@ -349,9 +347,7 @@ def _fold_accents(text):
     import unicodedata
 
     text = (text or "").lower()
-    return "".join(
-        c for c in unicodedata.normalize("NFD", text) if unicodedata.category(c) != "Mn"
-    )
+    return "".join(c for c in unicodedata.normalize("NFD", text) if unicodedata.category(c) != "Mn")
 
 
 def _all_groups_hit(text, groups):
@@ -494,15 +490,11 @@ def check_family(family, reply):
     reply = strip_special_tokens(reply)
     if family == "T2":
         code = extract_code(reply, "python")
-        ok, log = _py_ok(
-            code, "assert fib(0)==0 and fib(1)==1 and fib(10)==55; print('FIB_OK')"
-        )
+        ok, log = _py_ok(code, "assert fib(0)==0 and fib(1)==1 and fib(10)==55; print('FIB_OK')")
         return bool(ok and "FIB_OK" in log), log
     if family == "T3":
         code = extract_code(reply, "python")
-        ok, log = _py_ok(
-            code, "assert is_even(4)==True and is_even(5)==False; print('FIX_OK')"
-        )
+        ok, log = _py_ok(code, "assert is_even(4)==True and is_even(5)==False; print('FIX_OK')")
         return bool(ok and "FIX_OK" in log), log
     if family == "T4":
         code = extract_code(reply, "javascript") or extract_code(reply, "js")
@@ -510,8 +502,7 @@ def check_family(family, reply):
             [
                 "node",
                 "-e",
-                code + "\nif (sumArr([1,2,3,4])!==10) "
-                "throw new Error('bad'); console.log('JS_OK')",
+                code + "\nif (sumArr([1,2,3,4])!==10) throw new Error('bad'); console.log('JS_OK')",
             ],
             timeout=30,
         )
@@ -560,9 +551,7 @@ def check_family(family, reply):
         root = sandbox.create_sandbox()
         try:
             # Generated code runs only in the networkless Docker sandbox.
-            rc, out = sandbox.run_in_sandbox(
-                ["python3", "-c", code], sandbox_dir=root, timeout=30
-            )
+            rc, out = sandbox.run_in_sandbox(["python3", "-c", code], sandbox_dir=root, timeout=30)
             lines = [ln for ln in out.strip().splitlines() if ln.strip()]
             ok = rc == 0 and bool(lines) and lines[-1].strip() == "5"
             return ok, out[-500:]
@@ -605,11 +594,7 @@ def check_family(family, reply):
         finally:
             con.close()
     if family == "R3":
-        lines = [
-            ln.strip().lower()
-            for ln in (reply or "").strip().splitlines()
-            if ln.strip()
-        ]
+        lines = [ln.strip().lower() for ln in (reply or "").strip().splitlines() if ln.strip()]
         blob = " ".join(lines)
         checks = [
             "clone https://github.com/x/y.git" in blob,
@@ -691,8 +676,7 @@ def check_family(family, reply):
             else ""
         )
         ok = (
-            re.match(r"^(feat|fix|docs|refactor|test)(\(.+\))?: [a-z]", line)
-            is not None
+            re.match(r"^(feat|fix|docs|refactor|test)(\(.+\))?: [a-z]", line) is not None
             and not line.endswith(".")
             and len(line) <= 72
             and ("auth" in line or "rate" in line or "limit" in line)
@@ -783,9 +767,7 @@ def check_family(family, reply):
             "cmd" in low,
         ]
         no_latest = "latest" not in low
-        return bool(
-            all(checks) and no_latest
-        ), f"docker-checks={checks} no_latest={no_latest}"
+        return bool(all(checks) and no_latest), f"docker-checks={checks} no_latest={no_latest}"
     if family == "H1":
         return bool("126" in (reply or "")), "increasing-digits-check"
     if family == "H2":
@@ -794,9 +776,7 @@ def check_family(family, reply):
         return bool(ok), "diophantine-check"
     if family == "H3":
         clean = (reply or "").replace("*", "")
-        m = re.findall(
-            r"(?:remainder|answer|result|equals?|=)\s*:?\s*(\d+)", clean, re.I
-        )
+        m = re.findall(r"(?:remainder|answer|result|equals?|=)\s*:?\s*(\d+)", clean, re.I)
         ok = (m and m[-1] == "4") or ("remainder is 4" in clean.lower())
         return bool(ok), "modexp-check"
     if family == "H4":
@@ -923,9 +903,7 @@ def _h3_math_subtype(variant, manifest=None):
     return "linear"
 
 
-def _run_h3_dynamic(
-    chat, run_id, model_id, trial_id, index, seed, variant, subtype="linear"
-):
+def _run_h3_dynamic(chat, run_id, model_id, trial_id, index, seed, variant, subtype="linear"):
     """H3.seed -> generated instance -> same-kind oracle. SPEC 9.
 
     Surface varies (numbers/names/representation/wording/context);
@@ -940,9 +918,7 @@ def _run_h3_dynamic(
     passed, log, error_kind, err_msg = False, "", None, None
     try:
         text, secs, usage = chat(messages, **opts)
-        passed, log = check_h3_equation(
-            text, inst["oracle"]["expected"], subtype=subtype
-        )
+        passed, log = check_h3_equation(text, inst["oracle"]["expected"], subtype=subtype)
     except sandbox.SandboxTimeout as e:
         error_kind, err_msg = "timeout", str(e)[:300]
         log = f"TIMEOUT: {err_msg}"
@@ -962,10 +938,8 @@ def _run_h3_dynamic(
         "trial_id": trial_id,
         "primary_status": status,
         "score": 1.0 if status == "PASS" else 0.0,
-        "eligible_for_task_score": status
-        in ("PASS", "PARTIAL", "FAIL", "TIMEOUT", "INVALID"),
-        "eligible_for_pass_rate": status
-        in ("PASS", "PARTIAL", "FAIL", "TIMEOUT", "INVALID"),
+        "eligible_for_task_score": status in ("PASS", "PARTIAL", "FAIL", "TIMEOUT", "INVALID"),
+        "eligible_for_pass_rate": status in ("PASS", "PARTIAL", "FAIL", "TIMEOUT", "INVALID"),
         "eligible_for_efficiency": status in ("PASS", "PARTIAL", "FAIL"),
         "eligible_for_calibration": False,
         "primary_failure": None
@@ -977,9 +951,7 @@ def _run_h3_dynamic(
         ),
         "secondary_failure_tags": [],
         "seed": seed,
-        "reasoning_mode": reasoning_mode_for(
-            opts.get("think"), opts.get("num_predict")
-        ),
+        "reasoning_mode": reasoning_mode_for(opts.get("think"), opts.get("num_predict")),
         "secs": round(secs, 1) if isinstance(secs, (int, float)) else secs,
         "log": str(log)[-500:],
         "sample": (text or "")[:600],
@@ -1065,10 +1037,8 @@ def run_family(
         "trial_id": trial_id,
         "primary_status": status,
         "score": 1.0 if status == "PASS" else 0.0,
-        "eligible_for_task_score": status
-        in ("PASS", "PARTIAL", "FAIL", "TIMEOUT", "INVALID"),
-        "eligible_for_pass_rate": status
-        in ("PASS", "PARTIAL", "FAIL", "TIMEOUT", "INVALID"),
+        "eligible_for_task_score": status in ("PASS", "PARTIAL", "FAIL", "TIMEOUT", "INVALID"),
+        "eligible_for_pass_rate": status in ("PASS", "PARTIAL", "FAIL", "TIMEOUT", "INVALID"),
         "eligible_for_efficiency": status in ("PASS", "PARTIAL", "FAIL"),
         "eligible_for_calibration": False,
         "primary_failure": None
@@ -1080,9 +1050,7 @@ def run_family(
         ),
         "secondary_failure_tags": [],
         "seed": seed,
-        "reasoning_mode": reasoning_mode_for(
-            opts.get("think"), opts.get("num_predict")
-        ),
+        "reasoning_mode": reasoning_mode_for(opts.get("think"), opts.get("num_predict")),
         "secs": round(secs, 1) if isinstance(secs, (int, float)) else secs,
         "log": str(log)[-500:],
         "sample": (text or "")[:600],
@@ -1122,14 +1090,7 @@ def _validate_run_id(run_id):
     never escape out_root. Raises ValueError on refusal.
     """
     rid = run_id or ""
-    if (
-        not rid
-        or ".." in rid
-        or "/" in rid
-        or "\\" in rid
-        or rid.startswith(".")
-        or len(rid) > 128
-    ):
+    if not rid or ".." in rid or "/" in rid or "\\" in rid or rid.startswith(".") or len(rid) > 128:
         raise ValueError(f"run_id refused: {rid[:60]!r}")
 
 
@@ -1160,12 +1121,8 @@ def write_raw_run(out_root, run_manifest, attempts, responses, environment=None)
             for r in responses:
                 f.write(json.dumps(r, ensure_ascii=False) + "\n")
         env = dict(environment or {})
-        env.setdefault(
-            "written_utc", datetime.datetime.now(datetime.timezone.utc).isoformat()
-        )
-        with open(
-            os.path.join(staging, "environment.json"), "w", encoding="utf-8"
-        ) as f:
+        env.setdefault("written_utc", datetime.datetime.now(datetime.timezone.utc).isoformat())
+        with open(os.path.join(staging, "environment.json"), "w", encoding="utf-8") as f:
             json.dump(env, f, ensure_ascii=False, indent=1)
         if os.path.exists(rundir):
             raise FileExistsError(f"refusing to overwrite: {rundir!r}")

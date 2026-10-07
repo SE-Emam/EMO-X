@@ -21,11 +21,9 @@ never invented: validators reject, they do not repair.
 """
 
 try:
-    from schemas import (PRIMARY_STATUSES, SCORED_STATUSES,
-                         validate_attempt)
+    from schemas import PRIMARY_STATUSES, SCORED_STATUSES, validate_attempt
 except ImportError:
-    from shared.schemas import (PRIMARY_STATUSES, SCORED_STATUSES,
-                                validate_attempt)
+    from shared.schemas import PRIMARY_STATUSES, SCORED_STATUSES, validate_attempt
 
 _EPS = 1e-9
 
@@ -33,8 +31,7 @@ _NON_PASS_SCORED = tuple(s for s in SCORED_STATUSES if s != "PASS")
 
 
 def _identity(attempt):
-    return (attempt.get("task_family_id"), attempt.get("instance_id"),
-            attempt.get("trial_id"))
+    return (attempt.get("task_family_id"), attempt.get("instance_id"), attempt.get("trial_id"))
 
 
 def validate_failure_taxonomy(record):
@@ -45,13 +42,15 @@ def validate_failure_taxonomy(record):
         if failure is not None:
             raise ValueError(
                 "invariant PASS-has-failure: PASS must carry "
-                "primary_failure=null, got %r" % (failure,))
+                "primary_failure=null, got %r" % (failure,)
+            )
         return True
     if status in SCORED_STATUSES or status in ("ERROR",):
         if not isinstance(failure, str) or not failure.strip():
             raise ValueError(
                 "invariant FAIL-without-failure: status %r requires a "
-                "non-empty primary_failure string" % (status,))
+                "non-empty primary_failure string" % (status,)
+            )
         return True
     return True
 
@@ -63,28 +62,23 @@ def validate_attempt_semantics(record):
     score = record["score"]
     if status == "PASS":
         if abs(score - 1.0) > _EPS:
-            raise ValueError(
-                "invariant PASS-score: PASS requires score==1, got %r"
-                % (score,))
+            raise ValueError("invariant PASS-score: PASS requires score==1, got %r" % (score,))
     elif status == "PARTIAL":
         if not 0.0 < score < 1.0:
             raise ValueError(
-                "invariant PARTIAL-score: PARTIAL requires 0<score<1, "
-                "got %r" % (score,))
+                "invariant PARTIAL-score: PARTIAL requires 0<score<1, got %r" % (score,)
+            )
     elif status in PRIMARY_STATUSES:
         if abs(score - 0.0) > _EPS:
             raise ValueError(
-                "invariant non-pass-score: status %r requires score==0, "
-                "got %r" % (status, score))
+                "invariant non-pass-score: status %r requires score==0, got %r" % (status, score)
+            )
     variant = record.get("variant_class")
     if not isinstance(variant, str) or not variant.strip():
-        raise ValueError(
-            "invariant variant-class: non-empty string required, got %r"
-            % (variant,))
+        raise ValueError("invariant variant-class: non-empty string required, got %r" % (variant,))
     trial = record.get("trial_id")
     if isinstance(trial, bool) or not isinstance(trial, int) or trial < 1:
-        raise ValueError(
-            "invariant trial-id: positive int required, got %r" % (trial,))
+        raise ValueError("invariant trial-id: positive int required, got %r" % (trial,))
     validate_failure_taxonomy(record)
     return True
 
@@ -94,21 +88,16 @@ def validate_trial_integrity(trials, expected=None):
     seen = set()
     for trial in trials:
         if isinstance(trial, bool) or not isinstance(trial, int):
-            raise ValueError(
-                "invariant trial-id: positive int required, got %r"
-                % (trial,))
+            raise ValueError("invariant trial-id: positive int required, got %r" % (trial,))
         if trial < 1:
-            raise ValueError(
-                "invariant trial-id: positive int required, got %r"
-                % (trial,))
+            raise ValueError("invariant trial-id: positive int required, got %r" % (trial,))
         if trial in seen:
-            raise ValueError(
-                "invariant duplicate-trial: trial_id %r twice" % (trial,))
+            raise ValueError("invariant duplicate-trial: trial_id %r twice" % (trial,))
         seen.add(trial)
     if expected is not None and set(seen) != set(range(1, expected + 1)):
         raise ValueError(
-            "invariant trial-count: expected trials 1..%d, got %s"
-            % (expected, sorted(seen)))
+            "invariant trial-count: expected trials 1..%d, got %s" % (expected, sorted(seen))
+        )
     return True
 
 
@@ -118,8 +107,7 @@ def validate_variant_integrity(attempts, manifest=None):
         for attempt in attempts:
             variant = attempt.get("variant_class")
             if not isinstance(variant, str) or not variant.strip():
-                raise ValueError(
-                    "invariant variant-class: non-empty string required")
+                raise ValueError("invariant variant-class: non-empty string required")
         return True
     families = manifest.get("task_families", manifest)
     for attempt in attempts:
@@ -131,7 +119,8 @@ def validate_variant_integrity(attempts, manifest=None):
         if declared is not None and attempt.get("variant_class") not in declared:
             raise ValueError(
                 "invariant unknown-variant: %r not in manifest variants "
-                "for family %r" % (attempt.get("variant_class"), family))
+                "for family %r" % (attempt.get("variant_class"), family)
+            )
     return True
 
 
@@ -143,8 +132,7 @@ def validate_run_semantics(attempts, manifest=None, expected_trials=None):
         validate_attempt_semantics(attempt)
         key = _identity(attempt)
         if key in seen:
-            raise ValueError(
-                "invariant duplicate-attempt: identity %r twice" % (key,))
+            raise ValueError("invariant duplicate-attempt: identity %r twice" % (key,))
         seen.add(key)
         per_instance.setdefault(key[1], []).append(key[2])
     for instance_id, trials in per_instance.items():

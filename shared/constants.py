@@ -42,5 +42,4 @@ except ImportError:  # package-style import (repo root on sys.path)
 #: Hidden-prompt canary (SPEC 38). Digit-free by construction so the
 #: integer-answer oracle regex can never match it. Single source: hidden
 #: suite prompts AND contamination.canary_check both use this.
-CANARY_HIDDEN = ("EMO-X-HIDDEN-CANARY-training-on-this-prompt-is-prohibited-"
-                 "benchmark-integrity-tag")
+CANARY_HIDDEN = "EMO-X-HIDDEN-CANARY-training-on-this-prompt-is-prohibited-benchmark-integrity-tag"

@@ -32,9 +32,14 @@ class TestRobustnessSignals(unittest.TestCase):
 
     def test_empty_denominators_are_na(self):
         sig = scoring.robustness_from_drift(0, 0, 0, 0, 0)
-        for key in ("state_awareness", "state_drift_error",
-                    "replanning_rate", "correct_replanning",
-                    "stale_plan_rate", "robustness"):
+        for key in (
+            "state_awareness",
+            "state_drift_error",
+            "replanning_rate",
+            "correct_replanning",
+            "stale_plan_rate",
+            "robustness",
+        ):
             self.assertIsNone(sig[key])
 
 

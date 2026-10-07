@@ -14,29 +14,23 @@ import scoring
 
 class TestCalibration(unittest.TestCase):
     def test_brier_golden(self):
-        cases = [{"confidence": 0.8, "outcome": 1},
-                 {"confidence": 0.2, "outcome": 0}]
+        cases = [{"confidence": 0.8, "outcome": 1}, {"confidence": 0.2, "outcome": 0}]
         self.assertAlmostEqual(scoring.brier_score(cases), 0.04)
 
     def test_brier_excludes_missing_confidence_c50(self):
-        cases = [{"confidence": 0.8, "outcome": 1},
-                 {"confidence": None, "outcome": 0}]
+        cases = [{"confidence": 0.8, "outcome": 1}, {"confidence": None, "outcome": 0}]
         self.assertAlmostEqual(scoring.brier_score(cases), 0.04)
         self.assertIsNone(scoring.brier_score([]))
 
     def test_ece_golden(self):
-        cases = [{"confidence": 0.9, "outcome": 1},
-                 {"confidence": 0.1, "outcome": 0}]
-        self.assertAlmostEqual(
-            scoring.expected_calibration_error(cases), 0.1)
+        cases = [{"confidence": 0.9, "outcome": 1}, {"confidence": 0.1, "outcome": 0}]
+        self.assertAlmostEqual(scoring.expected_calibration_error(cases), 0.1)
 
     def test_calibration_score(self):
-        cases = [{"confidence": 0.9, "outcome": 1},
-                 {"confidence": 0.1, "outcome": 0}]
+        cases = [{"confidence": 0.9, "outcome": 1}, {"confidence": 0.1, "outcome": 0}]
         b = scoring.brier_score(cases)
         e = scoring.expected_calibration_error(cases)
-        self.assertAlmostEqual(scoring.calibration_score(cases),
-                               1 - (b + e) / 2)
+        self.assertAlmostEqual(scoring.calibration_score(cases), 1 - (b + e) / 2)
         self.assertIsNone(scoring.calibration_score([]))
 
     def test_abstention(self):

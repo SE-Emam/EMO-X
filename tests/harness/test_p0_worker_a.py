@@ -26,8 +26,7 @@ import runner  # noqa: E402
 
 def _load_mcp_server():
     path = os.path.join(ROOT, "mcp-server", "server.py")
-    spec = importlib.util.spec_from_file_location("emox_mcp_server_p0",
-                                                  path)
+    spec = importlib.util.spec_from_file_location("emox_mcp_server_p0", path)
     assert spec is not None and spec.loader is not None, path
     mod = importlib.util.module_from_spec(spec)
     sys.modules["emox_mcp_server_p0"] = mod
@@ -42,9 +41,8 @@ class MakeRunIdTests(unittest.TestCase):
         self.assertIn("-p%d" % os.getpid(), rid)
         m = re.search(r"T\d{6}\.\d{6}Z", rid)
         self.assertIsNotNone(m, rid)
-        digest = rid.split("-")[-2] if "-p" in rid else rid.rsplit("-", 1)[-1]
         # digest is the 10-hex field before the -p<PID> suffix
-        core = rid[:rid.rfind("-p")]
+        core = rid[: rid.rfind("-p")]
         self.assertEqual(len(core.rsplit("-", 1)[-1]), 10)
         int(core.rsplit("-", 1)[-1], 16)
 
@@ -61,10 +59,20 @@ class RedactionTests(unittest.TestCase):
         cls.srv = _load_mcp_server()
 
     def test_sensitive_names_redacted(self):
-        for name in ("api_key", "API_KEY", "apiKey", "secret",
-                     "SECRET_TOKEN", "token", "password", "passwd",
-                     "credentials", "cred", "Authorization",
-                     "authorization-header"):
+        for name in (
+            "api_key",
+            "API_KEY",
+            "apiKey",
+            "secret",
+            "SECRET_TOKEN",
+            "token",
+            "password",
+            "passwd",
+            "credentials",
+            "cred",
+            "Authorization",
+            "authorization-header",
+        ):
             self.assertTrue(self.srv._is_sensitive_key(name), name)
 
     def test_case_insensitive(self):
@@ -72,13 +80,11 @@ class RedactionTests(unittest.TestCase):
         self.assertTrue(self.srv._is_sensitive_key("SeCrEt"))
 
     def test_no_false_positives_monkey_donkey(self):
-        for name in ("monkey", "donkey", "MONKEY", "Donkey",
-                     "model", "suite", "families"):
+        for name in ("monkey", "donkey", "MONKEY", "Donkey", "model", "suite", "families"):
             self.assertFalse(self.srv._is_sensitive_key(name), name)
 
     def test_redact_args_masks_values(self):
-        out = self.srv._redact_args({"api_key": "sk-live-123",
-                                     "model": "m", "monkey": "x"})
+        out = self.srv._redact_args({"api_key": "sk-live-123", "model": "m", "monkey": "x"})
         self.assertEqual(out["api_key"], "***")
         self.assertEqual(out["model"], "m")
         self.assertEqual(out["monkey"], "x")
@@ -96,8 +102,7 @@ class ToolEditTests(unittest.TestCase):
             target = os.path.join(tmp, "f.txt")
             with open(target, "w") as f:
                 f.write("hello old world")
-            ok, _ = agent_tools.tool_edit("f.txt", "old", "new",
-                                          self._ctx(tmp))
+            ok, _ = agent_tools.tool_edit("f.txt", "old", "new", self._ctx(tmp))
             self.assertTrue(ok)
             with open(target) as f:
                 self.assertEqual(f.read(), "hello new world")
@@ -109,8 +114,7 @@ class ToolEditTests(unittest.TestCase):
                 f.write("old content")
             link = os.path.join(tmp, "link.txt")
             os.symlink(real, link)
-            ok, msg = agent_tools.tool_edit("link.txt", "old", "new",
-                                            self._ctx(tmp))
+            ok, msg = agent_tools.tool_edit("link.txt", "old", "new", self._ctx(tmp))
             self.assertFalse(ok)
             self.assertIn("symlink", msg.lower())
             with open(real) as f:
@@ -121,8 +125,7 @@ class ToolEditTests(unittest.TestCase):
             target = os.path.join(tmp, "f.txt")
             with open(target, "w") as f:
                 f.write("abc")
-            ok, msg = agent_tools.tool_edit("f.txt", "zzz", "new",
-                                            self._ctx(tmp))
+            ok, msg = agent_tools.tool_edit("f.txt", "zzz", "new", self._ctx(tmp))
             self.assertFalse(ok)
             self.assertIn("not found", msg)
 
@@ -134,9 +137,7 @@ class SafeTrailingSlashTests(unittest.TestCase):
             ctx = agent_tools.Ctx(root)
             full = agent_tools._safe("sub/file.txt", ctx)
             self.assertTrue(full.startswith(tmp.rstrip(os.sep)))
-            self.assertEqual(
-                agent_tools._safe(".", ctx),
-                os.path.normpath(tmp))
+            self.assertEqual(agent_tools._safe(".", ctx), os.path.normpath(tmp))
 
     def test_root_trailing_slash_escape_still_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -148,6 +149,7 @@ class SafeTrailingSlashTests(unittest.TestCase):
 class PostJsonTests(unittest.TestCase):
     def _opener_side_effect(self, exc):
         from unittest import mock
+
         opener = mock.Mock()
         opener.open.side_effect = exc
         return mock.patch("urllib.request.build_opener", return_value=opener)
@@ -155,9 +157,9 @@ class PostJsonTests(unittest.TestCase):
     def test_http_error_raised_without_body(self):
         import io
         import urllib.error
+
         fp = io.BytesIO(b"secret-body-marker-sensitive-payload")
-        err = urllib.error.HTTPError(
-            "http://example.com/x", 500, "Internal", {}, fp)  # type: ignore[arg-type]
+        err = urllib.error.HTTPError("http://example.com/x", 500, "Internal", {}, fp)  # type: ignore[arg-type]
         with self._opener_side_effect(err):
             with self.assertRaises(RuntimeError) as ctx:
                 backends._post_json("http://example.com/x", {"a": 1})
@@ -168,6 +170,7 @@ class PostJsonTests(unittest.TestCase):
 
     def test_url_error_wrapped_with_host(self):
         import urllib.error
+
         err = urllib.error.URLError("boom")
         with self._opener_side_effect(err):
             with self.assertRaises(RuntimeError) as ctx:
@@ -177,12 +180,11 @@ class PostJsonTests(unittest.TestCase):
     def test_redirect_to_private_refused(self):
         """P0-3: a 302 to a non-public URL must not be followed."""
         import urllib.request
-        req = urllib.request.Request("http://example.com/chat",
-                                     data=b"{}")
+
+        req = urllib.request.Request("http://example.com/chat", data=b"{}")
         handler = backends._NoRedirect()
         with self.assertRaises(urllib.error.URLError):
-            handler.redirect_request(req, None, 302, "Found", {},
-                                     "http://169.254.169.254/latest")
+            handler.redirect_request(req, None, 302, "Found", {}, "http://169.254.169.254/latest")
 
     def test_redact_host_strips_userinfo(self):
         host = backends._redact_host("http://user:pass@example.com:8080/v1")
@@ -192,12 +194,14 @@ class PostJsonTests(unittest.TestCase):
 
 
 class ValidateBaseUrlTests(unittest.TestCase):
-    BLOCKED = ("http://169.254.169.254/v1",
-               "http://metadata.google.internal/v1",
-               "http://localhost:11434/v1",
-               "http://127.0.0.1:11434/v1",
-               "http://[::1]:11434/v1",
-               "http://0.0.0.0:11434/v1")
+    BLOCKED = (
+        "http://169.254.169.254/v1",
+        "http://metadata.google.internal/v1",
+        "http://localhost:11434/v1",
+        "http://127.0.0.1:11434/v1",
+        "http://[::1]:11434/v1",
+        "http://0.0.0.0:11434/v1",
+    )
 
     def setUp(self):
         self._prev = os.environ.get("EMOX_ALLOW_LOCAL")
@@ -237,15 +241,22 @@ class ValidateBaseUrlTests(unittest.TestCase):
                 backends._validate_base_url(url)
 
     def test_private_ip_helper(self):
-        for ip in ("127.0.0.1", "127.0.0.2", "10.1.2.3", "192.168.0.1",
-                   "169.254.169.254", "::1", "::ffff:10.0.0.1", "garbage"):
+        for ip in (
+            "127.0.0.1",
+            "127.0.0.2",
+            "10.1.2.3",
+            "192.168.0.1",
+            "169.254.169.254",
+            "::1",
+            "::ffff:10.0.0.1",
+            "garbage",
+        ):
             self.assertTrue(backends._ip_is_forbidden(ip), msg=ip)
         self.assertFalse(backends._ip_is_forbidden("93.184.216.34"))
 
     def test_cli_backend_skips_ssrf_guard(self):
         """The cli backend's base is a local binary path, not a URL."""
-        name, base, mod, _ = backends.resolve_config(
-            "cli", "/bin/echo", "opencode/m", None)
+        name, base, mod, _ = backends.resolve_config("cli", "/bin/echo", "opencode/m", None)
         self.assertEqual(name, "cli")
         self.assertEqual(base, "/bin/echo")
 
@@ -260,33 +271,36 @@ class ValidateBaseUrlTests(unittest.TestCase):
 
     def test_resolve_config_enforces_guard(self):
         with self.assertRaises(ValueError):
-            backends.resolve_config("openai-generic",
-                                    "http://localhost:11434/v1", "m")
+            backends.resolve_config("openai-generic", "http://localhost:11434/v1", "m")
         os.environ["EMOX_ALLOW_LOCAL"] = "1"
         name, base, mod, _ = backends.resolve_config(
-            "openai-generic", "http://localhost:11434/v1", "m")
+            "openai-generic", "http://localhost:11434/v1", "m"
+        )
         self.assertEqual(name, "openai-generic")
         self.assertIn("localhost", base)
 
 
 class WriteRawBundleTests(unittest.TestCase):
     def _manifest(self, run_id):
-        return runner.build_manifest("code25", "a" * 64, "b" * 64,
-                                     "stub-model", "stub", 0, 1, run_id)
+        return runner.build_manifest(
+            "code25", "a" * 64, "b" * 64, "stub-model", "stub", 0, 1, run_id
+        )
 
     def test_roundtrip_ok(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = os.path.join(tmp, "raw")
             os.makedirs(out)
             run_id = runner.make_run_id("RUN-w")
-            rundir = runner.write_raw_bundle(out, self._manifest(run_id),
-                                             [], [], {})
+            rundir = runner.write_raw_bundle(out, self._manifest(run_id), [], [], {})
             self.assertTrue(os.path.isdir(rundir))
-            for name in ("manifest.json", "events.jsonl",
-                         "responses.jsonl", "environment.json",
-                         "seal.json"):
-                self.assertTrue(os.path.isfile(
-                    os.path.join(rundir, name)), name)
+            for name in (
+                "manifest.json",
+                "events.jsonl",
+                "responses.jsonl",
+                "environment.json",
+                "seal.json",
+            ):
+                self.assertTrue(os.path.isfile(os.path.join(rundir, name)), name)
 
     def test_crash_mid_write_leaves_no_partial_dir(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -296,13 +310,14 @@ class WriteRawBundleTests(unittest.TestCase):
             # Unserializable response forces json.dump to fail mid-write
             # (lengths match so the mismatch guard does not fire first).
             bad = runner._void_attempt(
-                "RUN-crash-1", "m", "T", "T-1", "canonical", 1,
-                "harness-bug", "x")
+                "RUN-crash-1", "m", "T", "T-1", "canonical", 1, "harness-bug", "x"
+            )
             with self.assertRaises(TypeError):
-                runner.write_raw_bundle(out, self._manifest(run_id),
-                                        [bad], [object()], {})
-            self.assertFalse(os.path.lexists(os.path.join(out, run_id)),
-                             "partial run dir left behind after failure")
+                runner.write_raw_bundle(out, self._manifest(run_id), [bad], [object()], {})
+            self.assertFalse(
+                os.path.lexists(os.path.join(out, run_id)),
+                "partial run dir left behind after failure",
+            )
             leftovers = [d for d in os.listdir(out)]
             self.assertEqual(leftovers, [], leftovers)
 
@@ -315,10 +330,15 @@ class WriteRawBundleTests(unittest.TestCase):
             os.makedirs(out)
             with self.assertRaises(ValueError):
                 runner.write_raw_bundle(
-                    out, self._manifest("RUN-mm-1"),
-                    [runner._void_attempt(
-                        "RUN-mm-1", "m", "T", "T-1", "canonical", 1,
-                        "harness-bug", "x")], [])
+                    out,
+                    self._manifest("RUN-mm-1"),
+                    [
+                        runner._void_attempt(
+                            "RUN-mm-1", "m", "T", "T-1", "canonical", 1, "harness-bug", "x"
+                        )
+                    ],
+                    [],
+                )
             leftovers = [d for d in os.listdir(out)]
             self.assertEqual(leftovers, [], leftovers)
 
@@ -327,11 +347,9 @@ class WriteRawBundleTests(unittest.TestCase):
             out = os.path.join(tmp, "raw")
             os.makedirs(out)
             run_id = "RUN-dup-1"
-            runner.write_raw_bundle(out, self._manifest(run_id), [], [],
-                                    {})
+            runner.write_raw_bundle(out, self._manifest(run_id), [], [], {})
             with self.assertRaises(FileExistsError):
-                runner.write_raw_bundle(out, self._manifest(run_id), [],
-                                        [], {})
+                runner.write_raw_bundle(out, self._manifest(run_id), [], [], {})
 
 
 class McpCliGateTests(unittest.TestCase):
@@ -360,30 +378,30 @@ class McpCliGateTests(unittest.TestCase):
     def test_cli_denied_by_default(self):
         with self.assertRaises(PermissionError):
             self.srv._chat_from_params(
-                {"backend": "cli", "base_url": "/bin/echo",
-                 "model": "opencode/m"})
+                {"backend": "cli", "base_url": "/bin/echo", "model": "opencode/m"}
+            )
 
     def test_cli_relative_path_denied_even_opted_in(self):
         os.environ["EMOX_MCP_ALLOW_CLI"] = "1"
         os.environ["EMOX_MCP_CLI_ALLOWLIST"] = "/bin/echo"
         with self.assertRaises(PermissionError):
             self.srv._chat_from_params(
-                {"backend": "cli", "base_url": "opencode",
-                 "model": "opencode/m"})
+                {"backend": "cli", "base_url": "opencode", "model": "opencode/m"}
+            )
 
     def test_cli_non_allowlisted_absolute_denied(self):
         os.environ["EMOX_MCP_ALLOW_CLI"] = "1"
         os.environ["EMOX_MCP_CLI_ALLOWLIST"] = "/bin/echo"
         with self.assertRaises(PermissionError):
             self.srv._chat_from_params(
-                {"backend": "cli", "base_url": "/bin/sh",
-                 "model": "opencode/m"})
+                {"backend": "cli", "base_url": "/bin/sh", "model": "opencode/m"}
+            )
 
     def test_unknown_backend_denied(self):
         with self.assertRaises(ValueError):
             self.srv._chat_from_params(
-                {"backend": "evil", "base_url": "https://x/v1",
-                 "model": "m"})
+                {"backend": "evil", "base_url": "https://x/v1", "model": "m"}
+            )
 
 
 class McpConfineTests(unittest.TestCase):
@@ -398,8 +416,7 @@ class McpConfineTests(unittest.TestCase):
             self.srv._confine(self.srv.ROOT)
 
     def test_etc_and_ssh_refused(self):
-        for p in ("/etc", "/etc/passwd",
-                  os.path.expanduser("~/.ssh")):
+        for p in ("/etc", "/etc/passwd", os.path.expanduser("~/.ssh")):
             with self.assertRaises(PermissionError, msg=p):
                 self.srv._confine(p)
 
@@ -412,8 +429,7 @@ class McpConfineTests(unittest.TestCase):
 
     def test_out_root_inside_results_allowed(self):
         target = os.path.join(self.srv.ROOT, "results", "raw")
-        self.assertEqual(self.srv._confine_out_root(target),
-                         os.path.realpath(target))
+        self.assertEqual(self.srv._confine_out_root(target), os.path.realpath(target))
 
 
 if __name__ == "__main__":

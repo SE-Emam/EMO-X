@@ -30,8 +30,12 @@ for _p in (ROOT, SHARED, GEN):
 
 from shared.schemas import validate_attempt  # noqa: E402
 from shared.manifests import sha256_bytes, sha256_manifest  # noqa: E402
-from generators.seeds import (GENERATOR_VERSION, make_rng,  # noqa: E402
-                              make_instance_id, build_instance_record)
+from generators.seeds import (
+    GENERATOR_VERSION,
+    make_rng,  # noqa: E402
+    make_instance_id,
+    build_instance_record,
+)
 
 SUITE = "recovery"
 FAMILY_IDS = ("RC1", "RC2")
@@ -59,14 +63,15 @@ def prompt_text(family, params):
             "(transient infrastructure fault, not your error).\n"
             "Diagnose the failure, retry with an alternative strategy, "
             "then verify. Reply with: RETRY then the final integer only."
-            % (params["x"], params["y"], fault))
+            % (params["x"], params["y"], fault)
+        )
     return (
-        "Task: return JSON {\"sum\": %d + %d}.\n"
+        'Task: return JSON {"sum": %d + %d}.\n'
         "Transcript: your first tool attempt failed with %s "
         "(the tool echoed truncated text).\n"
         "Diagnose, retry, then verify. Reply with: RETRY then ONLY the "
-        "valid JSON object, no explanation."
-        % (params["x"], params["y"], fault))
+        "valid JSON object, no explanation." % (params["x"], params["y"], fault)
+    )
 
 
 def prompt_messages(family, params):
@@ -75,20 +80,26 @@ def prompt_messages(family, params):
 
 def make_instance(family, seed, index=1):
     params = resolve_params(family, seed, index)
-    oracle = {"value": oracle_value(family, params),
-              "fault": FAULTS[family]}
-    record = build_instance_record(family, seed, GENERATOR_VERSION,
-                                   dict(params,
-                                        injected_fault=FAULTS[family]),
-                                   oracle, variant="recovery")
+    oracle = {"value": oracle_value(family, params), "fault": FAULTS[family]}
+    record = build_instance_record(
+        family,
+        seed,
+        GENERATOR_VERSION,
+        dict(params, injected_fault=FAULTS[family]),
+        oracle,
+        variant="recovery",
+    )
     prompt = prompt_text(family, params)
     return {
         "task_family_id": family,
         "instance_id": make_instance_id(family, "recovery", index),
         "variant_class": "recovery",
-        "index": index, "seed": seed,
+        "index": index,
+        "seed": seed,
         "generator_version": GENERATOR_VERSION,
-        "parameters": params, "prompt": prompt, "oracle": oracle,
+        "parameters": params,
+        "prompt": prompt,
+        "oracle": oracle,
         "recoverable": True,
         "instance_hash": record["instance_hash"],
         "oracle_hash": record["oracle_hash"],
@@ -112,20 +123,17 @@ def check_family(family, reply, instance):
     if family == "RC1":
         m = re.findall(r"-?\d+", text)
         got = m[-1] if m else ""
-        return bool(got == expected), \
-            "expected=%r got=%r" % (expected, got[:80])
+        return bool(got == expected), "expected=%r got=%r" % (expected, got[:80])
     m = re.search(r"\{.*\}", text, re.S)
     try:
         got = json.loads(m.group(0)) if m else None
-        ok = isinstance(got, dict) and got.get("sum") == \
-            json.loads(expected)["sum"]
+        ok = isinstance(got, dict) and got.get("sum") == json.loads(expected)["sum"]
     except Exception:
         ok = False
     return bool(ok), "expected=%s recovered=%s" % (expected, bool(ok))
 
 
-def run_family(family, chat, run_id, model_id, trial_id=1, index=1,
-               seed=0, fault_rate=0.25):
+def run_family(family, chat, run_id, model_id, trial_id=1, index=1, seed=0, fault_rate=0.25):
     """Run one fault-injection episode; returns (attempt, response).
 
     fault_rate gates injection deterministically from (seed, index):
@@ -140,8 +148,7 @@ def run_family(family, chat, run_id, model_id, trial_id=1, index=1,
     error_kind, err_msg, log = None, None, ""
     passed = False
     try:
-        text, secs, usage = chat(prompt_messages(
-            family, instance["parameters"]))
+        text, secs, usage = chat(prompt_messages(family, instance["parameters"]))
         passed, log = check_family(family, text, instance)
     except Exception as e:
         error_kind, err_msg = "missing-tool", str(e)[:300]
@@ -149,34 +156,47 @@ def run_family(family, chat, run_id, model_id, trial_id=1, index=1,
     status = "PASS" if passed else ("ERROR" if error_kind else "FAIL")
     recovered = bool(passed and injected)
     attempt = {
-        "run_id": run_id, "model_id": model_id,
-        "task_family_id": family, "instance_id": instance["instance_id"],
-        "variant_class": "recovery", "trial_id": trial_id,
-        "primary_status": status, "score": 1.0 if status == "PASS" else 0.0,
+        "run_id": run_id,
+        "model_id": model_id,
+        "task_family_id": family,
+        "instance_id": instance["instance_id"],
+        "variant_class": "recovery",
+        "trial_id": trial_id,
+        "primary_status": status,
+        "score": 1.0 if status == "PASS" else 0.0,
         "eligible_for_task_score": status != "ERROR",
         "eligible_for_pass_rate": status != "ERROR",
         "eligible_for_efficiency": status in ("PASS", "PARTIAL", "FAIL"),
         "eligible_for_calibration": False,
-        "primary_failure": None if status == "PASS" else (
-            "HARNESS_ERROR" if status == "ERROR" else "RECOVERY_FAILURE"),
-        "secondary_failure_tags": [], "seed": seed,
+        "primary_failure": None
+        if status == "PASS"
+        else ("HARNESS_ERROR" if status == "ERROR" else "RECOVERY_FAILURE"),
+        "secondary_failure_tags": [],
+        "seed": seed,
         "secs": round(secs, 1) if isinstance(secs, (int, float)) else secs,
-        "log": str(log)[-500:], "sample": (text or "")[:600],
+        "log": str(log)[-500:],
+        "sample": (text or "")[:600],
         "prompt_sha256": instance["prompt_sha256"],
         "manifest_sha256": instance["manifest_sha256"],
     }
     if err_msg:
         attempt["error"] = err_msg
-    episode = {"recoverable": bool(injected),  # D_recoverable gate (C29)
-               "injection_succeeded": bool(injected),
-               "infra_valid": error_kind is None,
-               "recovered": recovered,
-               "fault": FAULTS[family] if injected else None}
-    response = {"instance_id": instance["instance_id"], "trial_id": trial_id,
-                "messages": prompt_messages(family, instance["parameters"]),
-                "reply": text, "usage": usage if isinstance(usage, dict) else {},
-                "oracle_hash": instance["oracle_hash"],
-                "recovery_episode": episode}
+    episode = {
+        "recoverable": bool(injected),  # D_recoverable gate (C29)
+        "injection_succeeded": bool(injected),
+        "infra_valid": error_kind is None,
+        "recovered": recovered,
+        "fault": FAULTS[family] if injected else None,
+    }
+    response = {
+        "instance_id": instance["instance_id"],
+        "trial_id": trial_id,
+        "messages": prompt_messages(family, instance["parameters"]),
+        "reply": text,
+        "usage": usage if isinstance(usage, dict) else {},
+        "oracle_hash": instance["oracle_hash"],
+        "recovery_episode": episode,
+    }
     return validate_attempt(attempt), response
 
 

@@ -29,12 +29,21 @@ try:
 except ImportError:  # package-style import (repo root on sys.path)
     from generators.task_dsl import validate_task_dict, TaskDSL
 try:
-    from seeds import (GENERATOR_VERSION, make_rng, make_instance_id,
-                       build_instance_record, canonical_hash)
+    from seeds import (
+        GENERATOR_VERSION,
+        make_rng,
+        make_instance_id,
+        build_instance_record,
+        canonical_hash,
+    )
 except ImportError:  # package-style import (repo root on sys.path)
-    from generators.seeds import (GENERATOR_VERSION, make_rng,
-                                  make_instance_id, build_instance_record,
-                                  canonical_hash)
+    from generators.seeds import (
+        GENERATOR_VERSION,
+        make_rng,
+        make_instance_id,
+        build_instance_record,
+        canonical_hash,
+    )
 
 
 #: H3 dynamic-equation axes (SPEC 9: same oracle kind, varied surface).
@@ -83,14 +92,11 @@ H3_EXP_FORMS = ("power", "remainder", "code")
 H3_EXP_WORDINGS = (
     "What is the remainder when {c}^{t} is divided by {m}? "
     "Be concise and state the final remainder clearly.",
-    "Find the remainder of {c}^{t} upon division by {m}. "
-    "Reply with ONLY the final integer.",
+    "Find the remainder of {c}^{t} upon division by {m}. Reply with ONLY the final integer.",
 )
 H3_EXP_REMAINDER_WORDINGS = (
-    "When {c}^{t} is divided by {m}, what is the remainder? "
-    "Reply with ONLY the final integer.",
-    "The remainder of {c}^{t} upon division by {m} equals what? "
-    "Give ONLY the final integer.",
+    "When {c}^{t} is divided by {m}, what is the remainder? Reply with ONLY the final integer.",
+    "The remainder of {c}^{t} upon division by {m} equals what? Give ONLY the final integer.",
 )
 H3_EXP_CODE_WORDINGS = (
     "Complete: result = ({c} ** {t}) % {m} with result == ___ "
@@ -107,9 +113,9 @@ def _h3_gcd(a, b):
     return a
 
 
-def build_h3_equation(seed, variant="perturbed", index=1,
-                      generator_version=GENERATOR_VERSION,
-                      subtype="linear"):
+def build_h3_equation(
+    seed, variant="perturbed", index=1, generator_version=GENERATOR_VERSION, subtype="linear"
+):
     """H3.seed -> parametric modular-equation instance. SPEC 9.
 
     Same mathematical oracle kind as canonical H3 with varied surface:
@@ -130,8 +136,7 @@ def build_h3_equation(seed, variant="perturbed", index=1,
     if subtype not in H3_SUBTYPES:
         raise SchemaError("H3 math subtype must be linear|exp")
     if subtype == "exp":
-        return _build_h3_exp_equation(seed, variant, index,
-                                      generator_version)
+        return _build_h3_exp_equation(seed, variant, index, generator_version)
     rng = make_rng(seed * 100003 + index, generator_version)
     modulus = rng.randint(11, 99)
     coefficient = 1
@@ -147,29 +152,36 @@ def build_h3_equation(seed, variant="perturbed", index=1,
     if variant == "perturbed":
         form = "congruence"
         body = H3_WORDINGS[rng.randrange(len(H3_WORDINGS))].format(
-            v=var, a=coefficient, b=target, m=modulus)
+            v=var, a=coefficient, b=target, m=modulus
+        )
         prompt = body
     else:
         form = H3_FORMS[rng.randrange(len(H3_FORMS))]
         if form == "congruence":
             body = H3_WORDINGS[rng.randrange(len(H3_WORDINGS))]
         elif form == "remainder":
-            body = H3_REMAINDER_WORDINGS[
-                rng.randrange(len(H3_REMAINDER_WORDINGS))]
+            body = H3_REMAINDER_WORDINGS[rng.randrange(len(H3_REMAINDER_WORDINGS))]
         else:
             body = H3_CODE_WORDINGS[rng.randrange(len(H3_CODE_WORDINGS))]
         body = body.format(v=var, a=coefficient, b=target, m=modulus)
-        prompt = (H3_CONTEXTS[rng.randrange(len(H3_CONTEXTS))]
-                  + H3_NOVEL_FRAME.format(body=body))
+        prompt = H3_CONTEXTS[rng.randrange(len(H3_CONTEXTS))] + H3_NOVEL_FRAME.format(body=body)
     expected = (pow(coefficient, -1, modulus) * target) % modulus
-    parameters = {"coefficient": coefficient, "target": target,
-                  "modulus": modulus, "variable": var, "form": form}
-    oracle = {"oracle_type": "deterministic", "task": "H3",
-              "equation": "%d*v=%d mod %d (unique, gcd=1)"
-                          % (coefficient, target, modulus),
-              "expected": expected}
-    record = build_instance_record("H3", seed, generator_version,
-                                   parameters, oracle, variant=variant)
+    parameters = {
+        "coefficient": coefficient,
+        "target": target,
+        "modulus": modulus,
+        "variable": var,
+        "form": form,
+    }
+    oracle = {
+        "oracle_type": "deterministic",
+        "task": "H3",
+        "equation": "%d*v=%d mod %d (unique, gcd=1)" % (coefficient, target, modulus),
+        "expected": expected,
+    }
+    record = build_instance_record(
+        "H3", seed, generator_version, parameters, oracle, variant=variant
+    )
     return {
         "instance_id": make_instance_id("H3", variant, index),
         "task": record["task"],
@@ -202,31 +214,30 @@ def _build_h3_exp_equation(seed, variant, index, generator_version):
     exponent = rng.randint(10, 150)
     if variant == "perturbed":
         form = "power"
-        prompt = H3_EXP_WORDINGS[
-            rng.randrange(len(H3_EXP_WORDINGS))].format(
-                c=base, t=exponent, m=modulus)
+        prompt = H3_EXP_WORDINGS[rng.randrange(len(H3_EXP_WORDINGS))].format(
+            c=base, t=exponent, m=modulus
+        )
     else:
         form = H3_EXP_FORMS[rng.randrange(len(H3_EXP_FORMS))]
         if form == "power":
             body = H3_EXP_WORDINGS[rng.randrange(len(H3_EXP_WORDINGS))]
         elif form == "remainder":
-            body = H3_EXP_REMAINDER_WORDINGS[
-                rng.randrange(len(H3_EXP_REMAINDER_WORDINGS))]
+            body = H3_EXP_REMAINDER_WORDINGS[rng.randrange(len(H3_EXP_REMAINDER_WORDINGS))]
         else:
-            body = H3_EXP_CODE_WORDINGS[
-                rng.randrange(len(H3_EXP_CODE_WORDINGS))]
+            body = H3_EXP_CODE_WORDINGS[rng.randrange(len(H3_EXP_CODE_WORDINGS))]
         body = body.format(c=base, t=exponent, m=modulus)
-        prompt = (H3_CONTEXTS[rng.randrange(len(H3_CONTEXTS))]
-                  + H3_NOVEL_FRAME.format(body=body))
+        prompt = H3_CONTEXTS[rng.randrange(len(H3_CONTEXTS))] + H3_NOVEL_FRAME.format(body=body)
     expected = pow(base, exponent, modulus)
-    parameters = {"base": base, "exponent": exponent,
-                  "modulus": modulus, "form": form}
-    oracle = {"oracle_type": "deterministic", "task": "H3",
-              "equation": "pow(%d,%d) mod %d (remainder)"
-                          % (base, exponent, modulus),
-              "expected": expected}
-    record = build_instance_record("H3", seed, generator_version,
-                                   parameters, oracle, variant=variant)
+    parameters = {"base": base, "exponent": exponent, "modulus": modulus, "form": form}
+    oracle = {
+        "oracle_type": "deterministic",
+        "task": "H3",
+        "equation": "pow(%d,%d) mod %d (remainder)" % (base, exponent, modulus),
+        "expected": expected,
+    }
+    record = build_instance_record(
+        "H3", seed, generator_version, parameters, oracle, variant=variant
+    )
     return {
         "instance_id": make_instance_id("H3", variant, index),
         "task": record["task"],
@@ -267,7 +278,6 @@ def check_h3_equation(reply, expected, subtype="linear"):
     return False, tag + ":no-integer"
 
 
-
 def resolve_value(spec, rng):
     """Resolve one parameter spec to a concrete value. SPEC 8.
 
@@ -295,9 +305,13 @@ def resolve_value(spec, rng):
             dist = spec.get("distribution", "uniform")
             if dist != "uniform":
                 raise SchemaError("unsupported distribution: %r" % (dist,))
-            if (isinstance(lo, bool) or isinstance(hi, bool)
-                    or not isinstance(lo, (int, float))
-                    or not isinstance(hi, (int, float)) or lo > hi):
+            if (
+                isinstance(lo, bool)
+                or isinstance(hi, bool)
+                or not isinstance(lo, (int, float))
+                or not isinstance(hi, (int, float))
+                or lo > hi
+            ):
                 raise SchemaError("bad range spec: %r" % (spec,))
             if isinstance(lo, int) and isinstance(hi, int):
                 return rng.randint(lo, hi)
@@ -320,8 +334,7 @@ def resolve_parameters(parameters_spec, rng):
         raise SchemaError("generator.parameters must be a mapping")
     if rng is None or not hasattr(rng, "randint"):
         raise SchemaError("rng must be a random.Random stream")
-    return {key: resolve_value(parameters_spec[key], rng)
-            for key in sorted(parameters_spec)}
+    return {key: resolve_value(parameters_spec[key], rng) for key in sorted(parameters_spec)}
 
 
 def compute_oracle(task_id, task_name, parameters):
@@ -335,18 +348,23 @@ def compute_oracle(task_id, task_name, parameters):
     """
     params = deepcopy(parameters)
     if task_name == "modular_arithmetic" and all(
-            k in params for k in ("modulus", "coefficient", "target")):
+        k in params for k in ("modulus", "coefficient", "target")
+    ):
         modulus = int(params["modulus"])
         coefficient = int(params["coefficient"])
         target = int(params["target"])
         if modulus <= 0:
             raise SchemaError("modulus must be positive")
-        return {"oracle_type": "deterministic",
-                "task": task_id,
-                "expected": pow(coefficient, target, modulus)}
-    return {"oracle_type": "deterministic",
+        return {
+            "oracle_type": "deterministic",
             "task": task_id,
-            "params_digest": canonical_hash(params)}
+            "expected": pow(coefficient, target, modulus),
+        }
+    return {
+        "oracle_type": "deterministic",
+        "task": task_id,
+        "params_digest": canonical_hash(params),
+    }
 
 
 def render_prompt(manifest, parameters):
@@ -361,13 +379,13 @@ def render_prompt(manifest, parameters):
         return (
             "What is the remainder when %s^%s is divided by %s? "
             "Be concise and state the final remainder clearly."
-            % (parameters["coefficient"], parameters["target"],
-               parameters["modulus"]))
-    ordered = ", ".join("%s=%s" % (key, parameters[key])
-                        for key in sorted(parameters))
-    return ("Solve task '%s' (%s) with parameters: %s. "
-            "Return only the final answer with no explanation."
-            % (name, task_id, ordered))
+            % (parameters["coefficient"], parameters["target"], parameters["modulus"])
+        )
+    ordered = ", ".join("%s=%s" % (key, parameters[key]) for key in sorted(parameters))
+    return (
+        "Solve task '%s' (%s) with parameters: %s. "
+        "Return only the final answer with no explanation." % (name, task_id, ordered)
+    )
 
 
 def prompt_leaks_oracle(prompt, oracle):
@@ -383,8 +401,9 @@ def prompt_leaks_oracle(prompt, oracle):
     return str(expected) in prompt
 
 
-def build_instance(manifest, seed, variant="canonical", index=1,
-                   generator_version=GENERATOR_VERSION):
+def build_instance(
+    manifest, seed, variant="canonical", index=1, generator_version=GENERATOR_VERSION
+):
     """Build one canonical instance from a task manifest. SPEC 7/8.
 
     ``manifest`` is a Task DSL dict (or :class:`TaskDSL`); ``seed`` an
@@ -402,17 +421,19 @@ def build_instance(manifest, seed, variant="canonical", index=1,
     if not isinstance(variant, str) or not variant:
         raise SchemaError("variant must be a non-empty string")
     if variant != "canonical":
-        raise SchemaError("factory builds canonical instances only; "
-                          "use generators/mutations.py for %r" % (variant,))
+        raise SchemaError(
+            "factory builds canonical instances only; "
+            "use generators/mutations.py for %r" % (variant,)
+        )
 
     task_id = manifest["id"]
     rng = make_rng(seed, generator_version)
-    parameters = resolve_parameters(
-        manifest["generator"].get("parameters", {}), rng)
+    parameters = resolve_parameters(manifest["generator"].get("parameters", {}), rng)
     oracle = compute_oracle(task_id, manifest["name"], parameters)
     prompt = render_prompt(manifest, parameters)
-    record = build_instance_record(task_id, seed, generator_version,
-                                   parameters, oracle, variant=variant)
+    record = build_instance_record(
+        task_id, seed, generator_version, parameters, oracle, variant=variant
+    )
     return {
         "instance_id": make_instance_id(task_id, variant, index),
         "task": record["task"],
@@ -442,14 +463,10 @@ def verify_oracle(instance, manifest_or_name=None):
             raise SchemaError("instance missing %r" % key)
     if manifest_or_name is None:
         name = instance.get("task_name", instance["task"])
-        fresh = compute_oracle(instance["task"], name,
-                               instance["parameters"])
+        fresh = compute_oracle(instance["task"], name, instance["parameters"])
     elif isinstance(manifest_or_name, dict):
         manifest = validate_task_dict(manifest_or_name)
-        fresh = compute_oracle(manifest["id"], manifest["name"],
-                               instance["parameters"])
+        fresh = compute_oracle(manifest["id"], manifest["name"], instance["parameters"])
     else:
-        fresh = compute_oracle(instance["task"], manifest_or_name,
-                               instance["parameters"])
-    return (fresh == instance["oracle"]
-            and canonical_hash(fresh) == instance["oracle_hash"])
+        fresh = compute_oracle(instance["task"], manifest_or_name, instance["parameters"])
+    return fresh == instance["oracle"] and canonical_hash(fresh) == instance["oracle_hash"]

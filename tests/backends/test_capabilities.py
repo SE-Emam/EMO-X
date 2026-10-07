@@ -55,8 +55,9 @@ class CapabilityManifestTests(unittest.TestCase):
         self.assertEqual(verdict, "DIRECT")
 
     def test_kaggle_colab_direct(self):
-        verdict, _ = comparability(get_capability_manifest("kaggle"),
-                                   get_capability_manifest("colab"))
+        verdict, _ = comparability(
+            get_capability_manifest("kaggle"), get_capability_manifest("colab")
+        )
         self.assertEqual(verdict, "DIRECT")
 
     def test_material_conflict_non_comparable(self):
@@ -69,7 +70,7 @@ class CapabilityManifestTests(unittest.TestCase):
         self.assertIn("vision", reason)
 
     def test_unknown_forces_conditional(self):
-        a = get_capability_manifest("openai-generic")              # unknown-heavy
+        a = get_capability_manifest("openai-generic")  # unknown-heavy
         b = get_capability_manifest("openai-generic", "openai")
         verdict, _ = comparability(a, b)
         self.assertEqual(verdict, "CONDITIONALLY_COMPARABLE")
@@ -85,23 +86,20 @@ class CapabilityManifestTests(unittest.TestCase):
 class ManifestComparabilityTests(unittest.TestCase):
     def test_hash_mismatch_wins_over_equal_backends(self):
         from manifests import comparability_with_capabilities
-        key_a = {"prompt_sha256": "p1", "harness_sha256": "h",
-                 "manifest_sha256": "m"}
-        key_b = {"prompt_sha256": "p2", "harness_sha256": "h",
-                 "manifest_sha256": "m"}
+
+        key_a = {"prompt_sha256": "p1", "harness_sha256": "h", "manifest_sha256": "m"}
+        key_b = {"prompt_sha256": "p2", "harness_sha256": "h", "manifest_sha256": "m"}
         cap = get_capability_manifest("kaggle")
-        verdict, reason = comparability_with_capabilities(
-            key_a, key_b, cap, dict(cap))
+        verdict, reason = comparability_with_capabilities(key_a, key_b, cap, dict(cap))
         self.assertEqual(verdict, "NON_COMPARABLE")
         self.assertIn("B58", reason)
 
     def test_equal_hashes_equal_caps_direct(self):
         from manifests import comparability_with_capabilities
-        key = {"prompt_sha256": "p", "harness_sha256": "h",
-               "manifest_sha256": "m"}
+
+        key = {"prompt_sha256": "p", "harness_sha256": "h", "manifest_sha256": "m"}
         cap = get_capability_manifest("openai-generic", "openai")
-        verdict, _ = comparability_with_capabilities(
-            key, dict(key), cap, dict(cap))
+        verdict, _ = comparability_with_capabilities(key, dict(key), cap, dict(cap))
         self.assertEqual(verdict, "DIRECT")
 
 

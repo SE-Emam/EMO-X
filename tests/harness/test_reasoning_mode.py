@@ -37,12 +37,9 @@ def _load(name, path):
     return mod
 
 
-CODE25 = _load("code25_executor_y5",
-               os.path.join(ROOT, "suites", "code-bench-25", "executor.py"))
-EPISODE = _load("agent_episode_y5",
-                os.path.join(ROOT, "suites", "agent-loop", "episode.py"))
-DYNAMIC = _load("dynamic_cases_y5",
-                os.path.join(ROOT, "suites", "dynamic-code", "cases.py"))
+CODE25 = _load("code25_executor_y5", os.path.join(ROOT, "suites", "code-bench-25", "executor.py"))
+EPISODE = _load("agent_episode_y5", os.path.join(ROOT, "suites", "agent-loop", "episode.py"))
+DYNAMIC = _load("dynamic_cases_y5", os.path.join(ROOT, "suites", "dynamic-code", "cases.py"))
 
 
 def _stub_recorder(reply):
@@ -62,42 +59,39 @@ class TestReasoningModeFor(unittest.TestCase):
     def test_enabled(self):
         self.assertEqual(reasoning_mode_for(True), "enabled")
         self.assertEqual(reasoning_mode_for(True, 600), "enabled")
-        self.assertEqual(
-            reasoning_mode_for(True, None, True), "enabled")
+        self.assertEqual(reasoning_mode_for(True, None, True), "enabled")
 
     def test_disabled(self):
         self.assertEqual(reasoning_mode_for(False), "disabled")
         self.assertEqual(reasoning_mode_for(False, 600), "disabled")
-        self.assertEqual(
-            reasoning_mode_for(False, None, True), "disabled")
+        self.assertEqual(reasoning_mode_for(False, None, True), "disabled")
 
     def test_native(self):
         # native transport without a think flag
         self.assertEqual(reasoning_mode_for(None, 600), "native")
-        self.assertEqual(
-            reasoning_mode_for(None, None, True), "native")
-        self.assertEqual(
-            reasoning_mode_for(None, 600, True), "native")
+        self.assertEqual(reasoning_mode_for(None, None, True), "native")
+        self.assertEqual(reasoning_mode_for(None, 600, True), "native")
 
     def test_provider_default(self):
         # plain /v1 path: both None, not native
         self.assertEqual(reasoning_mode_for(), "provider_default")
-        self.assertEqual(
-            reasoning_mode_for(None, None), "provider_default")
-        self.assertEqual(
-            reasoning_mode_for(None, None, False), "provider_default")
+        self.assertEqual(reasoning_mode_for(None, None), "provider_default")
+        self.assertEqual(reasoning_mode_for(None, None, False), "provider_default")
 
     def test_closed_vocabulary(self):
-        for mode in (reasoning_mode_for(True), reasoning_mode_for(False),
-                     reasoning_mode_for(None, 1), reasoning_mode_for()):
+        for mode in (
+            reasoning_mode_for(True),
+            reasoning_mode_for(False),
+            reasoning_mode_for(None, 1),
+            reasoning_mode_for(),
+        ):
             self.assertIn(mode, MODES)
 
 
 class TestAttemptModes(unittest.TestCase):
     def test_code25_h3_disabled(self):
         chat = _stub_recorder("the remainder is 4")
-        attempt, _ = CODE25.run_family("H3", chat, run_id="R-Y5",
-                                       model_id="m-y5")
+        attempt, _ = CODE25.run_family("H3", chat, run_id="R-Y5", model_id="m-y5")
         self.assertEqual(chat.seen["think"], False)  # actual chat kwarg
         self.assertEqual(attempt["reasoning_mode"], "disabled")
         self.assertIn(attempt["reasoning_mode"], MODES)
@@ -105,17 +99,16 @@ class TestAttemptModes(unittest.TestCase):
 
     def test_code25_plain_family_provider_default(self):
         chat = _stub_recorder("مرحبا بالعالم " * 20)
-        attempt, _ = CODE25.run_family("T5", chat, run_id="R-Y5",
-                                       model_id="m-y5")
+        attempt, _ = CODE25.run_family("T5", chat, run_id="R-Y5", model_id="m-y5")
         self.assertIsNone(chat.seen["think"])
         self.assertIsNone(chat.seen["num_predict"])
         self.assertEqual(attempt["reasoning_mode"], "provider_default")
 
     def test_code25_h3_dynamic_disabled(self):
         chat = _stub_recorder("answer 4")
-        attempt, _ = CODE25.run_family("H3", chat, run_id="R-Y5",
-                                       model_id="m-y5", seed=7,
-                                       variant="perturbed")
+        attempt, _ = CODE25.run_family(
+            "H3", chat, run_id="R-Y5", model_id="m-y5", seed=7, variant="perturbed"
+        )
         self.assertEqual(attempt["reasoning_mode"], "disabled")
 
     def test_agent_loop_enabled(self):
@@ -128,8 +121,7 @@ class TestAttemptModes(unittest.TestCase):
 
     def test_dynamic_provider_default(self):
         chat = _stub_recorder("0")
-        attempt, _resp = DYNAMIC.run_family("DC1", chat, run_id="R-Y5",
-                                            model_id="m-y5", seed=7)
+        attempt, _resp = DYNAMIC.run_family("DC1", chat, run_id="R-Y5", model_id="m-y5", seed=7)
         self.assertEqual(attempt["reasoning_mode"], "provider_default")
         self.assertIn(attempt["reasoning_mode"], MODES)
 

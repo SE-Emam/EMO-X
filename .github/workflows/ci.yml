@@ -17,8 +17,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: astral-sh/setup-uv@v6
+      - name: Build isolated execution sandbox
+        run: docker build -f Dockerfile.sandbox -t emox-sandbox:latest .
+      - name: Install locked development dependencies
+        run: uv sync --extra dev --frozen --no-install-project
       - name: Static syntax check (compileall)
-        run: python3 -m compileall -q shared suites generators judges health mcp-server adapters tests
+        run: python3 -m compileall -q shared suites generators judges health mcp-server adapters tests tools
+      - name: Ruff lint
+        run: uv run --frozen ruff check .
+      - name: Ruff format
+        run: uv run --frozen ruff format --check .
+      - name: Mypy isolated security modules
+        run: uv run --frozen mypy shared/sandbox.py shared/bundles.py shared/environment.py
       - name: Secrets scan (fail on real credentials)
         # Synthetic markers (FAKE-, EMO{SYNTH_) are expected fixtures.
         # Exclude: fixtures, security-bench fixtures, PROMPT_PACK (Arabic
@@ -43,24 +54,21 @@ jobs:
           tracked=$(echo "$tracked" | tr -s ' ' | sed 's/^ *//')
           [ -z "$tracked" ] || (echo "FORBIDDEN TRACKED FILES: $tracked (see CONTRIBUTING)"; exit 1)
           echo "local-only guard clean (reports/BASELINE_* explicitly allowed)"
-      - name: Install pytest (harness dev extra)
-        run: pip install "pytest>=7"
       - name: Harness self-test (SPEC 35, fail-closed)
-        run: python3 shared/run.py --self-test
+        run: uv run --frozen python shared/run.py --self-test
       - name: Full test suites
         run: |
           set -o pipefail
-          python3 tests/run_all.py 2>&1 | tee test-output.log
+          uv run --frozen python tests/run_all.py 2>&1 | tee test-output.log
       - name: Coverage gate (shared, fail-under=70)
         run: |
-          pip install coverage
           export PYTHONPATH="$PWD:$PWD/shared:$PYTHONPATH"
           rm -f .coverage .coverage.*
           for suite in harness generators scoring golden; do
-            coverage run --parallel-mode --source=shared -m unittest discover -s tests/$suite
+            uv run --frozen coverage run --parallel-mode --source=shared -m unittest discover -s tests/$suite
           done
-          coverage combine
-          coverage report --fail-under=70
+          uv run --frozen coverage combine
+          uv run --frozen coverage report --fail-under=70
       - name: Upload test output on failure
         if: failure()
         uses: actions/upload-artifact@v4

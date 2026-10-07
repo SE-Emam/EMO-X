@@ -82,8 +82,7 @@ class TestFiniteGuards(unittest.TestCase):
                 scoring.tool_f1(bad, None)
         self.assertIsNone(scoring.tool_f1(None, None))
         self.assertIsNone(scoring.tool_f1(None, 1.0))
-        self.assertAlmostEqual(scoring.tool_f1(0.5, 1.0),
-                               2 * 0.5 / 1.5)
+        self.assertAlmostEqual(scoring.tool_f1(0.5, 1.0), 2 * 0.5 / 1.5)
 
     def test_argument_accuracy_rejects_nonfinite(self):
         for bad in (NAN, INF, NINF):

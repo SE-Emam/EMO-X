@@ -65,9 +65,7 @@ def t2_fib(chat):
         ]
     )
     code = L.extract_code(txt, "python")
-    ok, log = L.run_py(
-        code, "assert fib(0)==0 and fib(1)==1 and fib(10)==55; print('FIB_OK')"
-    )
+    ok, log = L.run_py(code, "assert fib(0)==0 and fib(1)==1 and fib(10)==55; print('FIB_OK')")
     return {
         "pass": bool(ok and "FIB_OK" in log),
         "secs": round(dt, 1),
@@ -90,9 +88,7 @@ def t3_bugfix(chat):
         ]
     )
     code = L.extract_code(txt, "python")
-    ok, log = L.run_py(
-        code, "assert is_even(4)==True and is_even(5)==False; print('FIX_OK')"
-    )
+    ok, log = L.run_py(code, "assert is_even(4)==True and is_even(5)==False; print('FIX_OK')")
     return {
         "pass": bool(ok and "FIX_OK" in log),
         "secs": round(dt, 1),
@@ -388,9 +384,7 @@ def r5_supabase(chat):
     }
 
 
-R6_ORIG = (
-    "def total(items):\n    s = 0\n    for i in items:\n        s += i\n    return s\n"
-)
+R6_ORIG = "def total(items):\n    s = 0\n    for i in items:\n        s += i\n    return s\n"
 
 
 def r6_diff(chat):
@@ -406,9 +400,7 @@ def r6_diff(chat):
         ]
     )
     diff = L.extract_code(txt, "diff")
-    ok, log = L.verify_patch(
-        "calc.py", R6_ORIG, diff, must_contain=("def sum_all", "s += i")
-    )
+    ok, log = L.verify_patch("calc.py", R6_ORIG, diff, must_contain=("def sum_all", "s += i"))
     return {"pass": bool(ok), "secs": dt, "usage": u, "log": log, "sample": txt[:600]}
 
 
@@ -867,9 +859,7 @@ def build_repo(root):
         ),
         # A11/A13 distractor: big irrelevant file (~40KB)
         "shop/vendor_dump.py": "# vendored legacy dump - DO NOT USE\n"
-        + "".join(
-            "LEGACY_%d = %d\n" % (i, (i * 2654435761) % 100000) for i in range(1500)
-        ),
+        + "".join("LEGACY_%d = %d\n" % (i, (i * 2654435761) % 100000) for i in range(1500)),
     }
     for rel, content in files.items():
         with open(os.path.join(root, rel), "w") as f:
@@ -1199,9 +1189,7 @@ def main(argv=None):
         "otherwise); security-bench/run_security.py stays "
         "runnable standalone",
     )
-    ap.add_argument(
-        "--only", default="", help="comma list, e.g. T5,R7,H3 (code25 test filter)"
-    )
+    ap.add_argument("--only", default="", help="comma list, e.g. T5,R7,H3 (code25 test filter)")
     ap.add_argument("--trials", type=int, default=1)
     # X-5 additive flags (SPEC 42): legacy defaults unchanged.
     ap.add_argument(
@@ -1210,9 +1198,7 @@ def main(argv=None):
         default=1,
         help="canonical instances per family (new suites)",
     )
-    ap.add_argument(
-        "--seed", type=int, default=0, help="deterministic instance seed (new suites)"
-    )
+    ap.add_argument("--seed", type=int, default=0, help="deterministic instance seed (new suites)")
     ap.add_argument(
         "--fault-rate",
         type=float,
@@ -1240,8 +1226,7 @@ def main(argv=None):
     ap.add_argument(
         "--hidden-ok",
         action="store_true",
-        help="opt in to the hidden validation suite "
-        "(HIDDEN-VALIDATION claim tier, never public)",
+        help="opt in to the hidden validation suite (HIDDEN-VALIDATION claim tier, never public)",
     )
     ap.add_argument(
         "--temperature",
@@ -1315,9 +1300,7 @@ def main(argv=None):
                 log.warning(f"REFUSED: {e}")
                 return 2
             raise
-        _type_modes = set(
-            MODEL_TYPES[str(args.model_type).strip().lower()]["modalities"] or ()
-        )
+        _type_modes = set(MODEL_TYPES[str(args.model_type).strip().lower()]["modalities"] or ())
         _decl_modes = set(parse_model_modalities(args.model_modalities))
         if not _decl_modes <= _type_modes and _type_modes:
             log.warning(
@@ -1351,11 +1334,7 @@ def main(argv=None):
 
         import runner as _runner
 
-        _raw = (
-            args.out
-            if args.out.rstrip("/").endswith("raw")
-            else os.path.join(args.out, "raw")
-        )
+        _raw = args.out if args.out.rstrip("/").endswith("raw") else os.path.join(args.out, "raw")
         snap = _runner.health_snapshot(_raw)
         print(_json.dumps(snap, indent=1, default=str))
         return 0
@@ -1454,9 +1433,7 @@ def main(argv=None):
                 log.warning(f"REFUSED: {e}")
                 return 2
             raise
-        log.info(
-            "suite=%s attempts=%d pass=%d" % (s["suite"], s["n_attempts"], s["n_pass"])
-        )
+        log.info("suite=%s attempts=%d pass=%d" % (s["suite"], s["n_attempts"], s["n_pass"]))
         log.info("prompt_sha256={}".format(s["prompt_sha256"]))
         log.info("harness_sha256={}".format(s["harness_sha256"]))
         log.info(f"saved {_dir}")
@@ -1467,9 +1444,7 @@ def main(argv=None):
         sys.path.insert(0, _here)
         import report as _rep
 
-        text, stamp = _rep.generate(
-            args.report, model=args.model, notes=args.report_notes
-        )
+        text, stamp = _rep.generate(args.report, model=args.model, notes=args.report_notes)
         parent = os.path.dirname(_here)
         rdir = args.report_out or os.path.join(parent, "reports")
         os.makedirs(rdir, exist_ok=True)
@@ -1508,9 +1483,7 @@ def main(argv=None):
         try:
             require_model_modality(
                 _s,
-                _runner_mod.SUITE_MODALITIES.get(
-                    _s, _runner_mod.DEFAULT_SUITE_MODALITY
-                ),
+                _runner_mod.SUITE_MODALITIES.get(_s, _runner_mod.DEFAULT_SUITE_MODALITY),
                 _declared,
             )
         except Exception as e:
@@ -1520,9 +1493,7 @@ def main(argv=None):
             raise
 
     stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    model_slug = re.sub(
-        r"[^A-Za-z0-9_.-]+", "_", args.model or os.environ.get("MODEL", "model")
-    )
+    model_slug = re.sub(r"[^A-Za-z0-9_.-]+", "_", args.model or os.environ.get("MODEL", "model"))
     os.makedirs(args.out, exist_ok=True)
 
     full = {

@@ -8,7 +8,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, ".."))
 
 
-def _git_sha():
+def _git_sha() -> str:
     """Best-effort harness git SHA; 'unknown' outside a git checkout."""
     try:
         import subprocess
@@ -28,7 +28,7 @@ def _git_sha():
     return "unknown"
 
 
-def _tool_version(binary, *version_args):
+def _tool_version(binary: str, *version_args: str) -> str:
     """Best-effort '<binary> <version>' string or 'unknown'."""
     try:
         import shutil
@@ -45,7 +45,7 @@ def _tool_version(binary, *version_args):
         return "unknown"
 
 
-def collect_toolchain():
+def collect_toolchain() -> dict[str, str]:
     """Toolchain versions for rebuildability. Never raises; unknowns kept."""
     try:
         import sqlite3
@@ -63,7 +63,7 @@ def collect_toolchain():
     }
 
 
-def _hardware_cpu():
+def _hardware_cpu() -> str:
     """Best-effort CPU label; "unknown", never "". SPEC 32."""
     try:
         label = str(platform.processor() or platform.machine() or "").strip()
@@ -74,7 +74,7 @@ def _hardware_cpu():
     return "unknown"
 
 
-def _hardware_cpu_count():
+def _hardware_cpu_count() -> str:
     """Best-effort CPU count as string; "unknown", never "". SPEC 32."""
     try:
         count = os.cpu_count()
@@ -85,7 +85,7 @@ def _hardware_cpu_count():
     return "unknown"
 
 
-def _ram_gb_float():
+def _ram_gb_float() -> float | None:
     """Best-effort total RAM in GB as float, or None. SPEC 32."""
     try:
         pages = os.sysconf("SC_PHYS_PAGES")
@@ -115,7 +115,7 @@ def _ram_gb_float():
     return None
 
 
-def _hardware_ram_gb():
+def _hardware_ram_gb() -> str:
     """Best-effort RAM label in GB; "unknown", never "". SPEC 32."""
     try:
         ram = _ram_gb_float()
@@ -129,7 +129,7 @@ def _hardware_ram_gb():
     return "unknown"
 
 
-def _hardware_gpu():
+def _hardware_gpu() -> str:
     """Best-effort GPU label: darwin sysctl or nvidia-smi, else unknown."""
     try:
         import subprocess
@@ -161,7 +161,7 @@ def _hardware_gpu():
     return "unknown"
 
 
-def _device_class(machine, ram_gb, gpu):
+def _device_class(machine: str, ram_gb: float | str, gpu: str) -> str:
     """Coarse device bucket; "unknown" when parts unknown. SPEC 32."""
     try:
         arch = str(machine or "").strip().lower()
@@ -195,7 +195,7 @@ def _device_class(machine, ram_gb, gpu):
         return "unknown"
 
 
-def collect_hardware():
+def collect_hardware() -> dict[str, str]:
     """Best-effort hardware object; unknowns are explicit, never guessed."""
     try:
         machine = platform.machine() or "unknown"

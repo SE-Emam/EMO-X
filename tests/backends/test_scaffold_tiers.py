@@ -35,8 +35,7 @@ def _load(name, path):
     return mod
 
 
-EPISODE = _load("agent_episode_scaffold",
-                os.path.join(ROOT, "suites", "agent-loop", "episode.py"))
+EPISODE = _load("agent_episode_scaffold", os.path.join(ROOT, "suites", "agent-loop", "episode.py"))
 LEGACY = _load("legacy_run_scaffold", os.path.join(SHARED, "run.py"))
 
 
@@ -46,10 +45,16 @@ def _close(tag):
 
 
 def _mkcall(fn, params):
-    inner = "".join("<parameter=" + k + ">" + v + _close("parameter")
-                    for k, v in params)
-    return ("<tool_call>\n<function=" + fn + ">\n" + inner
-            + _close("function") + "\n" + _close("tool_call"))
+    inner = "".join("<parameter=" + k + ">" + v + _close("parameter") for k, v in params)
+    return (
+        "<tool_call>\n<function="
+        + fn
+        + ">\n"
+        + inner
+        + _close("function")
+        + "\n"
+        + _close("tool_call")
+    )
 
 
 def _chat_script(replies):
@@ -68,9 +73,9 @@ def _chat_script(replies):
 READ_TAXES = _mkcall("read", (("path", "shop/taxes.py"),))
 LS_REPO = _mkcall("ls", (("path", "."),))
 CAT_TAXES = _mkcall("run", (("cmd", "cat shop/taxes.py"),))
-EDIT_TAXES = _mkcall("edit", (("path", "shop/taxes.py"),
-                              ("old", "    return 0.0"),
-                              ("new", "    return 0.20")))
+EDIT_TAXES = _mkcall(
+    "edit", (("path", "shop/taxes.py"), ("old", "    return 0.0"), ("new", "    return 0.20"))
+)
 RUN_TESTS = _mkcall("run", (("cmd", "python3 -m pytest shop/tests/ -q"),))
 BOGUS = _mkcall("nope", (("path", "."),))
 FINAL = "FINAL: done"
@@ -83,19 +88,17 @@ class TestPromptsFrozen(unittest.TestCase):
 
     def test_tier_tool_tables_match_spec27(self):
         self.assertEqual(EPISODE.SCAFFOLD_TOOLS["L0-raw"], ())
-        self.assertEqual(sorted(EPISODE.SCAFFOLD_TOOLS["L1-minimal"]),
-                         ["read", "run"])
-        self.assertEqual(sorted(EPISODE.SCAFFOLD_TOOLS["L2-standard"]),
-                         ["edit", "ls", "read", "run"])
+        self.assertEqual(sorted(EPISODE.SCAFFOLD_TOOLS["L1-minimal"]), ["read", "run"])
+        self.assertEqual(
+            sorted(EPISODE.SCAFFOLD_TOOLS["L2-standard"]), ["edit", "ls", "read", "run"]
+        )
         for level, tools in EPISODE.SCAFFOLD_TOOLS.items():
-            self.assertEqual(sorted(tools),
-                             sorted(report_v2.SCAFFOLD_TIER_TOOLS[level]))
+            self.assertEqual(sorted(tools), sorted(report_v2.SCAFFOLD_TIER_TOOLS[level]))
 
 
 class TestL0Raw(unittest.TestCase):
     def test_final_immediately_zero_tool_calls(self):
-        result, _traj = EPISODE.run_episode(
-            _chat_script([FINAL]), max_steps=3, scaffold="L0-raw")
+        result, _traj = EPISODE.run_episode(_chat_script([FINAL]), max_steps=3, scaffold="L0-raw")
         self.assertEqual(result["tool_calls"], 0)
         self.assertTrue(result["stopped_cleanly"])
         self.assertEqual(result["scaffold_level"], "L0-raw")
@@ -104,8 +107,8 @@ class TestL0Raw(unittest.TestCase):
 
     def test_tool_shaped_reply_fails_format_error(self):
         result, traj = EPISODE.run_episode(
-            _chat_script([READ_TAXES, FINAL]), max_steps=3,
-            scaffold="L0-raw")
+            _chat_script([READ_TAXES, FINAL]), max_steps=3, scaffold="L0-raw"
+        )
         self.assertEqual(result["tool_calls"], 0)
         self.assertEqual(result["files_read"], [])
         kinds = [f["kind"] for f in traj["failures"]]
@@ -118,24 +121,22 @@ class TestL0Raw(unittest.TestCase):
 class TestL1Minimal(unittest.TestCase):
     def test_read_accepted(self):
         result, traj = EPISODE.run_episode(
-            _chat_script([READ_TAXES, FINAL]), max_steps=3,
-            scaffold="L1-minimal")
+            _chat_script([READ_TAXES, FINAL]), max_steps=3, scaffold="L1-minimal"
+        )
         self.assertIn("shop/taxes.py", result["files_read"])
         self.assertEqual(result["scaffold_level"], "L1-minimal")
-        self.assertTrue(any(o["tool"] == "read" and o["ok"]
-                            for o in traj["observations"]))
+        self.assertTrue(any(o["tool"] == "read" and o["ok"] for o in traj["observations"]))
 
     def test_run_accepted(self):
         _result, traj = EPISODE.run_episode(
-            _chat_script([CAT_TAXES, FINAL]), max_steps=3,
-            scaffold="L1-minimal")
-        self.assertTrue(any(o["tool"] == "run" and o["ok"]
-                            for o in traj["observations"]))
+            _chat_script([CAT_TAXES, FINAL]), max_steps=3, scaffold="L1-minimal"
+        )
+        self.assertTrue(any(o["tool"] == "run" and o["ok"] for o in traj["observations"]))
 
     def test_ls_rejected_via_unknown_tool_path(self):
         result, traj = EPISODE.run_episode(
-            _chat_script([LS_REPO, FINAL]), max_steps=3,
-            scaffold="L1-minimal")
+            _chat_script([LS_REPO, FINAL]), max_steps=3, scaffold="L1-minimal"
+        )
         bad = [o for o in traj["observations"] if o["tool"] == "ls"]
         self.assertTrue(bad)
         self.assertTrue(all(not o["ok"] for o in bad))
@@ -144,64 +145,60 @@ class TestL1Minimal(unittest.TestCase):
 
     def test_edit_rejected_via_unknown_tool_path(self):
         result, traj = EPISODE.run_episode(
-            _chat_script([EDIT_TAXES, FINAL]), max_steps=3,
-            scaffold="L1-minimal")
+            _chat_script([EDIT_TAXES, FINAL]), max_steps=3, scaffold="L1-minimal"
+        )
         self.assertEqual(result["files_edited"], [])
         bad = [o for o in traj["observations"] if o["tool"] == "edit"]
         self.assertTrue(bad)
-        self.assertTrue(all("unknown tool edit" in o["output"]
-                            for o in bad))
+        self.assertTrue(all("unknown tool edit" in o["output"] for o in bad))
 
 
 class TestL2Standard(unittest.TestCase):
     def test_default_is_l2_standard(self):
-        result, _traj = EPISODE.run_episode(_chat_script([FINAL]),
-                                            max_steps=2)
+        result, _traj = EPISODE.run_episode(_chat_script([FINAL]), max_steps=2)
         self.assertEqual(result["scaffold_level"], "L2-standard")
 
     def test_full_loop_repairs_and_tags_attempt(self):
         result, _traj = EPISODE.run_episode(
             _chat_script([READ_TAXES, EDIT_TAXES, RUN_TESTS, FINAL]),
-            max_steps=6, scaffold="L2-standard")
+            max_steps=6,
+            scaffold="L2-standard",
+        )
         self.assertIn("shop/taxes.py", result["files_edited"])
         self.assertTrue(result["tests_green"])
         self.assertTrue(result["success"])
-        attempt = EPISODE.episode_attempt(result, run_id="RUN-SG",
-                                          model_id="m")
+        attempt = EPISODE.episode_attempt(result, run_id="RUN-SG", model_id="m")
         self.assertEqual(attempt["scaffold_level"], "L2-standard")
         schemas.validate_attempt(attempt)
 
     def test_unknown_tool_still_rejected(self):
         _result, traj = EPISODE.run_episode(
-            _chat_script([BOGUS, FINAL]), max_steps=3,
-            scaffold="L2-standard")
+            _chat_script([BOGUS, FINAL]), max_steps=3, scaffold="L2-standard"
+        )
         bad = [o for o in traj["observations"] if o["tool"] == "nope"]
         self.assertTrue(bad)
-        self.assertTrue(all("unknown tool nope" in o["output"]
-                            for o in bad))
+        self.assertTrue(all("unknown tool nope" in o["output"] for o in bad))
 
 
 class TestInvalidScaffold(unittest.TestCase):
     def test_unknown_tier_raises_value_error(self):
         with self.assertRaises(ValueError):
-            EPISODE.run_episode(_chat_script([FINAL]),
-                                scaffold="L9-ultra")
+            EPISODE.run_episode(_chat_script([FINAL]), scaffold="L9-ultra")
 
 
 class TestScaffoldLevelThreading(unittest.TestCase):
     def test_tool_trace_entries_tagged(self):
         for level in ("L1-minimal", "L2-standard"):
             result, _traj = EPISODE.run_episode(
-                _chat_script([READ_TAXES, FINAL]), max_steps=3,
-                scaffold=level)
+                _chat_script([READ_TAXES, FINAL]), max_steps=3, scaffold=level
+            )
             tools = [t for t in result["trace"] if "tool" in t]
             self.assertTrue(tools)
             for entry in tools:
                 self.assertEqual(entry.get("scaffold_level"), level)
 
     def test_attempt_flows_through_schema(self):
-        result, _traj = EPISODE.run_episode(
-            _chat_script([FINAL]), max_steps=2, scaffold="L0-raw")
+        result, _traj = EPISODE.run_episode(_chat_script([FINAL]), max_steps=2, scaffold="L0-raw")
         attempt = EPISODE.episode_attempt(result, "RUN-SG", "m")
         self.assertEqual(attempt["scaffold_level"], "L0-raw")
         # Runner path preserves unknown attempt fields (no runner edit).
@@ -209,10 +206,8 @@ class TestScaffoldLevelThreading(unittest.TestCase):
         self.assertEqual(kept["scaffold_level"], "L0-raw")
 
     def test_explicit_override_and_legacy_default(self):
-        result, _traj = EPISODE.run_episode(_chat_script([FINAL]),
-                                            max_steps=2)
-        attempt = EPISODE.episode_attempt(result, "RUN-SG", "m",
-                                          scaffold_level="L1-minimal")
+        result, _traj = EPISODE.run_episode(_chat_script([FINAL]), max_steps=2)
+        attempt = EPISODE.episode_attempt(result, "RUN-SG", "m", scaffold_level="L1-minimal")
         self.assertEqual(attempt["scaffold_level"], "L1-minimal")
         legacy = dict(result)
         del legacy["scaffold_level"]
@@ -245,15 +240,13 @@ class TestScaffoldGainReport(unittest.TestCase):
         self.assertIsNone(rep["SG_relative"])
         self.assertIsNone(rep["SG_L1"])
         self.assertIsNone(rep["SG_L1_relative"])
-        partial = report_v2.scaffold_gain_report(
-            {"L0-raw": 0.4, "L2-standard": 0.9})
+        partial = report_v2.scaffold_gain_report({"L0-raw": 0.4, "L2-standard": 0.9})
         self.assertAlmostEqual(partial["SG"], 0.5)
         self.assertIsNone(partial["SG_L1"])
         self.assertIsNone(partial["SG_L1_relative"])
 
     def test_build_v2_report_carries_sg_section(self):
-        rep = report_v2.build_v2_report([], [], model_id="m",
-                                        tier_scores=dict(self.TIERS))
+        rep = report_v2.build_v2_report([], [], model_id="m", tier_scores=dict(self.TIERS))
         sg = rep["scaffold_gain"]
         self.assertAlmostEqual(sg["SG"], 0.6)
         self.assertAlmostEqual(sg["SG_relative"], 3.0)
@@ -267,26 +260,25 @@ class TestScaffoldGainReport(unittest.TestCase):
 class TestScaffoldComparability(unittest.TestCase):
     def test_matching_tiers_comparable(self):
         verdict, _reason = report_v2.scaffold_comparability(
-            report_v2.SCAFFOLD_TIER_TOOLS,
-            dict(report_v2.SCAFFOLD_TIER_TOOLS))
+            report_v2.SCAFFOLD_TIER_TOOLS, dict(report_v2.SCAFFOLD_TIER_TOOLS)
+        )
         self.assertEqual(verdict, "COMPARABLE")
 
     def test_narrower_l1_is_non_comparable(self):
         other = dict(report_v2.SCAFFOLD_TIER_TOOLS)
         other["L1-minimal"] = ("read",)
-        verdict, reason = report_v2.scaffold_comparability(
-            report_v2.SCAFFOLD_TIER_TOOLS, other)
+        verdict, reason = report_v2.scaffold_comparability(report_v2.SCAFFOLD_TIER_TOOLS, other)
         self.assertEqual(verdict, "NON_COMPARABLE")
         self.assertIn("SPEC 27", reason)
 
     def test_manifest_form_mismatch(self):
-        man_a = {"scaffold_tier_tools": dict(
-            report_v2.SCAFFOLD_TIER_TOOLS)}
+        man_a = {"scaffold_tier_tools": dict(report_v2.SCAFFOLD_TIER_TOOLS)}
         tools_b = dict(report_v2.SCAFFOLD_TIER_TOOLS)
         tools_b["L1-minimal"] = ("read", "run", "ls")
         man_b = {"scaffold_tier_tools": tools_b}
         verdict, _reason = report_v2.scaffold_comparability(
-            None, None, manifest_a=man_a, manifest_b=man_b)
+            None, None, manifest_a=man_a, manifest_b=man_b
+        )
         self.assertEqual(verdict, "NON_COMPARABLE")
 
 

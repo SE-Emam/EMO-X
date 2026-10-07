@@ -20,8 +20,13 @@ try:
     from schemas import VoidRun, STATUS_CAUSES, classify_cause
     from schemas import VISIBILITY, normalize_visibility
 except ImportError:  # package-layout fallback
-    from shared.schemas import (VoidRun, STATUS_CAUSES, classify_cause,
-                                VISIBILITY, normalize_visibility)
+    from shared.schemas import (
+        VoidRun,
+        STATUS_CAUSES,
+        classify_cause,
+        VISIBILITY,
+        normalize_visibility,
+    )
 try:
     from manifests import verify_prompt_pack
 except ImportError:
@@ -63,12 +68,17 @@ class TestPromptPack(unittest.TestCase):
         try:
             os.makedirs(os.path.join(tmp, "shared"))
             os.makedirs(os.path.join(tmp, "prompts"))
-            shutil.copy(os.path.join(ROOT, "prompts", "SHA256SUMS"),
-                        os.path.join(tmp, "prompts", "SHA256SUMS"))
-            shutil.copy(os.path.join(ROOT, "prompts", "PROMPT_PACK_v2.md"),
-                        os.path.join(tmp, "prompts", "PROMPT_PACK_v2.md"))
-            with open(os.path.join(tmp, "prompts", "PROMPT_PACK_v2.md"),
-                      "a", encoding="utf-8") as f:
+            shutil.copy(
+                os.path.join(ROOT, "prompts", "SHA256SUMS"),
+                os.path.join(tmp, "prompts", "SHA256SUMS"),
+            )
+            shutil.copy(
+                os.path.join(ROOT, "prompts", "PROMPT_PACK_v2.md"),
+                os.path.join(tmp, "prompts", "PROMPT_PACK_v2.md"),
+            )
+            with open(
+                os.path.join(tmp, "prompts", "PROMPT_PACK_v2.md"), "a", encoding="utf-8"
+            ) as f:
                 f.write("\nTAMPERED")
             with self.assertRaises(VoidRun):
                 verify_prompt_pack("PROMPT_PACK_v2", root=tmp)

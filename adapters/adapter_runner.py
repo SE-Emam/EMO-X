@@ -47,9 +47,7 @@ def _load_adapter(name):
     elif name == "pi":
         import pi_adapter as mod
     else:
-        raise RuntimeError(
-            "unknown adapter {!r} (choose from {})".format(name, "/".join(ADAPTERS))
-        )
+        raise RuntimeError("unknown adapter {!r} (choose from {})".format(name, "/".join(ADAPTERS)))
     return mod
 
 

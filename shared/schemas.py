@@ -3,30 +3,71 @@
 Contract refs: SPEC sections 32-34, DEN C4, C83, C90-C91.
 """
 
-PRIMARY_STATUSES = ("PASS", "PARTIAL", "FAIL", "TIMEOUT", "INVALID",
-                    "ERROR", "VOID")
+PRIMARY_STATUSES = ("PASS", "PARTIAL", "FAIL", "TIMEOUT", "INVALID", "ERROR", "VOID")
 SCORED_STATUSES = ("PASS", "PARTIAL", "FAIL", "TIMEOUT", "INVALID")
 
-ATTEMPT_REQUIRED = ("run_id", "model_id", "task_family_id", "instance_id",
-                    "variant_class", "trial_id", "primary_status", "score")
+ATTEMPT_REQUIRED = (
+    "run_id",
+    "model_id",
+    "task_family_id",
+    "instance_id",
+    "variant_class",
+    "trial_id",
+    "primary_status",
+    "score",
+)
 
-ELIGIBILITY_FLAGS = ("eligible_for_task_score", "eligible_for_pass_rate",
-                     "eligible_for_efficiency", "eligible_for_calibration")
+ELIGIBILITY_FLAGS = (
+    "eligible_for_task_score",
+    "eligible_for_pass_rate",
+    "eligible_for_efficiency",
+    "eligible_for_calibration",
+)
 
 # SPEC section 32 fields for run_manifest.json.
-RUN_MANIFEST_REQUIRED = ("benchmark_version", "suite", "prompt_pack",
-                         "prompt_sha256", "harness_sha256", "model",
-                         "backend", "seed", "trials")
-RUN_MANIFEST_OPTIONAL = ("model_sha256", "temperature", "top_p", "top_k",
-                         "context", "reasoning_mode", "hardware", "runtime",
-                         "provider_profile", "backend_capabilities",
-                         "claim_tier", "reasoning_conditions")
+RUN_MANIFEST_REQUIRED = (
+    "benchmark_version",
+    "suite",
+    "prompt_pack",
+    "prompt_sha256",
+    "harness_sha256",
+    "model",
+    "backend",
+    "seed",
+    "trials",
+)
+RUN_MANIFEST_OPTIONAL = (
+    "model_sha256",
+    "temperature",
+    "top_p",
+    "top_k",
+    "context",
+    "reasoning_mode",
+    "hardware",
+    "runtime",
+    "provider_profile",
+    "backend_capabilities",
+    "claim_tier",
+    "reasoning_conditions",
+)
 
 # SPEC section 7 (Task DSL) fields for a task manifest.
-TASK_MANIFEST_REQUIRED = ("id", "version", "name", "category",
-                          "capabilities", "generator", "difficulty",
-                          "execution", "oracle", "scoring", "variants",
-                          "timeouts", "network", "filesystem")
+TASK_MANIFEST_REQUIRED = (
+    "id",
+    "version",
+    "name",
+    "category",
+    "capabilities",
+    "generator",
+    "difficulty",
+    "execution",
+    "oracle",
+    "scoring",
+    "variants",
+    "timeouts",
+    "network",
+    "filesystem",
+)
 
 VALID_REASONING_MODES = ("enabled", "disabled", "provider_default", "native")
 
@@ -61,8 +102,7 @@ def validate_attempt(record):
     trial = record["trial_id"]
     if isinstance(trial, bool) or not isinstance(trial, int) or trial < 1:
         raise _err("trial_id must be a positive int")
-    for field in ("run_id", "model_id", "task_family_id", "instance_id",
-                  "variant_class"):
+    for field in ("run_id", "model_id", "task_family_id", "instance_id", "variant_class"):
         val = record[field]
         if not isinstance(val, str) or not val:
             raise _err("%s must be a non-empty string" % field)
@@ -73,13 +113,12 @@ def validate_attempt(record):
             raise _err("%s must be bool" % flag)
     if "primary_failure" in out:
         if out["primary_failure"] is not None and (
-                not isinstance(out["primary_failure"], str)
-                or not out["primary_failure"]):
+            not isinstance(out["primary_failure"], str) or not out["primary_failure"]
+        ):
             raise _err("primary_failure must be a string or null")
     if "secondary_failure_tags" in out:
         tags = out["secondary_failure_tags"]
-        if not isinstance(tags, list) or not all(
-                isinstance(t, str) and t for t in tags):
+        if not isinstance(tags, list) or not all(isinstance(t, str) and t for t in tags):
             raise _err("secondary_failure_tags must be a list of strings")
     return out
 
@@ -107,13 +146,14 @@ def validate_run_manifest(record):
                 raise _err("backend_capabilities.%s must be a string" % field)
     if "model_modalities" in record:  # model-level capabilities
         mods = record["model_modalities"]
-        if (not isinstance(mods, list) or not mods
-                or any(not isinstance(m, str) or not m.strip()
-                       for m in mods)):
+        if (
+            not isinstance(mods, list)
+            or not mods
+            or any(not isinstance(m, str) or not m.strip() for m in mods)
+        ):
             raise _err("model_modalities must be a non-empty string list")
     if "model_type" in record and record["model_type"] is not None:
-        if (not isinstance(record["model_type"], str)
-                or not record["model_type"].strip()):
+        if not isinstance(record["model_type"], str) or not record["model_type"].strip():
             raise _err("model_type must be a non-empty string or null")
     for field in ("temperature", "top_p"):
         if field in record and record[field] is not None:
@@ -134,8 +174,16 @@ def validate_task_manifest(record):
         raise _err("capabilities must be a non-empty list")
     if not isinstance(record["variants"], list) or not record["variants"]:
         raise _err("variants must be a non-empty list")
-    for section in ("generator", "difficulty", "execution", "oracle",
-                    "scoring", "timeouts", "network", "filesystem"):
+    for section in (
+        "generator",
+        "difficulty",
+        "execution",
+        "oracle",
+        "scoring",
+        "timeouts",
+        "network",
+        "filesystem",
+    ):
         if not isinstance(record[section], dict):
             raise _err("%s must be a mapping" % section)
     net = record["network"]
@@ -149,8 +197,7 @@ def validate_task_manifest(record):
 
 def attempt_identity(record):
     """Return canonical attempt identity tuple. DEN C4."""
-    return (record["run_id"], record["task_family_id"],
-            record["instance_id"], record["trial_id"])
+    return (record["run_id"], record["task_family_id"], record["instance_id"], record["trial_id"])
 
 
 def is_scored_status(status):
@@ -197,5 +244,6 @@ VISIBILITY = ("public", "hidden", "rotating")
 def normalize_visibility(manifest_dict):
     """Default visibility is public; reject unknown. DEN C5, Y-4 contract."""
     v = (manifest_dict or {}).get("visibility", "public")
-    if v not in VISIBILITY: raise _err("bad visibility: %r" % (v,))
+    if v not in VISIBILITY:
+        raise _err("bad visibility: %r" % (v,))
     return v

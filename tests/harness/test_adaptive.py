@@ -78,8 +78,7 @@ class ControllerTests(unittest.TestCase):
         # A hard variant (recovery, bump 3) at D1 behaves like D4:
         # two passes still promote from the nominal rung.
         ctl = self._ctl([True, True])
-        nxt, action, variant = ctl.recommend(
-            "H3", difficulty=1, variant="recovery")
+        nxt, action, variant = ctl.recommend("H3", difficulty=1, variant="recovery")
         self.assertEqual(action, "promote")
         self.assertEqual(nxt, 2)
         self.assertEqual(variant, "structural")

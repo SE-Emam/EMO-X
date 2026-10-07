@@ -9,8 +9,7 @@ shared/sandbox.py (X-1 ownership).
 def tests_verdict(passed, total):
     """Map a test tally to a verdict. All pass => PASS, some => PARTIAL."""
     if total is None or total <= 0:
-        return {"verdict": "VOID", "score": None,
-                "note": "no tests to judge"}
+        return {"verdict": "VOID", "score": None, "note": "no tests to judge"}
     if passed >= total:
         return {"verdict": "PASS", "score": 1.0}
     if passed <= 0:
@@ -21,14 +20,16 @@ def tests_verdict(passed, total):
 def exit_code_verdict(exit_code, tests=None):
     """Map a process exit code (+ optional test tally) to a verdict."""
     if exit_code is None:
-        return {"verdict": "ERROR", "score": None,
-                "note": "missing exit code is infra-unknown, not FAIL"}
+        return {
+            "verdict": "ERROR",
+            "score": None,
+            "note": "missing exit code is infra-unknown, not FAIL",
+        }
     if tests is not None:
         passed, total = tests
         return tests_verdict(passed, total)
     ok = exit_code == 0
-    return {"verdict": "PASS" if ok else "FAIL",
-            "score": 1.0 if ok else 0.0}
+    return {"verdict": "PASS" if ok else "FAIL", "score": 1.0 if ok else 0.0}
 
 
 def compile_verdict(compiled, test_verdict=None):

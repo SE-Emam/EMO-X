@@ -42,27 +42,49 @@ FIX_DIR = os.path.join(HERE, "fixtures")
 GT_PATH = os.path.join(FIX_DIR, "ground_truth.json")
 
 # --- frozen prompts (byte-frozen under PROMPT_PACK vision-v1) ---
-P_GROUND = ("Locate the {label} in this UI screenshot. "
-            "Reply with ONLY a JSON object, no markdown, no explanation: "
-            "'{{\"x\": <left>, \"y\": <top>, \"w\": <width>, \"h\": <height>}}' "
-            "with coordinates normalized to 0-1000 (origin top-left).")
-P_ARABIC = ("Read ALL Arabic text visible in this image. "
-            "Reply with ONLY the transcribed text lines, no explanation.")
-P_COUNT = ("How many {what} are visible in this image? "
-           "Reply with ONLY a single integer, no explanation.")
+P_GROUND = (
+    "Locate the {label} in this UI screenshot. "
+    "Reply with ONLY a JSON object, no markdown, no explanation: "
+    '\'{{"x": <left>, "y": <top>, "w": <width>, "h": <height>}}\' '
+    "with coordinates normalized to 0-1000 (origin top-left)."
+)
+P_ARABIC = (
+    "Read ALL Arabic text visible in this image. "
+    "Reply with ONLY the transcribed text lines, no explanation."
+)
+P_COUNT = (
+    "How many {what} are visible in this image? Reply with ONLY a single integer, no explanation."
+)
 
 # tokens suggesting an endpoint/model accepts images (best-effort only;
 # the probe image call below is the binding check, not this list)
-VISION_TOKENS = ("vision", "vl", "image", "multimodal", "llava", "qwen-vl",
-                 "qwen2-vl", "qwen2.5-vl", "gpt-4o", "gpt-4-vision", "gemini",
-                 "claude-3", "pixtral", "llama-3.2-vision", "minicpm-v",
-                 " CogVLM".lower(), "internvl", "ocr")
+VISION_TOKENS = (
+    "vision",
+    "vl",
+    "image",
+    "multimodal",
+    "llava",
+    "qwen-vl",
+    "qwen2-vl",
+    "qwen2.5-vl",
+    "gpt-4o",
+    "gpt-4-vision",
+    "gemini",
+    "claude-3",
+    "pixtral",
+    "llama-3.2-vision",
+    "minicpm-v",
+    " CogVLM".lower(),
+    "internvl",
+    "ocr",
+)
 
 # error text proving the endpoint rejected the IMAGE (not a generic failure)
 NO_IMAGE_RE = re.compile(
     r"image|vision|multimodal|unsupported.*content|content.*type|"
     r"invalid.*media|media.*type|base64|data url|content part",
-    re.I)
+    re.I,
+)
 
 
 def load_ground_truth():
@@ -77,13 +99,19 @@ def img_data_url(path):
 
 
 def vision_messages(prompt, image_path):
-    return [{"role": "user", "content": [
-        {"type": "text", "text": prompt},
-        {"type": "image_url", "image_url": {"url": img_data_url(image_path)}},
-    ]}]
+    return [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": img_data_url(image_path)}},
+            ],
+        }
+    ]
 
 
 # ---------------- capability gating ----------------
+
 
 def models_hint_supports_vision(base_url, timeout=20):
     """GET {base}/models; True/False/None(unknown). Never raises.
@@ -94,6 +122,7 @@ def models_hint_supports_vision(base_url, timeout=20):
     """
     try:
         from backends import _validate_base_url  # noqa: E402
+
         _validate_base_url(base_url)
     except Exception:
         return None
@@ -119,18 +148,30 @@ def probe_image_call(chat, timeout_note=""):
     try:
         import struct
         import zlib
+
         # minimal 1x1 red PNG, stdlib-built (no PIL at runtime)
         def chunk(t, d):
             c = struct.pack(">I", len(d)) + t + d
             return c + struct.pack(">I", zlib.crc32(t + d) & 0xFFFFFFFF)
+
         ihdr = struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0)
         raw = b"\x00\xff\x00\x00"
-        png = (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr)
-               + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
+        png = (
+            b"\x89PNG\r\n\x1a\n"
+            + chunk(b"IHDR", ihdr)
+            + chunk(b"IDAT", zlib.compress(raw))
+            + chunk(b"IEND", b"")
+        )
         tiny = "data:image/png;base64," + base64.b64encode(png).decode("ascii")
-        msgs = [{"role": "user", "content": [
-            {"type": "text", "text": "Reply with ONLY the word OK."},
-            {"type": "image_url", "image_url": {"url": tiny}}]}]
+        msgs = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "Reply with ONLY the word OK."},
+                    {"type": "image_url", "image_url": {"url": tiny}},
+                ],
+            }
+        ]
         text, _, _ = chat(msgs, temp=0.0, max_tokens=16)
         return True, (text or "")[:100]
     except Exception as e:
@@ -149,8 +190,7 @@ def gate_check(chat, base_url, force):
     if ok:
         return None
     if hint is False:
-        return ("no vision model advertised at /models AND probe image call "
-                "failed (%s)" % detail)
+        return "no vision model advertised at /models AND probe image call failed (%s)" % detail
     return "probe image call failed (%s)" % detail
 
 
@@ -172,12 +212,10 @@ def parse_box(text):
         return None
     try:
         if all(k in d for k in ("x", "y", "w", "h")):
-            x, y, w, h = (float(d["x"]), float(d["y"]),
-                          float(d["w"]), float(d["h"]))
+            x, y, w, h = (float(d["x"]), float(d["y"]), float(d["w"]), float(d["h"]))
             return [x, y, x + w, y + h]
         if all(k in d for k in ("x_min", "y_min", "x_max", "y_max")):
-            return [float(d["x_min"]), float(d["y_min"]),
-                    float(d["x_max"]), float(d["y_max"])]
+            return [float(d["x_min"]), float(d["y_min"]), float(d["x_max"]), float(d["y_max"])]
     except (TypeError, ValueError):
         return None
     return None
@@ -205,8 +243,11 @@ def judge_arabic(reply, keywords):
     """Pass iff every ground-truth keyword appears (substring, order-free)."""
     r = norm_ar(reply)
     hits = [k for k in keywords if k in r]
-    return {"pass": len(hits) == len(keywords),
-            "hits": hits, "missing": [k for k in keywords if k not in r]}
+    return {
+        "pass": len(hits) == len(keywords),
+        "hits": hits,
+        "missing": [k for k in keywords if k not in r],
+    }
 
 
 INT_RE = re.compile(r"-?\d+")
@@ -220,64 +261,78 @@ def judge_count(reply, expected):
 
 # ---------------- suite ----------------
 
+
 def build_tests(gt):
     return [
-        ("V1_ground_login",
-         os.path.join(FIX_DIR, "ui_login.png"),
-         P_GROUND.format(label="red LOGIN button"),
-         ("ground", gt["ui_login.png"]["login_button"]["box"])),
-        ("V2_ground_save",
-         os.path.join(FIX_DIR, "ui_toolbar.png"),
-         P_GROUND.format(label="blue SAVE button"),
-         ("ground", gt["ui_toolbar.png"]["save_button"]["box"])),
-        ("V3_arabic_read",
-         os.path.join(FIX_DIR, "arabic_card.png"),
-         P_ARABIC,
-         ("arabic", gt["arabic_card.png"]["keywords"])),
-        ("V4_count_circles",
-         os.path.join(FIX_DIR, "grid_count.png"),
-         P_COUNT.format(what="blue circles"),
-         ("count", gt["grid_count.png"]["blue_circles"])),
-        ("V5_count_toolbar_buttons",
-         os.path.join(FIX_DIR, "ui_toolbar.png"),
-         P_COUNT.format(what="buttons in the dark toolbar (excluding the search field)"),
-         ("count", gt["ui_toolbar.png"]["toolbar_button_count"])),
-        ("V6_count_red_squares",
-         os.path.join(FIX_DIR, "grid_count.png"),
-         P_COUNT.format(what="red squares (squares only, not circles)"),
-         ("count", gt["grid_count.png"]["red_squares"])),
+        (
+            "V1_ground_login",
+            os.path.join(FIX_DIR, "ui_login.png"),
+            P_GROUND.format(label="red LOGIN button"),
+            ("ground", gt["ui_login.png"]["login_button"]["box"]),
+        ),
+        (
+            "V2_ground_save",
+            os.path.join(FIX_DIR, "ui_toolbar.png"),
+            P_GROUND.format(label="blue SAVE button"),
+            ("ground", gt["ui_toolbar.png"]["save_button"]["box"]),
+        ),
+        (
+            "V3_arabic_read",
+            os.path.join(FIX_DIR, "arabic_card.png"),
+            P_ARABIC,
+            ("arabic", gt["arabic_card.png"]["keywords"]),
+        ),
+        (
+            "V4_count_circles",
+            os.path.join(FIX_DIR, "grid_count.png"),
+            P_COUNT.format(what="blue circles"),
+            ("count", gt["grid_count.png"]["blue_circles"]),
+        ),
+        (
+            "V5_count_toolbar_buttons",
+            os.path.join(FIX_DIR, "ui_toolbar.png"),
+            P_COUNT.format(what="buttons in the dark toolbar (excluding the search field)"),
+            ("count", gt["ui_toolbar.png"]["toolbar_button_count"]),
+        ),
+        (
+            "V6_count_red_squares",
+            os.path.join(FIX_DIR, "grid_count.png"),
+            P_COUNT.format(what="red squares (squares only, not circles)"),
+            ("count", gt["grid_count.png"]["red_squares"]),
+        ),
     ]
 
 
 def run_one(chat, kind, target, prompt, image):
     try:
-        text, secs, usage = chat(vision_messages(prompt, image),
-                                 temp=TEMP, max_tokens=MAX_TOKENS)
+        text, secs, usage = chat(vision_messages(prompt, image), temp=TEMP, max_tokens=MAX_TOKENS)
     except Exception as e:
         msg = str(e)[:300]
         if NO_IMAGE_RE.search(msg):
-            return {"pass": False, "error": "unsupported-image-call",
-                    "log": msg, "sample": ""}
+            return {"pass": False, "error": "unsupported-image-call", "log": msg, "sample": ""}
         return {"pass": False, "error": msg, "sample": ""}
     rec = {"secs": round(secs, 1), "usage": usage, "sample": (text or "")[:600]}
     if kind == "ground":
         box = parse_box(text)
         if box is None:
-            rec.update({"pass": False, "iou": 0.0,
-                        "log": "no parseable {x,y,w,h} box"})
+            rec.update({"pass": False, "iou": 0.0, "log": "no parseable {x,y,w,h} box"})
         else:
             v = iou(box, target)
-            rec.update({"pass": bool(v >= IOU_PASS), "iou": v,
-                        "pred": [round(x, 1) for x in box], "expected": target,
-                        "log": "iou=%.3f" % v})
+            rec.update(
+                {
+                    "pass": bool(v >= IOU_PASS),
+                    "iou": v,
+                    "pred": [round(x, 1) for x in box],
+                    "expected": target,
+                    "log": "iou=%.3f" % v,
+                }
+            )
     elif kind == "arabic":
         j = judge_arabic(text, target)
-        rec.update({"pass": j["pass"], "log": "hits=%s missing=%s"
-                    % (j["hits"], j["missing"])})
+        rec.update({"pass": j["pass"], "log": "hits=%s missing=%s" % (j["hits"], j["missing"])})
     else:
         j = judge_count(text, target)
-        rec.update({"pass": j["pass"], "log": "got=%s expected=%s"
-                    % (j["got"], j["expected"])})
+        rec.update({"pass": j["pass"], "log": "got=%s expected=%s" % (j["got"], j["expected"])})
     rec["error"] = None
     return rec
 
@@ -291,27 +346,38 @@ def _run_via_runner(args):
     bundle (executor-enforced), never a bespoke skip file.
     """
     import runner
+
     if (args.backend or "").lower() == "stub":
         chat = runner.stub_chat_factory("vision-compat")
     else:
         from backends import make_chat
-        chat = make_chat(args.backend, args.base_url, args.model,
-                         args.api_key)
+
+        chat = make_chat(args.backend, args.base_url, args.model, args.api_key)
     only = [x.strip().upper() for x in args.only.split(",") if x.strip()]
     order = ["V1", "V2", "V3", "V4", "V5", "V6"]
-    families = [v for v in order
-                if (not only) or v in only] or None
+    families = [v for v in order if (not only) or v in only] or None
     model_id = args.model or os.environ.get("MODEL", "model")
     rundir, summary = runner.run_suite(
-        "vision", chat, model_id, args.backend, 0, 1,
-        max(args.trials, 1), 0.25, args.out, families=families,
+        "vision",
+        chat,
+        model_id,
+        args.backend,
+        0,
+        1,
+        max(args.trials, 1),
+        0.25,
+        args.out,
+        families=families,
         force=bool(args.force),
         # This entry IS the vision suite: running it asserts a
         # vision-capable model (the live image probe still gates
         # per-family VOIDs at execution time).
-        model_modalities="text,vision")
-    print("vision: suite=%s attempts=%d pass=%d"
-          % (summary["suite"], summary["n_attempts"], summary["n_pass"]))
+        model_modalities="text,vision",
+    )
+    print(
+        "vision: suite=%s attempts=%d pass=%d"
+        % (summary["suite"], summary["n_attempts"], summary["n_pass"])
+    )
     print("saved", rundir)
     return 0
 
@@ -325,8 +391,11 @@ def main(argv=None):
     ap.add_argument("--only", default="", help="comma list, e.g. V1,V3")
     ap.add_argument("--trials", type=int, default=1)
     ap.add_argument("--out", default="results/")
-    ap.add_argument("--force", action="store_true",
-                    help="skip the image-support gate (failures then count as errors)")
+    ap.add_argument(
+        "--force",
+        action="store_true",
+        help="skip the image-support gate (failures then count as errors)",
+    )
     ap.add_argument("--list", action="store_true", help="list tests, run nothing")
     args = ap.parse_args(argv)
 

@@ -10,6 +10,7 @@ import sys
 def main(argv=None):
     """Entry point for the `emo` console script. Returns exit code."""
     import emox
+
     args = list(sys.argv[1:] if argv is None else argv)
     if args in (["--version"], ["-V"]):
         print("emo-x %s" % emox.__version__)

@@ -18,8 +18,7 @@ def numeric_match(output, expected, tolerance=0.0):
     except (TypeError, ValueError):
         return {"verdict": "FAIL", "score": 0.0}
     ok = diff <= tolerance
-    return {"verdict": "PASS" if ok else "FAIL",
-            "score": 1.0 if ok else 0.0}
+    return {"verdict": "PASS" if ok else "FAIL", "score": 1.0 if ok else 0.0}
 
 
 def set_match(output_items, expected_items):

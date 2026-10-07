@@ -90,9 +90,7 @@ def _check_code_extraction():
     code = bench_lib.extract_code(sample, lang="python")
     if "print(6 * 7)" not in code:
         raise AssertionError(f"extract_code missed fenced block: {code!r}")
-    other = bench_lib.extract_code(
-        "```js\nx();\n```\n```python\ny();\n```", lang="python"
-    )
+    other = bench_lib.extract_code("```js\nx();\n```\n```python\ny();\n```", lang="python")
     if "y();" not in other:
         raise AssertionError(f"extract_code lang filter broken: {other!r}")
     return "ok"
@@ -142,8 +140,7 @@ def _check_sqlite():
     """In-memory sqlite round-trip via bench_lib helper. SPEC 35."""
     rows, err = bench_lib.sqlite_query(
         "SELECT SUM(a) FROM t;",
-        "CREATE TABLE t(a INTEGER); INSERT INTO t VALUES (1);"
-        " INSERT INTO t VALUES (2);",
+        "CREATE TABLE t(a INTEGER); INSERT INTO t VALUES (1); INSERT INTO t VALUES (2);",
         [],
     )
     if err is not None or rows != [(3,)]:
@@ -161,18 +158,14 @@ def _check_postgres_connection():
     """
     rows, rc, err = bench_lib.psql_query("SELECT 1;", "SELECT 1;", timeout=15)
     if rows is None or rc != 0:
-        raise _SkipCheck(
-            "postgres instance unavailable: %s" % (err or "connection failed")
-        )
+        raise _SkipCheck("postgres instance unavailable: %s" % (err or "connection failed"))
     return "ok"
 
 
 def _check_patch_engine():
     """`patch` applies a unified diff inside the isolation container."""
     diff = "--- a.txt\n+++ a.txt\n@@ -1 +1 @@\n-hello\n+hello world\n"
-    ok, log = bench_lib.verify_patch(
-        "a.txt", "hello\n", diff, must_contain=("hello world",)
-    )
+    ok, log = bench_lib.verify_patch("a.txt", "hello\n", diff, must_contain=("hello world",))
     if not ok:
         raise AssertionError(f"patch check failed: {log[-200:]}")
     return "ok"
@@ -188,9 +181,7 @@ def _check_json_parser():
 def _check_timeout_enforcement():
     """Overrunning sandboxed command raises SandboxTimeout. SPEC 35."""
     try:
-        sandbox.run_in_sandbox(
-            ["python3", "-c", "import time; time.sleep(30)"], timeout=2
-        )
+        sandbox.run_in_sandbox(["python3", "-c", "import time; time.sleep(30)"], timeout=2)
     except sandbox.SandboxTimeout:
         return "ok"
     raise AssertionError("timeout did not fire")

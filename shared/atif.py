@@ -18,8 +18,7 @@ def _steps_from_trajectory(trajectory, agent_name):
 
     def push(kind, payload):
         counter[0] += 1
-        step = {"step_id": counter[0], "agent": {"name": agent_name},
-                "kind": kind}
+        step = {"step_id": counter[0], "agent": {"name": agent_name}, "kind": kind}
         if isinstance(payload, dict):
             step.update(payload)
         else:
@@ -32,12 +31,14 @@ def _steps_from_trajectory(trajectory, agent_name):
     calls = traj.get("tool_calls", [])
     observations = traj.get("observations", [])
     for i, call in enumerate(calls):
-        push("tool_call", call if isinstance(call, dict)
-             else {"raw": str(call)[:2000]})
+        push("tool_call", call if isinstance(call, dict) else {"raw": str(call)[:2000]})
         if i < len(observations):
-            push("observation", observations[i]
-                 if isinstance(observations[i], dict)
-                 else {"raw": str(observations[i])[:2000]})
+            push(
+                "observation",
+                observations[i]
+                if isinstance(observations[i], dict)
+                else {"raw": str(observations[i])[:2000]},
+            )
     for failure in traj.get("failures", []):
         push("failure", failure)
     for recovery in traj.get("recoveries", []):
@@ -50,8 +51,7 @@ def _steps_from_trajectory(trajectory, agent_name):
     return steps
 
 
-def export_atif(trajectory=None, attempts=None, agent_name="emox-agent",
-                run_id=None):
+def export_atif(trajectory=None, attempts=None, agent_name="emox-agent", run_id=None):
     """Build an ATIF trajectory dict from EMO-X data.
 
     trajectory: P4 agent-loop trajectory (preferred). attempts: raw
@@ -62,20 +62,25 @@ def export_atif(trajectory=None, attempts=None, agent_name="emox-agent",
     else:
         steps = []
         for i, attempt in enumerate(list(attempts or []), 1):
-            steps.append({
-                "step_id": i, "agent": {"name": agent_name},
-                "kind": "attempt",
-                "emox": {
-                    "task_family_id": attempt.get("task_family_id"),
-                    "instance_id": attempt.get("instance_id"),
-                    "primary_status": attempt.get("primary_status"),
-                    "score": attempt.get("score"),
-                },
-            })
-    doc = {"atif_version": ATIF_VERSION, "agent": {"name": agent_name},
-           "steps": steps,
-           "emox": {"run_id": run_id,
-                    "n_steps": len(steps)}}
+            steps.append(
+                {
+                    "step_id": i,
+                    "agent": {"name": agent_name},
+                    "kind": "attempt",
+                    "emox": {
+                        "task_family_id": attempt.get("task_family_id"),
+                        "instance_id": attempt.get("instance_id"),
+                        "primary_status": attempt.get("primary_status"),
+                        "score": attempt.get("score"),
+                    },
+                }
+            )
+    doc = {
+        "atif_version": ATIF_VERSION,
+        "agent": {"name": agent_name},
+        "steps": steps,
+        "emox": {"run_id": run_id, "n_steps": len(steps)},
+    }
     return doc
 
 

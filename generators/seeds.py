@@ -81,12 +81,14 @@ def derive_child_seed(seed, generator_version, salt, index=0):
         raise SchemaError("salt must be a non-empty string")
     if isinstance(index, bool) or not isinstance(index, int) or index < 0:
         raise SchemaError("index must be a non-negative int")
-    digest = sha256_manifest({
-        "generator_version": generator_version,
-        "index": index,
-        "salt": salt,
-        "seed": seed,
-    })
+    digest = sha256_manifest(
+        {
+            "generator_version": generator_version,
+            "index": index,
+            "salt": salt,
+            "seed": seed,
+        }
+    )
     return int(digest[:16], 16)
 
 
@@ -119,8 +121,7 @@ def parse_instance_id(instance_id):
     if len(parts) != 3:
         raise SchemaError("bad instance_id: %r" % (instance_id,))
     family, variant, index_text = parts
-    if (not family or not variant
-            or not re.fullmatch(r"\d{5}", index_text or "")):
+    if not family or not variant or not re.fullmatch(r"\d{5}", index_text or ""):
         raise SchemaError("bad instance_id: %r" % (instance_id,))
     return family, variant, int(index_text)
 
@@ -134,8 +135,7 @@ def canonical_hash(payload):
     return sha256_manifest(payload)
 
 
-def build_instance_record(task, seed, generator_version, parameters,
-                          oracle, variant="canonical"):
+def build_instance_record(task, seed, generator_version, parameters, oracle, variant="canonical"):
     """Build the SPEC section 8 instance record.
 
     Returns ``{task, seed, generator_version, instance_hash,
@@ -157,12 +157,14 @@ def build_instance_record(task, seed, generator_version, parameters,
         "task": task,
         "seed": seed,
         "generator_version": generator_version,
-        "instance_hash": canonical_hash({
-            "generator_version": generator_version,
-            "parameters": parameters,
-            "seed": seed,
-            "task": task,
-            "variant": variant,
-        }),
+        "instance_hash": canonical_hash(
+            {
+                "generator_version": generator_version,
+                "parameters": parameters,
+                "seed": seed,
+                "task": task,
+                "variant": variant,
+            }
+        ),
         "oracle_hash": canonical_hash(oracle),
     }

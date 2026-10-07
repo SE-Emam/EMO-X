@@ -18,16 +18,13 @@ class TestHealth(unittest.TestCase):
         self.assertAlmostEqual(scoring.flakiness(1.0), 0.0)
 
     def test_saturation(self):
-        self.assertAlmostEqual(
-            scoring.saturation_penalty(0.95), 0.0)
+        self.assertAlmostEqual(scoring.saturation_penalty(0.95), 0.0)
         self.assertAlmostEqual(scoring.saturation_penalty(1.0), 1.0)
-        self.assertAlmostEqual(
-            scoring.saturation_penalty(0.975), 0.5)
+        self.assertAlmostEqual(scoring.saturation_penalty(0.975), 0.5)
         self.assertIsNone(scoring.saturation_penalty(None))
 
     def test_discrimination_needs_5_models(self):
-        pop = {"m%d" % i: {"T": 0.5 + 0.05 * i, "U": 0.4 + 0.05 * i}
-               for i in range(5)}
+        pop = {"m%d" % i: {"T": 0.5 + 0.05 * i, "U": 0.4 + 0.05 * i} for i in range(5)}
         d = scoring.discrimination(pop, "T")
         self.assertIsNotNone(d)
         self.assertGreaterEqual(d, 0.0)
@@ -41,17 +38,13 @@ class TestHealth(unittest.TestCase):
         self.assertIsNone(scoring.harness_validity(0, 0))
 
     def test_judge_reliability(self):
-        f1 = scoring.judge_reliability_macro_f1(
-            ["a", "b", "a"], ["a", "b", "b"], ["a", "b"])
+        f1 = scoring.judge_reliability_macro_f1(["a", "b", "a"], ["a", "b", "b"], ["a", "b"])
         self.assertAlmostEqual(f1, (2 / 3 + 2 / 3) / 2, places=5)
-        ba = scoring.judge_reliability_balanced_accuracy(
-            [1, 1, 0, 0], [1, 0, 1, 0])
+        ba = scoring.judge_reliability_balanced_accuracy([1, 1, 0, 0], [1, 0, 1, 0])
         self.assertAlmostEqual(ba, 0.5)
         self.assertEqual(scoring.judge_confidence_mark(0.95), "OK")
-        self.assertEqual(scoring.judge_confidence_mark(0.89),
-                         "LOW-CONFIDENCE")
-        self.assertEqual(scoring.judge_confidence_mark(None),
-                         "LOW-CONFIDENCE")
+        self.assertEqual(scoring.judge_confidence_mark(0.89), "LOW-CONFIDENCE")
+        self.assertEqual(scoring.judge_confidence_mark(None), "LOW-CONFIDENCE")
 
     def test_task_health_na_exclusion(self):
         h = scoring.task_health([0.99, 0.8, 0.9, 1.0, None])
@@ -60,8 +53,7 @@ class TestHealth(unittest.TestCase):
         self.assertIsNone(scoring.task_health([None]))
 
     def test_benchmark_health(self):
-        self.assertAlmostEqual(
-            scoring.benchmark_health([0.8, 0.6, None]), 0.7)
+        self.assertAlmostEqual(scoring.benchmark_health([0.8, 0.6, None]), 0.7)
         self.assertIsNone(scoring.benchmark_health([]))
 
 

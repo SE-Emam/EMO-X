@@ -50,9 +50,7 @@ class BuildPyWithData(build_py):
         for dirname in TREE_DIRS:
             src = os.path.join(src_root, dirname)
             if os.path.isdir(src):
-                shutil.copytree(
-                    src, os.path.join(dest, dirname), ignore=IGNORE, dirs_exist_ok=True
-                )
+                shutil.copytree(src, os.path.join(dest, dirname), ignore=IGNORE, dirs_exist_ok=True)
         for filename in TREE_FILES:
             src = os.path.join(src_root, filename)
             if os.path.isfile(src):

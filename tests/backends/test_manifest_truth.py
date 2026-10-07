@@ -14,8 +14,7 @@ import json
 import os
 import unittest
 
-ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                      "..", ".."))
+ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 CB25 = os.path.join(ROOT, "suites", "code-bench-25")
 MANDIR = os.path.join(CB25, "manifests")
 CASES_PATH = os.path.join(CB25, "cases.py")
@@ -34,15 +33,14 @@ cb_cases = _load_by_path("cb25_cases_truth", CASES_PATH)
 
 def _load_manifest(family):
     path = os.path.join(MANDIR, family + ".json")
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
 class TestManifestTruth(unittest.TestCase):
     def test_25_families_covered(self):
         self.assertEqual(len(cb_cases.FAMILY_IDS), 29)
-        got = sorted(f[:-5] for f in os.listdir(MANDIR)
-                      if f.endswith(".json"))
+        got = sorted(f[:-5] for f in os.listdir(MANDIR) if f.endswith(".json"))
         self.assertEqual(len(got), 29)
         for fam in cb_cases.FAMILY_IDS:
             self.assertIn(fam, got)
@@ -54,8 +52,7 @@ class TestManifestTruth(unittest.TestCase):
                 self.assertIn("prompt", m)
                 want = cb_cases.prompt_text(fam)
                 self.assertEqual(m["prompt"], want)
-                self.assertEqual(m["prompt"].encode("utf-8"),
-                                 want.encode("utf-8"))
+                self.assertEqual(m["prompt"].encode("utf-8"), want.encode("utf-8"))
 
     def test_oracle_present(self):
         for fam in sorted(cb_cases.FAMILY_IDS):
@@ -102,8 +99,7 @@ class TestManifestTruth(unittest.TestCase):
         self.assertEqual(gen.get("seed"), "random")
         params = gen.get("parameters")
         self.assertIsInstance(params, dict)
-        for key in ("modulus", "coefficient", "target", "form",
-                    "variable", "context"):
+        for key in ("modulus", "coefficient", "target", "form", "variable", "context"):
             self.assertIn(key, params)
 
     def test_manifest_ids_match_filenames(self):

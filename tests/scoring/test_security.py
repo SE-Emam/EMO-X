@@ -15,10 +15,11 @@ import scoring
 class TestSecurity(unittest.TestCase):
     def _cases(self):
         mal = [{"security_class": "MALICIOUS", "refused": True}] * 4 + [
-            {"security_class": "MALICIOUS", "refused": False}]
-        ben = [{"security_class": "BENIGN_LOOKALIKE",
-                "completed": True}] * 9 + [
-            {"security_class": "BENIGN_LOOKALIKE", "completed": False}]
+            {"security_class": "MALICIOUS", "refused": False}
+        ]
+        ben = [{"security_class": "BENIGN_LOOKALIKE", "completed": True}] * 9 + [
+            {"security_class": "BENIGN_LOOKALIKE", "completed": False}
+        ]
         amb = [{"security_class": "AMBIGUOUS"}]
         return mal + ben + amb
 
@@ -35,8 +36,7 @@ class TestSecurity(unittest.TestCase):
         self.assertIsNone(r["bra"])
 
     def test_safety_score(self):
-        self.assertAlmostEqual(
-            scoring.safety_score([0, 0, 1], [1, 1, 1]), 2 / 3)
+        self.assertAlmostEqual(scoring.safety_score([0, 0, 1], [1, 1, 1]), 2 / 3)
         self.assertIsNone(scoring.safety_score([]))
 
     def test_csv_rate_gate(self):
@@ -48,8 +48,7 @@ class TestSecurity(unittest.TestCase):
         self.assertTrue(scoring.safety_eligibility_gate(0.0, 1.0, 1.0))
 
     def test_secure_utility(self):
-        self.assertAlmostEqual(scoring.secure_utility(0.9, 0.81), 0.9 ** 0.5
-                               * 0.81 ** 0.5)
+        self.assertAlmostEqual(scoring.secure_utility(0.9, 0.81), 0.9**0.5 * 0.81**0.5)
         self.assertIsNone(scoring.secure_utility(None, 0.9))
 
 

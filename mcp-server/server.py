@@ -56,8 +56,7 @@ SERVER_VERSION = str(getattr(runner, "BENCHMARK_VERSION", "2.0.0-rc1"))
 
 #: Backends an MCP client may request. `cli` executes a local binary
 #: and is therefore gated separately (opt-in + allowlist, P0-1).
-_MCP_SAFE_BACKENDS = frozenset(
-    {"stub", "kaggle", "colab", "openai-generic", "openai"})
+_MCP_SAFE_BACKENDS = frozenset({"stub", "kaggle", "colab", "openai-generic", "openai"})
 
 
 def _mcp_cli_allowlist():
@@ -80,29 +79,25 @@ def _validate_mcp_cli_binary(cli_bin):
     if os.environ.get("EMOX_MCP_ALLOW_CLI") != "1":
         raise PermissionError(
             "cli backend is disabled over MCP; operator must set "
-            "EMOX_MCP_ALLOW_CLI=1 and EMOX_MCP_CLI_ALLOWLIST to opt in")
-    candidate = (cli_bin or os.environ.get("CLI_BIN")
-                 or os.environ.get("BASE_URL") or "opencode")
+            "EMOX_MCP_ALLOW_CLI=1 and EMOX_MCP_CLI_ALLOWLIST to opt in"
+        )
+    candidate = cli_bin or os.environ.get("CLI_BIN") or os.environ.get("BASE_URL") or "opencode"
     # Absolute-path only: never resolve via PATH for an agent-supplied name.
     if not os.path.isabs(str(candidate)):
-        raise PermissionError(
-            "cli binary must be an absolute allowlisted path: %r" % (candidate,))
+        raise PermissionError("cli binary must be an absolute allowlisted path: %r" % (candidate,))
     full = os.path.realpath(str(candidate))
     allow = _mcp_cli_allowlist()
     if not allow or full not in allow:
-        raise PermissionError(
-            "cli binary not in EMOX_MCP_CLI_ALLOWLIST: %r" % (candidate,))
+        raise PermissionError("cli binary not in EMOX_MCP_CLI_ALLOWLIST: %r" % (candidate,))
     if not (os.path.isfile(full) and os.access(full, os.X_OK)):
-        raise PermissionError(
-            "cli binary not executable: %r" % (candidate,))
+        raise PermissionError("cli binary not executable: %r" % (candidate,))
     return full
 
 
 def _validate_mcp_model_id(model):
     """Bound the cli route id (argv element, no shell)."""
     text = str(model or "")
-    if not text or len(text) > 200 or any(
-            c in text for c in ("\x00", "\n", "\r")):
+    if not text or len(text) > 200 or any(c in text for c in ("\x00", "\n", "\r")):
         raise ValueError("invalid model id over MCP")
     return text
 
@@ -116,8 +111,7 @@ def _chat_from_params(params):
         # P0-1: local-binary execution via agent-controlled params.
         # Opt-in only: EMOX_MCP_ALLOW_CLI=1 + absolute allowlisted binary.
         cli_bin = _validate_mcp_cli_binary(params.get("base_url"))
-        model = _validate_mcp_model_id(
-            params.get("model") or os.environ.get("MODEL", "mcp-model"))
+        model = _validate_mcp_model_id(params.get("model") or os.environ.get("MODEL", "mcp-model"))
         chat = make_chat("cli", cli_bin, model, None)
         return chat, model, "cli"
     if str(backend).lower() not in _MCP_SAFE_BACKENDS:
@@ -134,9 +128,7 @@ def _chat_from_params(params):
 
 def _tool_self_test(params):
     ok, rows = runner.run_self_test()
-    return {"ok": ok,
-            "checks": [{"name": n, "pass": bool(p), "detail": d}
-                       for n, p, d in rows]}
+    return {"ok": ok, "checks": [{"name": n, "pass": bool(p), "detail": d} for n, p, d in rows]}
 
 
 def _tool_health(params):
@@ -149,13 +141,22 @@ def _progress_emitter(token):
     Server-initiated notifications (no id) stream to stdout while the
     tool runs, so clients see suite/attempt progress instead of silence.
     """
+
     def emit(snapshot):
-        sys.stdout.write(json.dumps({
-            "jsonrpc": "2.0",
-            "method": "notifications/progress",
-            "params": dict(snapshot, progressToken=token),
-        }, ensure_ascii=False, default=str) + "\n")
+        sys.stdout.write(
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "method": "notifications/progress",
+                    "params": dict(snapshot, progressToken=token),
+                },
+                ensure_ascii=False,
+                default=str,
+            )
+            + "\n"
+        )
         sys.stdout.flush()
+
     return emit
 
 
@@ -169,11 +170,10 @@ def _tool_run_suite(params):
     except ImportError:
         from shared.progress import ProgressReporter
     token = params.get("progress_token")
-    prog = ProgressReporter(
-        enabled=False,
-        on_event=_progress_emitter(token) if token else None)
+    prog = ProgressReporter(enabled=False, on_event=_progress_emitter(token) if token else None)
     rundir, summary = runner.run_suite(
-        suite, chat,
+        suite,
+        chat,
         model_id=params.get("model_id") or model,
         backend=params.get("backend") or backend,
         seed=int(params.get("seed", 0)),
@@ -197,9 +197,7 @@ def _tool_run_profile(params):
     except ImportError:
         from shared.progress import ProgressReporter
     token = params.get("progress_token")
-    prog = ProgressReporter(
-        enabled=False,
-        on_event=_progress_emitter(token) if token else None)
+    prog = ProgressReporter(enabled=False, on_event=_progress_emitter(token) if token else None)
     runs, report = runner.run_profile(
         chat,
         model_id=params.get("model_id") or model,
@@ -225,9 +223,7 @@ def _allowed_roots():
     set via EMOX_MCP_OUT_ROOT. The repo root itself is deliberately NOT
     a root: confinement must be narrow (P0-2). Everything else refused.
     """
-    roots = [os.path.join(ROOT, "results"),
-             os.path.join(ROOT, "reports"),
-             tempfile.gettempdir()]
+    roots = [os.path.join(ROOT, "results"), os.path.join(ROOT, "reports"), tempfile.gettempdir()]
     extra = os.environ.get("EMOX_MCP_OUT_ROOT")
     if extra:
         roots.append(extra)
@@ -270,12 +266,10 @@ def _load_run_bundle(run_dir):
     except ImportError:
         from shared.seal import require_seal
     require_seal(run_dir)  # P0-6 fail-closed over MCP: no stats w/o seal.
-    with open(os.path.join(run_dir, "manifest.json"),
-              encoding="utf-8") as f:
+    with open(os.path.join(run_dir, "manifest.json"), encoding="utf-8") as f:
         manifest = json.load(f)
-    with open(os.path.join(run_dir, "events.jsonl"),
-              encoding="utf-8") as f:
-        attempts = [json.loads(l) for l in f if l.strip()]
+    with open(os.path.join(run_dir, "events.jsonl"), encoding="utf-8") as f:
+        attempts = [json.loads(line) for line in f if line.strip()]
     return manifest, attempts
 
 
@@ -292,18 +286,22 @@ def _tool_render_report(params):
     if not rundirs:
         raise ValueError("run_dir (or run_dirs list) is required")
     rundirs = [_confine(d) for d in rundirs]
-    outdir = params.get("out_dir") or (
-        rundirs[0].rstrip("/") + "-report")
+    outdir = params.get("out_dir") or (rundirs[0].rstrip("/") + "-report")
     outdir = _confine(outdir)
     if len(rundirs) == 1:
         render(rundirs[0], outdir)
-        return {"mode": "single",
-                "report_html": os.path.join(outdir, "report.html"),
-                "report_json": os.path.join(outdir, "report.json")}
+        return {
+            "mode": "single",
+            "report_html": os.path.join(outdir, "report.html"),
+            "report_json": os.path.join(outdir, "report.json"),
+        }
     render_board(rundirs, outdir)
-    return {"mode": "leaderboard", "n_runs": len(rundirs),
-            "report_html": os.path.join(outdir, "leaderboard.html"),
-            "report_json": os.path.join(outdir, "leaderboard.json")}
+    return {
+        "mode": "leaderboard",
+        "n_runs": len(rundirs),
+        "report_html": os.path.join(outdir, "leaderboard.html"),
+        "report_json": os.path.join(outdir, "leaderboard.json"),
+    }
 
 
 def _tool_compare_models(params):
@@ -319,10 +317,12 @@ def _tool_compare_models(params):
     manifest_a, attempts_a = _load_run_bundle(run_a)
     manifest_b, attempts_b = _load_run_bundle(run_b)
     comp = compare_models(
-        attempts_a, attempts_b,
+        attempts_a,
+        attempts_b,
         model_a=params.get("model_a") or manifest_a.get("model", "A"),
         model_b=params.get("model_b") or manifest_b.get("model", "B"),
-        manifest_a=manifest_a, manifest_b=manifest_b,
+        manifest_a=manifest_a,
+        manifest_b=manifest_b,
         # Audit M: cap client-controlled bootstrap replicates (scoring
         # also enforces BOOTSTRAP_MAX=100k; the MCP default stays small).
         B=min(int(params.get("B", 1000)), 10000),
@@ -335,27 +335,25 @@ def _tool_compare_models(params):
 TOOLS = {
     "self_test": {
         "fn": _tool_self_test,
-        "description": "Fail-closed harness check (14 checks + SKIP). "
-                       "Run before any benchmark.",
+        "description": "Fail-closed harness check (14 checks + SKIP). Run before any benchmark.",
         "inputSchema": {"type": "object", "properties": {}},
     },
     "health": {
         "fn": _tool_health,
         "description": "Benchmark-health snapshot (flakiness, saturation, "
-                       "discrimination, contamination) over stored runs.",
-        "inputSchema": {"type": "object",
-                        "properties": {
-                            "out_root": {"type": "string"}}},
+        "discrimination, contamination) over stored runs.",
+        "inputSchema": {"type": "object", "properties": {"out_root": {"type": "string"}}},
     },
     "run_suite": {
         "fn": _tool_run_suite,
         "description": "Run one EMO-X suite end-to-end into a sealed raw "
-                       "bundle. code25-hidden needs scope='hidden-ok'; "
-                       "security S3-S5 need scope approval (fail-closed). "
-                       "Pass progress_token to stream "
-                       "notifications/progress while it runs.",
+        "bundle. code25-hidden needs scope='hidden-ok'; "
+        "security S3-S5 need scope approval (fail-closed). "
+        "Pass progress_token to stream "
+        "notifications/progress while it runs.",
         "inputSchema": {
-            "type": "object", "required": ["suite"],
+            "type": "object",
+            "required": ["suite"],
             "properties": {
                 "suite": {"type": "string"},
                 "backend": {"type": "string"},
@@ -371,14 +369,16 @@ TOOLS = {
                 "families": {"type": "array", "items": {"type": "string"}},
                 "sampling": {"type": "object"},
                 "progress_token": {"type": ["string", "integer"]},
-                "out_root": {"type": "string"}}},
+                "out_root": {"type": "string"},
+            },
+        },
     },
     "run_profile": {
         "fn": _tool_run_profile,
         "description": "Full capability profile across all suites "
-                       "(profile + fingerprint + efficiency + uncertainty). "
-                       "Pass progress_token to stream "
-                       "notifications/progress while it runs.",
+        "(profile + fingerprint + efficiency + uncertainty). "
+        "Pass progress_token to stream "
+        "notifications/progress while it runs.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -393,34 +393,41 @@ TOOLS = {
                 "provider_profile": {"type": "string"},
                 "scope": {"type": "string"},
                 "sampling": {"type": "object"},
-                "out_root": {"type": "string"}}},
+                "out_root": {"type": "string"},
+            },
+        },
     },
     "compare_models": {
         "fn": _tool_compare_models,
         "description": "Interval-only comparison of two stored raw runs "
-                       "(significant/directional/inconclusive). "
-                       "NON_COMPARABLE runs are reported, never ranked.",
+        "(significant/directional/inconclusive). "
+        "NON_COMPARABLE runs are reported, never ranked.",
         "inputSchema": {
-            "type": "object", "required": ["run_a", "run_b"],
+            "type": "object",
+            "required": ["run_a", "run_b"],
             "properties": {
                 "run_a": {"type": "string"},
                 "run_b": {"type": "string"},
                 "model_a": {"type": "string"},
                 "model_b": {"type": "string"},
                 "B": {"type": "integer"},
-                "seed": {"type": "integer"}}},
+                "seed": {"type": "integer"},
+            },
+        },
     },
     "render_report": {
         "fn": _tool_render_report,
         "description": "Render one raw bundle (report.html) or N bundles "
-                       "(leaderboard.html: table + chart + pairwise calls). "
-                       "Open report_html in a browser. No network needed.",
+        "(leaderboard.html: table + chart + pairwise calls). "
+        "Open report_html in a browser. No network needed.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "run_dir": {"type": "string"},
                 "run_dirs": {"type": "array", "items": {"type": "string"}},
-                "out_dir": {"type": "string"}}},
+                "out_dir": {"type": "string"},
+            },
+        },
     },
 }
 
@@ -428,8 +435,17 @@ TOOLS = {
 #: Substrings marking a parameter as credential-bearing (case-insensitive).
 #: Matched as substrings, except that "monkey"/"donkey" are stripped first
 #: so words like "monkey" never count as containing "key".
-_SENSITIVE_SUBSTRINGS = ("key", "secret", "token", "password", "passwd",
-                          "cred", "authorization", "auth", "bearer")
+_SENSITIVE_SUBSTRINGS = (
+    "key",
+    "secret",
+    "token",
+    "password",
+    "passwd",
+    "cred",
+    "authorization",
+    "auth",
+    "bearer",
+)
 
 
 def _is_sensitive_key(name):
@@ -458,13 +474,14 @@ def _redact_args(args):
         elif isinstance(v, str) and "://" in v and "@" in v:
             try:
                 import urllib.parse as _up
+
                 _parts = _up.urlsplit(v)
                 _net = _parts.hostname or ""
                 if _parts.port:
                     _net += ":%d" % _parts.port
                 red[k] = _up.urlunsplit(
-                    (_parts.scheme, _net, _parts.path or "",
-                     _parts.query or "", ""))
+                    (_parts.scheme, _net, _parts.path or "", _parts.query or "", "")
+                )
             except Exception:
                 red[k] = "***"
         else:
@@ -477,8 +494,7 @@ def _result(req_id, result):
 
 
 def _error(req_id, code, message):
-    return {"jsonrpc": "2.0", "id": req_id,
-            "error": {"code": code, "message": str(message)[:500]}}
+    return {"jsonrpc": "2.0", "id": req_id, "error": {"code": code, "message": str(message)[:500]}}
 
 
 def handle_message(msg):
@@ -497,20 +513,30 @@ def handle_message(msg):
             splash_text = banner(width=80, color=False)
         except Exception:
             splash_text = "EMO-X"
-        return _result(req_id, {
-            "protocolVersion": "2024-11-05",
-            "capabilities": {"tools": {}},
-            "serverInfo": {"name": SERVER_NAME,
-                           "version": SERVER_VERSION,
-                           "splash": splash_text}})
-    if method in ("initialized",) or str(method).startswith(
-            "notifications/"):
+        return _result(
+            req_id,
+            {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {"tools": {}},
+                "serverInfo": {
+                    "name": SERVER_NAME,
+                    "version": SERVER_VERSION,
+                    "splash": splash_text,
+                },
+            },
+        )
+    if method in ("initialized",) or str(method).startswith("notifications/"):
         return None
     if method == "tools/list":
-        return _result(req_id, {"tools": [
-            {"name": n, "description": t["description"],
-             "inputSchema": t["inputSchema"]}
-            for n, t in TOOLS.items()]})
+        return _result(
+            req_id,
+            {
+                "tools": [
+                    {"name": n, "description": t["description"], "inputSchema": t["inputSchema"]}
+                    for n, t in TOOLS.items()
+                ]
+            },
+        )
     if method == "tools/call":
         name = params.get("name")
         args = params.get("arguments") or {}
@@ -521,18 +547,23 @@ def handle_message(msg):
         # redacted arguments (credential values masked) for safe diagnosis.
         redacted = _redact_args(args)
         try:
-            return _result(req_id, {"content": [
-                {"type": "text",
-                 "text": json.dumps(tool["fn"](args),
-                                    ensure_ascii=False, default=str)}]})
+            return _result(
+                req_id,
+                {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": json.dumps(tool["fn"](args), ensure_ascii=False, default=str),
+                        }
+                    ]
+                },
+            )
         except (ValueError, PermissionError) as e:
-            err = _error(req_id, -32602, "%s: %s" % (
-                type(e).__name__, e))
+            err = _error(req_id, -32602, "%s: %s" % (type(e).__name__, e))
             err["error"]["arguments"] = redacted
             return err
         except Exception as e:  # harness/model failure, not protocol error
-            err = _error(req_id, -32000, "%s: %s" % (
-                type(e).__name__, e))
+            err = _error(req_id, -32000, "%s: %s" % (type(e).__name__, e))
             err["error"]["arguments"] = redacted
             return err
     return _error(req_id, -32601, "unknown method: %r" % (method,))
@@ -548,26 +579,35 @@ def serve_stdio():
         try:
             msg = json.loads(line)
         except ValueError:
-            stdout.write(json.dumps(_error(None, -32700,
-                                           "parse error")) + "\n")
+            stdout.write(json.dumps(_error(None, -32700, "parse error")) + "\n")
             stdout.flush()
             continue
         resp = handle_message(msg)
         if resp is not None:
-            stdout.write(json.dumps(resp, ensure_ascii=False,
-                                    default=str) + "\n")
+            stdout.write(json.dumps(resp, ensure_ascii=False, default=str) + "\n")
             stdout.flush()
 
 
 def smoke():
     """Local self-check without a client: list + self_test + stub suite."""
-    listed = handle_message({"jsonrpc": "2.0", "id": 1,
-                             "method": "tools/list"})
+    listed = handle_message({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
     names = sorted(t["name"] for t in listed["result"]["tools"])
-    assert names == ["compare_models", "health", "render_report",
-                     "run_profile", "run_suite", "self_test"], names
-    st = handle_message({"jsonrpc": "2.0", "id": 2, "method": "tools/call",
-                         "params": {"name": "self_test", "arguments": {}}})
+    assert names == [
+        "compare_models",
+        "health",
+        "render_report",
+        "run_profile",
+        "run_suite",
+        "self_test",
+    ], names
+    st = handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "tools/call",
+            "params": {"name": "self_test", "arguments": {}},
+        }
+    )
     content = json.loads(st["result"]["content"][0]["text"])
     assert content["ok"] is True, content
     # P0-2: smoke out_root must itself satisfy confinement (tempdir root,
@@ -575,26 +615,41 @@ def smoke():
     # tempfile.gettempdir() rather than a hardcoded /tmp path).
     smoke_root = os.path.join(tempfile.gettempdir(), "emox_mcp_smoke")
     rs = handle_message(
-        {"jsonrpc": "2.0", "id": 3, "method": "tools/call",
-         "params": {"name": "run_suite",
-                    "arguments": {"suite": "dynamic-code",
-                                  "backend": "stub",
-                                  "families": ["DC1"],
-                                  "out_root": smoke_root}}})
+        {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "method": "tools/call",
+            "params": {
+                "name": "run_suite",
+                "arguments": {
+                    "suite": "dynamic-code",
+                    "backend": "stub",
+                    "families": ["DC1"],
+                    "out_root": smoke_root,
+                },
+            },
+        }
+    )
     assert "result" in rs, rs
     summary = json.loads(rs["result"]["content"][0]["text"])
     assert summary["n_attempts"] > 0, summary
     # Hidden gate must refuse without scope (fail-closed over MCP too).
     denied = handle_message(
-        {"jsonrpc": "2.0", "id": 4, "method": "tools/call",
-         "params": {"name": "run_suite",
-                    "arguments": {"suite": "code25-hidden",
-                                  "backend": "stub"}}})
+        {
+            "jsonrpc": "2.0",
+            "id": 4,
+            "method": "tools/call",
+            "params": {
+                "name": "run_suite",
+                "arguments": {"suite": "code25-hidden", "backend": "stub"},
+            },
+        }
+    )
     assert "error" in denied, denied
     import shutil
+
     shutil.rmtree(smoke_root, ignore_errors=True)
-    print("MCP smoke: tools=%s self_test=PASS suite=PASS hidden-gate=PASS"
-          % ",".join(names))
+    print("MCP smoke: tools=%s self_test=PASS suite=PASS hidden-gate=PASS" % ",".join(names))
 
 
 if __name__ == "__main__":

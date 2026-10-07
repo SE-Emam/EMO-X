@@ -33,9 +33,7 @@ PROMPT_PACK = "v1"
 _DEFAULT_CHAT = None
 
 
-def configure(
-    base_url=None, model=None, backend=None, api_key=None, chat_callable=None
-):
+def configure(base_url=None, model=None, backend=None, api_key=None, chat_callable=None):
     """Set the module-level chat used by chat(). Returns the callable."""
     global _DEFAULT_CHAT
     if chat_callable is not None:
@@ -251,9 +249,7 @@ def _fold_accents(t):
     import unicodedata
 
     t = (t or "").lower()
-    return "".join(
-        c for c in unicodedata.normalize("NFD", t) if unicodedata.category(c) != "Mn"
-    )
+    return "".join(c for c in unicodedata.normalize("NFD", t) if unicodedata.category(c) != "Mn")
 
 
 def _all_groups_hit(t, groups):
@@ -318,9 +314,7 @@ def run_py_file(code, timeout=30):
 
 def run_js(code, test, timeout=30):
     """Append `test` to `code`, run with node. Returns (ok, log_tail)."""
-    rc, output = sandbox.run_in_sandbox(
-        ["node", "-e", code + "\n" + test], timeout=timeout
-    )
+    rc, output = sandbox.run_in_sandbox(["node", "-e", code + "\n" + test], timeout=timeout)
     return rc == 0, output[-500:]
 
 
@@ -343,9 +337,7 @@ def run_rust(code, timeout_compile=120, timeout_run=30):
         sandbox.destroy_sandbox(d)
 
 
-def verify_tsc(
-    code, extra='const _chk: string = greet({name: "Test", age: 1});', timeout=120
-):
+def verify_tsc(code, extra='const _chk: string = greet({name: "Test", age: 1});', timeout=120):
     """Type-check TS with tsc --noEmit --strict. Returns (ok, log).
 
     The compiler runs in the networkless execution container.
@@ -404,14 +396,8 @@ def psql_query(query, setup_sql, host="/tmp", port="55433", db="postgres", timeo
         ],
         timeout=timeout,
     )
-    rows = [
-        line
-        for line in output.splitlines()
-        if line.strip() and not line.startswith("psql:")
-    ]
-    err = "\n".join(line for line in output.splitlines() if line.startswith("psql:"))[
-        -200:
-    ]
+    rows = [line for line in output.splitlines() if line.strip() and not line.startswith("psql:")]
+    err = "\n".join(line for line in output.splitlines() if line.startswith("psql:"))[-200:]
     return rows, rc, err
 
 
@@ -453,9 +439,7 @@ def verify_patch(orig_name, orig_content, diff_text, must_contain=(), timeout=30
         sandbox.destroy_sandbox(d)
 
 
-CALL_RE = re.compile(
-    r"<tool_call>\s*<function=([\w]+)>\s*(.*?)</function>\s*</tool_call>", re.S
-)
+CALL_RE = re.compile(r"<tool_call>\s*<function=([\w]+)>\s*(.*?)</function>\s*</tool_call>", re.S)
 PARAM_RE = re.compile(r"<parameter=([\w]+)>\s*(.*?)\s*</parameter>", re.S)
 
 

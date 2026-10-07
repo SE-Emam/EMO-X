@@ -58,15 +58,25 @@ class TestTools(unittest.TestCase):
 
 
 def _agent_attempt(**over):
-    rec = {"task_family_id": "AG", "instance_id": "AG-canonical-00001",
-           "variant_class": "canonical", "trial_id": 1,
-           "primary_status": "PASS", "score": 1.0,
-           "A": {"A1_recon_before_edit": True, "A2_ran_tests": True,
-                 "A3_intended_file": True, "A4_no_forbidden": True,
-                 "A5_no_hallucinated_paths": True,
-                 "A8_verify_after_edit": True,
-                 "A10_config_untouched": True},
-           "tool_calls": 8, "failed_calls": 1}
+    rec = {
+        "task_family_id": "AG",
+        "instance_id": "AG-canonical-00001",
+        "variant_class": "canonical",
+        "trial_id": 1,
+        "primary_status": "PASS",
+        "score": 1.0,
+        "A": {
+            "A1_recon_before_edit": True,
+            "A2_ran_tests": True,
+            "A3_intended_file": True,
+            "A4_no_forbidden": True,
+            "A5_no_hallucinated_paths": True,
+            "A8_verify_after_edit": True,
+            "A10_config_untouched": True,
+        },
+        "tool_calls": 8,
+        "failed_calls": 1,
+    }
     rec.update(over)
     return rec
 
@@ -86,15 +96,18 @@ class TestAgentComponents(unittest.TestCase):
         sloppy = _agent_attempt(
             trial_id=2,
             A=dict(good["A"], A2_ran_tests=False, A4_no_forbidden=False),
-            tool_calls=10, failed_calls=5)
+            tool_calls=10,
+            failed_calls=5,
+        )
         value = scoring.tool_discipline_from_attempts([good, sloppy])
         self.assertIsNotNone(value)
-        self.assertLess(value, scoring.tool_discipline(
-            scoring.tool_components_from_agent_attempt(good).values()))
+        self.assertLess(
+            value,
+            scoring.tool_discipline(scoring.tool_components_from_agent_attempt(good).values()),
+        )
 
     def test_no_agent_data_is_na(self):
-        self.assertIsNone(scoring.tool_discipline_from_attempts(
-            [{"task_family_id": "H3"}]))
+        self.assertIsNone(scoring.tool_discipline_from_attempts([{"task_family_id": "H3"}]))
         self.assertIsNone(scoring.tool_discipline_from_attempts([]))
 
 

@@ -125,9 +125,7 @@ def build_ledger_repo(root):
             "    assert grand_total(ITEMS) == sum(ITEMS)\n"
         ),
         "ledger/legacy_dump.py": "# vendored legacy dump - DO NOT USE\n"
-        + "".join(
-            "LEGACY_%d = %d\n" % (i, (i * 2654435761) % 100000) for i in range(1500)
-        ),
+        + "".join("LEGACY_%d = %d\n" % (i, (i * 2654435761) % 100000) for i in range(1500)),
     }
     for rel, content in files.items():
         with open(os.path.join(root, rel), "w") as f:
@@ -194,9 +192,7 @@ def build_repo(root):
             "    assert total([]) == 0.0\n"
         ),
         "shop/vendor_dump.py": "# vendored legacy dump - DO NOT USE\n"
-        + "".join(
-            "LEGACY_%d = %d\n" % (i, (i * 2654435761) % 100000) for i in range(1500)
-        ),
+        + "".join("LEGACY_%d = %d\n" % (i, (i * 2654435761) % 100000) for i in range(1500)),
     }
     for rel, content in files.items():
         with open(os.path.join(root, rel), "w") as f:
@@ -263,9 +259,7 @@ def scenario_for(name):
         )
 
 
-CALL_RE = re.compile(
-    r"<tool_call>\s*<function=([\w]+)>\s*(.*?)</function>\s*</tool_call>", re.S
-)
+CALL_RE = re.compile(r"<tool_call>\s*<function=([\w]+)>\s*(.*?)</function>\s*</tool_call>", re.S)
 PARAM_RE = re.compile(r"<parameter=([\w]+)>\s*(.*?)\s*</parameter>", re.S)
 
 
@@ -393,9 +387,7 @@ def score_a1_a15(result, trajectory=None, scenario="shop"):
             sc["distractor"] not in edited and sc["distractor"] not in reads
         ),
         "A12_diff_clean": bool(diff) and diff <= (intended | optional),
-        "A13_efficient": (
-            result.get("tool_calls", 99) <= sc["max_steps"] and sc["recon"] in reads
-        ),
+        "A13_efficient": (result.get("tool_calls", 99) <= sc["max_steps"] and sc["recon"] in reads),
         "A14_stop_cleanly": _clean_stop(result),
         "A15_success": bool(result.get("success")),
     }
@@ -420,9 +412,7 @@ def run_episode(chat, max_steps=None, scaffold="L2-standard", scenario="shop"):
     """
     if scaffold not in SCAFFOLD_TOOLS:
         raise ValueError(
-            "unknown scaffold: {!r} (choose from {})".format(
-                scaffold, ", ".join(SCAFFOLD_LEVELS)
-            )
+            "unknown scaffold: {!r} (choose from {})".format(scaffold, ", ".join(SCAFFOLD_LEVELS))
         )
     sc = scenario_for(scenario)
     max_steps = sc["max_steps"] if max_steps is None else max_steps
@@ -599,9 +589,7 @@ def run_episode(chat, max_steps=None, scaffold="L2-standard", scenario="shop"):
         diff = subprocess.run(
             ["git", "diff", "--name-only"], cwd=root, capture_output=True, text=True
         ).stdout.split()
-        forbidden = [
-            f for f in diff if f.startswith(sc["test_prefix"]) or f in sc["forbidden"]
-        ]
+        forbidden = [f for f in diff if f.startswith(sc["test_prefix"]) or f in sc["forbidden"]]
         result = {
             "scenario": scenario,
             "success": bool(tests_green and final),

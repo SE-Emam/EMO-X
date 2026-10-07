@@ -61,7 +61,8 @@ class PackagingTests(unittest.TestCase):
         # Block-letter logo carries no literal "EMO-X"; tagline does.
         assert "Execution" in emox.banner(width=80, color=False)
         with pytest.raises(AttributeError):
-            emox.no_such_attribute
+            missing_attribute = "no_such_attribute"
+            assert getattr(emox, missing_attribute)
 
     def test_emo_cli_version(self):
         import io

@@ -100,9 +100,7 @@ class ToolRunInjectionTests(unittest.TestCase):
         assert out == "hello"
 
     def test_allowed_pytest_executes(self):
-        ok, _ = sandbox.safe_tool_run(
-            "python3 -m py_compile a.txt", self.ctx, _ls, _safe
-        )
+        ok, _ = sandbox.safe_tool_run("python3 -m py_compile a.txt", self.ctx, _ls, _safe)
         # py_compile on a .txt fails honestly (rc!=0), but must not
         # refuse the grammar and must not spawn a shell.
         assert ok in (True, False)
@@ -113,9 +111,7 @@ class ToolRunInjectionTests(unittest.TestCase):
         assert "only pytest" in out
 
     def test_pytest_arg_allowlist(self):
-        ok, _ = sandbox.safe_tool_run(
-            "python3 -m pytest tests/; evil", self.ctx, _ls, _safe
-        )
+        ok, _ = sandbox.safe_tool_run("python3 -m pytest tests/; evil", self.ctx, _ls, _safe)
         assert not ok
 
     def test_ran_tests_counter(self):
@@ -210,8 +206,7 @@ class ProxyIsolationTests(unittest.TestCase):
 
         with patch.dict(os.environ, {"OPENAI_API_KEY": "x"}):
             ok, log = L.run_py(
-                "import os; assert 'OPENAI_API_KEY' not in os.environ\n"
-                "def f():\n    return 1",
+                "import os; assert 'OPENAI_API_KEY' not in os.environ\ndef f():\n    return 1",
                 "assert f() == 1; print('PY_OK')",
             )
         assert ok

@@ -28,8 +28,12 @@ for _p in (ROOT, SHARED, GEN):
 
 from shared.schemas import validate_attempt  # noqa: E402
 from shared.manifests import sha256_bytes, sha256_manifest  # noqa: E402
-from generators.seeds import (GENERATOR_VERSION, make_rng,  # noqa: E402
-                              make_instance_id, build_instance_record)
+from generators.seeds import (
+    GENERATOR_VERSION,
+    make_rng,  # noqa: E402
+    make_instance_id,
+    build_instance_record,
+)
 
 SUITE = "long-horizon"
 FAMILY_IDS = ("LH1", "LH2", "LH3", "LH4", "LH5")
@@ -53,13 +57,13 @@ def chain_values(params, n):
 
 def prompt_text(family, params):
     n = CHECKPOINTS[family]
-    lines = ["Long-horizon chain (%d checkpoints). Start: %d, rule: add "
-             "%d then add the checkpoint number." % (n, params["start"],
-                                                    params["step"])]
+    lines = [
+        "Long-horizon chain (%d checkpoints). Start: %d, rule: add "
+        "%d then add the checkpoint number." % (n, params["start"], params["step"])
+    ]
     for k in range(n):
         lines.append("Checkpoint C%d: current value?" % (k + 1))
-    lines.append("Reply with one line per checkpoint: C1: <v> ... C%d: <v>."
-                 % n)
+    lines.append("Reply with one line per checkpoint: C1: <v> ... C%d: <v>." % n)
     return "\n".join(lines)
 
 
@@ -70,20 +74,25 @@ def prompt_messages(family, params):
 def make_instance(family, seed, index=1):
     params = resolve_params(family, seed, index)
     n = CHECKPOINTS[family]
-    oracle = {"values": chain_values(params, n),
-              "human_minutes": HUMAN_MINUTES[family],
-              "n_checkpoints": n}
-    record = build_instance_record(family, seed, GENERATOR_VERSION,
-                                   params, {"values": oracle["values"]},
-                                   variant="canonical")
+    oracle = {
+        "values": chain_values(params, n),
+        "human_minutes": HUMAN_MINUTES[family],
+        "n_checkpoints": n,
+    }
+    record = build_instance_record(
+        family, seed, GENERATOR_VERSION, params, {"values": oracle["values"]}, variant="canonical"
+    )
     prompt = prompt_text(family, params)
     return {
         "task_family_id": family,
         "instance_id": make_instance_id(family, "canonical", index),
         "variant_class": "canonical",
-        "index": index, "seed": seed,
+        "index": index,
+        "seed": seed,
         "generator_version": GENERATOR_VERSION,
-        "parameters": params, "prompt": prompt, "oracle": oracle,
+        "parameters": params,
+        "prompt": prompt,
+        "oracle": oracle,
         "human_minutes": HUMAN_MINUTES[family],
         "instance_hash": record["instance_hash"],
         "oracle_hash": record["oracle_hash"],
@@ -107,8 +116,7 @@ def check_family(family, reply, instance):
             found[int(m.group(1))] = int(m.group(2))
         except ValueError:
             continue
-    hits = sum(1 for k, v in enumerate(expected, start=1)
-               if found.get(k) == v)
+    hits = sum(1 for k, v in enumerate(expected, start=1) if found.get(k) == v)
     return hits, len(expected)
 
 
@@ -118,8 +126,7 @@ def run_family(family, chat, run_id, model_id, trial_id=1, index=1, seed=0):
     error_kind, err_msg = None, None
     hits, total = 0, CHECKPOINTS[family]
     try:
-        text, secs, usage = chat(prompt_messages(
-            family, instance["parameters"]))
+        text, secs, usage = chat(prompt_messages(family, instance["parameters"]))
         hits, total = check_family(family, text, instance)
     except Exception as e:
         error_kind, err_msg = "missing-tool", str(e)[:300]
@@ -131,34 +138,45 @@ def run_family(family, chat, run_id, model_id, trial_id=1, index=1, seed=0):
         status, score = "PARTIAL", hits / total
     else:
         status, score = "FAIL", 0.0
-    log = "checkpoints %d/%d (human_minutes=%d)" % (
-        hits, total, HUMAN_MINUTES[family])
+    log = "checkpoints %d/%d (human_minutes=%d)" % (hits, total, HUMAN_MINUTES[family])
     attempt = {
-        "run_id": run_id, "model_id": model_id,
-        "task_family_id": family, "instance_id": instance["instance_id"],
-        "variant_class": "canonical", "trial_id": trial_id,
-        "primary_status": status, "score": score,
+        "run_id": run_id,
+        "model_id": model_id,
+        "task_family_id": family,
+        "instance_id": instance["instance_id"],
+        "variant_class": "canonical",
+        "trial_id": trial_id,
+        "primary_status": status,
+        "score": score,
         "eligible_for_task_score": status != "ERROR",
         "eligible_for_pass_rate": status != "ERROR",
         "eligible_for_efficiency": status in ("PASS", "PARTIAL", "FAIL"),
         "eligible_for_calibration": False,
-        "primary_failure": None if status == "PASS" else (
-            "HARNESS_ERROR" if status == "ERROR"
-            else ("WRONG_RESULT" if status == "FAIL" else None)),
-        "secondary_failure_tags": [], "seed": seed,
+        "primary_failure": None
+        if status == "PASS"
+        else (
+            "HARNESS_ERROR" if status == "ERROR" else ("WRONG_RESULT" if status == "FAIL" else None)
+        ),
+        "secondary_failure_tags": [],
+        "seed": seed,
         "secs": round(secs, 1) if isinstance(secs, (int, float)) else secs,
-        "log": log, "sample": (text or "")[:600],
+        "log": log,
+        "sample": (text or "")[:600],
         "prompt_sha256": instance["prompt_sha256"],
         "manifest_sha256": instance["manifest_sha256"],
     }
     if err_msg:
         attempt["error"] = err_msg
-    response = {"instance_id": instance["instance_id"], "trial_id": trial_id,
-                "messages": prompt_messages(family, instance["parameters"]),
-                "reply": text, "usage": usage if isinstance(usage, dict) else {},
-                "oracle_hash": instance["oracle_hash"],
-                "checkpoints": {"hits": hits, "total": total},
-                "human_minutes": HUMAN_MINUTES[family]}
+    response = {
+        "instance_id": instance["instance_id"],
+        "trial_id": trial_id,
+        "messages": prompt_messages(family, instance["parameters"]),
+        "reply": text,
+        "usage": usage if isinstance(usage, dict) else {},
+        "oracle_hash": instance["oracle_hash"],
+        "checkpoints": {"hits": hits, "total": total},
+        "human_minutes": HUMAN_MINUTES[family],
+    }
     return validate_attempt(attempt), response
 
 

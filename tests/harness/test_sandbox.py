@@ -49,9 +49,7 @@ class TestSandbox(unittest.TestCase):
 
     def test_timeout(self):
         with pytest.raises(sandbox.SandboxTimeout):
-            sandbox.run_in_sandbox(
-                ["python3", "-c", "import time; time.sleep(30)"], timeout=1
-            )
+            sandbox.run_in_sandbox(["python3", "-c", "import time; time.sleep(30)"], timeout=1)
 
     def test_run_python_code(self):
         sensitive = {
@@ -118,19 +116,13 @@ class TestSandbox(unittest.TestCase):
         assert int(pids) <= 128
 
     def test_output_stream_retains_only_bounded_tail(self):
-        code = (
-            "print('PREFIX_SENTINEL')\n"
-            "print('x' * (2 * 1024 * 1024))\n"
-            "print('TAIL_SENTINEL')\n"
-        )
+        code = "print('PREFIX_SENTINEL')\nprint('x' * (2 * 1024 * 1024))\nprint('TAIL_SENTINEL')\n"
         ok, output = sandbox.run_python_code(code, timeout=10)
         assert ok, output[-200:]
         assert sandbox._OUTPUT_TRUNCATION_MARKER in output
         assert "PREFIX_SENTINEL" not in output
         assert "TAIL_SENTINEL" in output
-        assert len(output) <= sandbox._MAX_OUTPUT_BYTES + len(
-            sandbox._OUTPUT_TRUNCATION_MARKER
-        )
+        assert len(output) <= sandbox._MAX_OUTPUT_BYTES + len(sandbox._OUTPUT_TRUNCATION_MARKER)
 
 
 class TestSandboxP04(unittest.TestCase):
@@ -216,13 +208,9 @@ class TestSafety(unittest.TestCase):
             safety.assert_synthetic_only("no marker")
 
     def test_scope_gate_fail_closed(self):
-        allowed, _ = safety.check_scope_gate(
-            {"approved": True, "target": "synthetic:ctf-mini"}
-        )
+        allowed, _ = safety.check_scope_gate({"approved": True, "target": "synthetic:ctf-mini"})
         assert allowed
-        denied, _ = safety.check_scope_gate(
-            {"approved": True, "target": "https://real.example"}
-        )
+        denied, _ = safety.check_scope_gate({"approved": True, "target": "https://real.example"})
         assert not denied
         denied2, _ = safety.check_scope_gate({})
         assert not denied2

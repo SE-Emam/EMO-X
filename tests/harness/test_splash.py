@@ -12,8 +12,14 @@ for _p in (_ROOT, os.path.join(_ROOT, "shared")):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from splash import (banner, collect_stats, print_banner,  # noqa: E402
-                    should_show, LOGO_LINES, TAGLINE)
+from splash import (
+    banner,
+    collect_stats,
+    print_banner,  # noqa: E402
+    should_show,
+    LOGO_LINES,
+    TAGLINE,
+)
 
 ANSI_RE = re.compile(r"\x1b\[[0-9]+m")
 
@@ -29,8 +35,7 @@ class SplashStructureTests(unittest.TestCase):
         self.assertTrue(lines[0].strip().startswith("╔"))
         self.assertTrue(lines[-1].strip().startswith("╚"))
         # All frame lines share one indent (centered as a block).
-        indents = {len(l) - len(l.lstrip())
-                   for l in lines if l.strip()[:1] in "╔║╚"}
+        indents = {len(line) - len(line.lstrip()) for line in lines if line.strip()[:1] in "╔║╚"}
         self.assertEqual(len(indents), 1)
 
     def test_logo_and_tagline_present(self):
@@ -60,8 +65,7 @@ class SplashDynamicTests(unittest.TestCase):
         self.assertGreater(stats["tests"], 300)
 
     def test_banner_embeds_live_counts(self):
-        stats = {"version": "9.9.9", "suites": 1, "manifests": 2,
-                 "tests": 3}
+        stats = {"version": "9.9.9", "suites": 1, "manifests": 2, "tests": 3}
         out = _plain(banner(stats=stats, width=100, color=False))
         self.assertIn("v9.9.9", out)
         self.assertIn("1 suites", out)

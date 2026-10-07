@@ -25,6 +25,7 @@ import importlib.util
 import json
 import os
 import re
+import shlex
 import sqlite3
 import sys
 
@@ -356,6 +357,164 @@ def _all_groups_hit(text, groups):
     return [any(g in folded for g in group) for group in groups]
 
 
+def _valid_vercel_spa_rewrite(reply):
+    """Require a parsed Vercel catch-all rewrite to the SPA entry point."""
+    try:
+        obj = extract_json_object(reply)
+        config = json.loads(obj) if obj else None
+    except (TypeError, ValueError):
+        return False
+    if not isinstance(config, dict):
+        return False
+    rewrites = config.get("rewrites")
+    if not isinstance(rewrites, list):
+        return False
+    catch_all_sources = {"/(.*)", "/:path*"}
+    return any(
+        isinstance(rule, dict)
+        and rule.get("source") in catch_all_sources
+        and rule.get("destination") == "/index.html"
+        for rule in rewrites
+    )
+
+
+def _dockerfile_instructions(text):
+    """Parse the Dockerfile instruction subset needed by the R13 oracle."""
+    known = {
+        "ADD",
+        "ARG",
+        "CMD",
+        "COPY",
+        "ENTRYPOINT",
+        "ENV",
+        "EXPOSE",
+        "FROM",
+        "HEALTHCHECK",
+        "LABEL",
+        "MAINTAINER",
+        "ONBUILD",
+        "RUN",
+        "SHELL",
+        "STOPSIGNAL",
+        "USER",
+        "VOLUME",
+        "WORKDIR",
+    }
+    instructions = []
+    pending = ""
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line and not pending:
+            continue
+        if line.startswith("#") and not pending:
+            continue
+        if line.endswith("\\"):
+            pending += line[:-1].strip() + " "
+            continue
+        logical_line = pending + line
+        pending = ""
+        try:
+            tokens = shlex.split(logical_line, comments=True, posix=True)
+        except ValueError:
+            return None
+        if not tokens:
+            continue
+        instruction = tokens[0].upper()
+        if instruction not in known:
+            return None
+        argument_text = logical_line.split(None, 1)[1] if len(tokens) > 1 else ""
+        args = tokens[1:]
+        if argument_text.startswith("[") and instruction in {
+            "ADD",
+            "CMD",
+            "COPY",
+            "ENTRYPOINT",
+            "RUN",
+        }:
+            try:
+                json_args = json.loads(argument_text)
+            except ValueError:
+                return None
+            if not isinstance(json_args, list) or not all(
+                isinstance(arg, str) for arg in json_args
+            ):
+                return None
+            args = json_args
+        instructions.append((instruction, args))
+    if pending:
+        return None
+    saw_from = False
+    for instruction, _ in instructions:
+        if instruction == "FROM":
+            saw_from = True
+        elif not saw_from and instruction != "ARG":
+            return None
+    return instructions
+
+
+def _dockerfile_has_required_python_app(text):
+    """Validate R13's required Dockerfile directives and their arguments."""
+    instructions = _dockerfile_instructions(text)
+    if not instructions:
+        return False
+    bases = []
+    workdirs = []
+    copies = []
+    installs = []
+    commands = []
+    for instruction, args in instructions:
+        if instruction == "FROM":
+            image = None
+            skip_value = False
+            for arg in args:
+                if skip_value:
+                    skip_value = False
+                    continue
+                if arg == "--platform":
+                    skip_value = True
+                elif arg.startswith("--platform="):
+                    continue
+                elif not arg.startswith("--"):
+                    image = arg
+                    break
+            if image is None:
+                return False
+            bases.append(image.lower())
+        elif instruction == "WORKDIR" and args:
+            workdirs.append(args[0])
+        elif instruction == "COPY":
+            copy_args = [arg for arg in args if not arg.startswith("--")]
+            if len(copy_args) >= 2:
+                copies.append(copy_args[:-1])
+        elif instruction == "RUN":
+            normalized = [arg.strip("[]\",'").lower() for arg in args]
+            if (
+                len(normalized) >= 2
+                and normalized[0] in ("pip", "pip3")
+                and normalized[1] == "install"
+            ) or (
+                len(normalized) >= 4
+                and normalized[0] in ("python", "python3")
+                and normalized[1:4] == ["-m", "pip", "install"]
+            ):
+                installs.append(args)
+        elif instruction == "CMD" and any(arg.strip() for arg in args):
+            commands.append(args)
+    return bool(
+        bases
+        and bases[-1] == "python:3.12-slim"
+        and all(base.split("@", 1)[0].rsplit(":", 1)[-1] != "latest" for base in bases)
+        and workdirs
+        and workdirs[-1] == "/app"
+        and any(
+            any(os.path.basename(source) == "requirements.txt" for source in sources)
+            for sources in copies
+        )
+        and installs
+        and commands
+    )
+
+
 #: T9 semantic checklist (all four groups required): función/closure +
 #: ámbito/entorno/contexto + conserva/captura + ejemplo/código.
 #: Calibrated 2026-10-07 on t9_calibration.json (8 pos + 8 neg): G1 adds
@@ -605,13 +764,8 @@ def check_family(family, reply):
         ]
         return bool(all(checks)), str(checks)
     if family == "R4":
-        try:
-            obj = extract_json_object(reply)
-            d = json.loads(obj) if obj else {}
-            ok = any("index.html" in json.dumps(r) for r in d.get("rewrites", []))
-        except Exception:
-            ok = False
-        return bool(ok), "vercel-rewrites-check"
+        ok = _valid_vercel_spa_rewrite(reply)
+        return ok, "vercel-catch-all-rewrite-check"
     if family == "R5":
         code = extract_code(reply, "javascript") or extract_code(reply, "js")
         low = code.lower()
@@ -700,12 +854,13 @@ def check_family(family, reply):
             or extract_code(reply, "tsx")
             or extract_code(reply, "javascript")
         )
+        normalized = code.lower().replace(" ", "")
         checks = [
-            "usestate" in code.lower(),
-            "usestate(0)" in code.replace(" ", ""),
-            "onclick" in code.lower(),
-            "setcount" in code.lower(),
-            ("counter" in code) and ("export default" in code or "export" in code),
+            "usestate" in normalized,
+            "usestate(0)" in normalized,
+            "onclick" in normalized,
+            "setcount" in normalized,
+            ("counter" in normalized) and ("exportdefault" in normalized or "export" in normalized),
         ]
         return bool(all(checks)), str(checks)
     if family == "R11":
@@ -755,19 +910,8 @@ def check_family(family, reply):
             output[-200:] if rc else ""
         )
     if family == "R13":
-        # P2 (PROMPT_PACK v2): strict text-structural Dockerfile gate.
-        # FROM/COPY/RUN/CMD all required with pinned python:3.12-slim
-        # base; any "latest" tag fails (unpinned base image).
-        low = (reply or "").lower()
-        checks = [
-            "from python:3.12-slim" in low,
-            "workdir" in low and "/app" in low,
-            "copy" in low and "requirements" in low,
-            "run" in low and "pip install" in low,
-            "cmd" in low,
-        ]
-        no_latest = "latest" not in low
-        return bool(all(checks) and no_latest), f"docker-checks={checks} no_latest={no_latest}"
+        ok = _dockerfile_has_required_python_app(reply or "")
+        return ok, f"dockerfile-structure-check={ok}"
     if family == "H1":
         return bool("126" in (reply or "")), "increasing-digits-check"
     if family == "H2":

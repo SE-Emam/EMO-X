@@ -34,7 +34,7 @@
   "allowed": false
  },
  "oracle": {
-  "check": "rewrites entry targets /index.html",
+  "check": "valid JSON rewrites array contains a catch-all source /(.*) or /:path* whose destination is exactly /index.html",
   "type": "deterministic"
  },
  "prompt": "Return ONLY vercel.json (no markdown, no explanation) for a Vite SPA that rewrites all routes to /index.html.",

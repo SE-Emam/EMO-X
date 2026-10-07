@@ -140,7 +140,7 @@ class TestManifestValidity(unittest.TestCase):
                 m = manifest_lib.load_task_manifest(p)
                 self.assertIn("canonical", m["variants"])
 
-    def test_code25_covers_25_families(self):
+    def test_code25_covers_29_families(self):
         got = sorted(
             f[:-5] for f in os.listdir(os.path.join(CB25, "manifests")) if f.endswith(".json")
         )

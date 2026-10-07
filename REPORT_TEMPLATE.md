@@ -39,7 +39,7 @@ must not be presented as final.
 
 | Check | Rule | Status |
 |---|---|---|
-| completeness | all 25 tests present, no errors = infra-failures | |
+| completeness | all 29 code25 families present; errors are infra-failures | |
 | trials | trials ≥ 1 recorded; n=3 for final claims | |
 | raw evidence | every FAIL has non-empty sample+log | |
 | budget compliance | T≤512/R≤600/H≤2048 (or documented override) | |

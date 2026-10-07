@@ -1,6 +1,6 @@
 ---
 name: code-bench-25
-description: The 25-test code pack (T/R/H) — real execution of every answer with documented strict gates. Use it to compare any model before adopting it.
+description: The 29-family code pack (T/R/H/A) — deterministic execution and structural oracles with documented strict gates. Use it to compare any model before adopting it.
 ---
 
 ![EMO-X banner — Execution · Measurement · Observability](../src/emo-x-banner.png)
@@ -14,27 +14,31 @@ description: The 25-test code pack (T/R/H) — real execution of every answer wi
 Measure what agents accomplish — not what they say
 ```
 
-# Code test 25 (code-bench-25)
+# code-bench-25 — 29 task families
 
 ## What is it?
 
-25 tests that really execute the model's answer (real compilers and
-interpreters), not eyeballing. Every test: frozen prompt from
-`shared/PROMPT_PACK_v1.md` + execution check + raw JSON result.
+29 task families evaluate model answers using real compilers/interpreters
+where appropriate and deterministic structural oracles for text/config
+tasks. The original prompts remain frozen in PROMPT_PACK v1; the current
+pack also includes v2 additions. Results are recorded as raw JSON.
 
-## Pack contents (25 tests)
+## Pack contents (29 families)
 
-- **T (basic + Arabic):** T2 Fibonacci, T3 `is_even` fix, T4 JS sum, T5 Arabic explanation, T6 Arabic code, T7 JSON conformance, T8 file task.
+- **T (basic + multilingual):** T2 Fibonacci, T3 `is_even` fix, T4 JS sum, T5 Arabic explanation, T6 Arabic code, T7 JSON conformance, T8 file task, T9 Spanish explanation, T10 Portuguese explanation.
 - **R (realistic):** R1 complete Rust program, R2 SQLite query, R3 git commands,
   R4 vercel.json, R5 supabase-js function, R6 unified diff,
   R7 strict-format tool call, R8 commit message, R9 HTML/CSS page,
-  R10 React component, R11 TypeScript check, R12 Postgres query.
+  R10 React component, R11 TypeScript check, R12 Postgres query, R13 Dockerfile.
 - **H (hard):** H1 increasing digits, H2 Diophantine equation, H3 modular remainder,
   H4 longest palindrome, H5 token bucket, H6 first occurrence.
+- **A (async):** A16 asyncio gather.
 
-Note: numbering starts at T2 (seven T + twelve R + six H = 25 tests).
+The current inventory is 9 T + 13 R + 6 H + 1 A = 29 families. Only H3
+currently supports generated `perturbed` and `novel` variants; the other
+families are canonical-only.
 
-## Methodology notes (do not change without a new PROMPT_PACK version)
+## Methodology notes (do not change frozen prompts without a new PROMPT_PACK version)
 
 1. **T5 gate strictness:** passing requires `arabic_ratio > 0.3` — mixed
    replies (short Arabic + long English) fail by design. This measures
@@ -79,7 +83,7 @@ model are inadmissible. See `docs/model-onboarding.md` for the
 ## Verification
 
 ```python
-# Every answer executes in a real toolchain (bench_lib verifiers):
+# Executable families use the shared sandbox and real toolchains where available:
 ok, log = run_py(code, "assert fib(0)==0 and fib(10)==55; print('FIB_OK')")
 ok, log = run_js(code, "if (sumArr([1,2,3,4])!==10) throw 1; console.log('JS_OK')")
 ok, log = run_rust(code)  # rustc -O, program must print PRIME_OK

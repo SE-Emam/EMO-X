@@ -38,7 +38,7 @@ def _load_manifest(family):
 
 
 class TestManifestTruth(unittest.TestCase):
-    def test_25_families_covered(self):
+    def test_29_families_covered(self):
         self.assertEqual(len(cb_cases.FAMILY_IDS), 29)
         got = sorted(f[:-5] for f in os.listdir(MANDIR) if f.endswith(".json"))
         self.assertEqual(len(got), 29)

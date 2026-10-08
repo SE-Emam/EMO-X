@@ -1,6 +1,6 @@
 ---
 name: code-bench-25
-description: The 35-family code pack (T/R/H/A) — deterministic execution and structural oracles with documented strict gates. Use it to compare any model before adopting it.
+description: The 36-family code pack (T/R/H/A) — deterministic execution and structural oracles with documented strict gates. Use it to compare any model before adopting it.
 ---
 
 ![EMO-X banner — Execution · Measurement · Observability](../src/emo-x-banner.png)
@@ -14,18 +14,18 @@ description: The 35-family code pack (T/R/H/A) — deterministic execution and s
 Measure what agents accomplish — not what they say
 ```
 
-# code-bench-25 — 35 task families
+# code-bench-25 — 36 task families
 
 ## What is it?
 
-35 task families evaluate model answers using real compilers/interpreters
+36 task families evaluate model answers using real compilers/interpreters
 where appropriate and deterministic structural oracles for text/config
 tasks. The original prompts remain frozen in PROMPT_PACK v1; the current
 pack also includes v2 additions. Results are recorded as raw JSON.
 
-## Pack contents (35 families)
+## Pack contents (36 families)
 
-- **T (basic + multilingual + resilience/security/advanced):** T2 Fibonacci, T3 `is_even` fix, T4 JS sum, T5 Arabic explanation, T6 Arabic code, T7 JSON conformance, T8 file task, T9 Spanish explanation, T10 Portuguese explanation, T30 injection-resistant SQLite query repair, T31 algorithmic complexity repair, T32 multi-file repository feature, T33 resilient API retries, T34 async concurrency safety, T36 safe SQLite migration.
+- **T (basic + multilingual + resilience/security/advanced):** T2 Fibonacci, T3 `is_even` fix, T4 JS sum, T5 Arabic explanation, T6 Arabic code, T7 JSON conformance, T8 file task, T9 Spanish explanation, T10 Portuguese explanation, T30 injection-resistant SQLite query repair, T31 algorithmic complexity repair, T32 multi-file repository feature, T33 resilient API retries, T34 async concurrency safety, T36 safe SQLite migration, T37 Spanish dialect awareness (ES-ES/ES-MX/ES-AR).
 - **R (realistic):** R1 complete Rust program, R2 SQLite query, R3 git commands,
   R4 vercel.json, R5 supabase-js function, R6 unified diff,
   R7 strict-format tool call, R8 commit message, R9 HTML/CSS page,
@@ -34,9 +34,10 @@ pack also includes v2 additions. Results are recorded as raw JSON.
   H4 longest palindrome, H5 token bucket, H6 first occurrence.
 - **A (async):** A16 asyncio gather.
 
-The current inventory is 15 T + 13 R + 6 H + 1 A = 35 families. H3
+The current inventory is 16 T + 13 R + 6 H + 1 A = 36 families. H3
 supports generated `perturbed` and `novel` variants; T2, T3, R2, and R5
-also expose a fixed `perturbed` variant. Other families are canonical-only.
+also expose a fixed `perturbed` variant; T37 exposes fixed `perturbed` (ES-MX)
+and `novel` (ES-AR) dialect variants. Other families are canonical-only.
 
 T30 executes parameterized-query candidates against injection-shaped inputs
 in network-isolated Docker SQLite; T33 injects an in-process mock transport

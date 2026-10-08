@@ -1,0 +1,27 @@
+{
+  "capabilities": ["spanish_generation", "dialect_awareness", "localization", "explanation"],
+  "category": "multilingual-localization",
+  "difficulty": {"adaptive": false, "base": 2},
+  "estimated_human_minutes": 5,
+  "execution": {
+    "harness": "suites/code-bench-25/executor.py",
+    "type": "text"
+  },
+  "filesystem": {"sandbox_only": true},
+  "forbidden_paths": ["/etc", "/root", "/home", "~/.ssh", "/var/run/secrets"],
+  "generator": {"parameters": {}, "seed": 25370, "type": "frozen-canonical"},
+  "id": "T37",
+  "name": "spanish_dialect_awareness",
+  "network": {"allowed": false},
+  "oracle": {
+    "check": "deterministic lexical markers per variant: ES-ES requires vosotros+ordenador and forbids ustedes/computadora; ES-MX requires ustedes+computadora and forbids vosotros/vos; ES-AR requires vos+che and forbids vosotros",
+    "type": "deterministic"
+  },
+  "prompt": "Explica en espa\u00f1ol de Espa\u00f1a (dialecto peninsular): \u00bfqu\u00e9 es el concepto de closure en JavaScript? Usa 'vosotros', 'ordenador' y 'coger' de forma natural en tu explicaci\u00f3n.",
+  "prompt_pack": "v2",
+  "scoring": {"correctness": 1.0},
+  "suite": "code-bench-25",
+  "timeouts": {"execution_seconds": 30, "generation_seconds": 120},
+  "variants": ["canonical", "perturbed", "novel"],
+  "version": "1.0"
+}

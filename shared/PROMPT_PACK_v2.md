@@ -1,5 +1,8 @@
 # PROMPT_PACK v2 — Latin-Language Additions (EMO Benchmark Skills)
 
+## v2.1 (2026-10-08)
+- Added T37: spanish_dialect_awareness (ES-ES/ES-MX/ES-AR variants)
+
 > Version `v2` — 2026-10-07 (P1: عائلات اللغات الإسبانية والبرتغالية).
 > `shared/PROMPT_PACK_v1.md` stays byte-frozen (T2–T8, R1–R12, H1–H6
 > unchanged). This file documents ONLY the v2 additions below.
@@ -33,6 +36,34 @@ right script but off-topic must FAIL:
   an additive semantic signal — closure keywords
   (`function`/`scope`/`lexical`/`مثال`, ≥2 hits) for T5, and
   function-reference + description/illustration groups for T6.
+
+## P1b — Spanish dialect awareness (T37, v2.1 2026-10-08)
+
+> v2.1 addition. `v1` strings and P1/P2 strings above stay byte-frozen.
+> Any change to any string below (even whitespace) = new version (`v3`) +
+> full re-baseline. `prompt_pack: v2`, `variants: [canonical, perturbed, novel]`.
+
+- **T37 canonical (ES-ES peninsular)**: `Explica en español de España (dialecto peninsular): ¿qué es el concepto de closure en JavaScript? Usa 'vosotros', 'ordenador' y 'coger' de forma natural en tu explicación.`
+- **T37 perturbed (ES-MX)**: `Explica en español de México: ¿qué es el concepto de closure en JavaScript? Usa 'ustedes' y 'computadora' de forma natural en tu explicación.`
+- **T37 novel (ES-AR rioplatense)**: `Explica en español de Argentina (rioplatense): ¿qué es el concepto de closure en JavaScript? Usa 'vos' y 'che' de forma natural en tu explicación.`
+
+## Oracle rule (P1b)
+
+Mirrors T9 (`spanish_ratio > 0.10` + `T9_SEMANTIC_GROUPS` =
+`función` + (`ámbito`/`alcance`) + (`conserva`/`recuerda`) +
+(`ejemplo`/`código`)) plus per-variant lexical dialect markers
+(accent-folded; `vos`/`che` require word-boundary `\b` so `vosotros`
+does not satisfy `vos`):
+
+- **canonical ES-ES**: requires `vosotros` + `ordenador`;
+  forbids `ustedes` / `computadora`.
+- **perturbed ES-MX**: requires `ustedes` + `computadora`;
+  forbids `vosotros` / `vos` (word).
+- **novel ES-AR**: requires `vos` (word) + `che` (word);
+  forbids `vosotros`.
+
+Cross-dialect replies MUST fail (wrong markers); English replies fail
+via `spanish_ratio`.
 
 ## Registry
 
@@ -71,11 +102,15 @@ Code tests use **no system prompt** (user message only, `temp=0.4`).
 
 ## Registry (P2)
 
-- `suites/code-bench-25/cases.py`: `FAMILY_IDS` (+`R13`, `A16` → 29),
-  `prompt_messages` (+`R13_PROMPT`, `A16_PROMPT`).
-- `suites/code-bench-25/manifests/R13.json`, `A16.json`
+- `suites/code-bench-25/cases.py`: `FAMILY_IDS` (+`R13`, `A16`, +`T37` → 36),
+  `prompt_messages` (+`R13_PROMPT`, `A16_PROMPT`, +`T37_PROMPT`).
+- `suites/code-bench-25/manifests/R13.json`, `A16.json`, `T37.json`
   (same Task DSL schema as `T9.json`, `prompt_pack: v2`).
+  `T37.json` declares `variants: [canonical, perturbed, novel]`;
+  fixed `perturbed` (ES-MX) + `novel` (ES-AR) prompts live in
+  `VARIANT_PROMPTS` (`T37_MX_PROMPT`, `T37_AR_PROMPT`).
 - `suites/code-bench-25/executor.py`: `check_family` branches
-  `R13`/`A16`.
+  `R13`/`A16`/`T37` (`check_t37`), plus `check_variant` dispatch
+  for `T37 perturbed/novel`.
 - `shared/run.py`: `r13_docker`/`a16_async` + `CODE25_ORDER`
-  entries (`R13_docker`, `A16_async` → 29).
+  entries (`R13_docker`, `A16_async` → 36 with T37).

@@ -347,6 +347,17 @@ GOLDEN_REPLIES = {
         "        await asyncio.sleep(0)\n"
         "        self.value = current + amount",
     ),
+    "T37": (
+        "Un closure en JavaScript es una función que recuerda el ámbito léxico "
+        "en el que fue creada, por lo que conserva el acceso a las variables de "
+        "su entorno exterior aunque la función externa ya haya terminado. "
+        "Por ejemplo, vosotros podéis probar este código en vuestro ordenador "
+        "para coger la idea: function crearContador() { let n = 0; "
+        "return function() { n++; return n; }; } "
+        "Cada llamada mantiene su propio estado porque la función interna "
+        "captura ese contexto.",
+        "A closure remembers its lexical scope after the outer function ends.",
+    ),
 }
 
 T2_VARIANT_GOLDEN = (
@@ -381,6 +392,26 @@ R5_VARIANT_GOLDEN = (
     "  if (error) throw error;\n"
     "  return data;\n"
     "}"
+)
+T37_MX_VARIANT_GOLDEN = (
+    "Un closure en JavaScript es una función que recuerda el ámbito léxico "
+    "en el que fue creada, por lo que conserva el acceso a las variables de "
+    "su entorno exterior aunque la función externa ya haya terminado. "
+    "Por ejemplo, ustedes pueden probar este código en su computadora: "
+    "function crearContador() { let n = 0; "
+    "return function() { n++; return n; }; } "
+    "Cada llamada mantiene su propio estado porque la función interna "
+    "captura ese contexto."
+)
+T37_AR_VARIANT_GOLDEN = (
+    "Un closure en JavaScript es una función que recuerda el ámbito léxico "
+    "en el que fue creada, por lo que conserva el acceso a las variables de "
+    "su entorno exterior aunque la función externa ya haya terminado. "
+    "Por ejemplo, che, vos podés probar este código: "
+    "function crearContador() { let n = 0; "
+    "return function() { n++; return n; }; } "
+    "Cada llamada mantiene su propio estado porque la función interna "
+    "captura ese contexto."
 )
 
 
@@ -561,6 +592,38 @@ class AllFamiliesGoldenTests(unittest.TestCase):
         passed, log = executor.check_family("T36", GOLDEN_REPLIES["T36"][1])
         self.assertFalse(passed, log)
 
+    def test_t37_dialect_variants(self):
+        """T37: canonical ES-ES, perturbed ES-MX, novel ES-AR with cross-fail guards."""
+        executor = _load_executor()
+        es_es = GOLDEN_REPLIES["T37"][0]
+        es_mx = T37_MX_VARIANT_GOLDEN
+        es_ar = T37_AR_VARIANT_GOLDEN
+        # Positive cases: each dialect passes its own variant (direct + dispatch).
+        self.assertTrue(executor.check_t37(es_es, "canonical")[0])
+        self.assertTrue(executor.check_t37(es_mx, "perturbed")[0])
+        self.assertTrue(executor.check_t37(es_ar, "novel")[0])
+        self.assertTrue(executor.check_family("T37", es_es)[0])
+        self.assertTrue(executor.check_variant("T37", "perturbed", es_mx)[0])
+        self.assertTrue(executor.check_variant("T37", "novel", es_ar)[0])
+        # Cross-fail: mixing dialects must fail (wrong markers / forbidden hits).
+        self.assertFalse(executor.check_t37(es_es, "perturbed")[0])
+        self.assertFalse(executor.check_t37(es_es, "novel")[0])
+        self.assertFalse(executor.check_t37(es_mx, "canonical")[0])
+        self.assertFalse(executor.check_t37(es_mx, "novel")[0])
+        self.assertFalse(executor.check_t37(es_ar, "canonical")[0])
+        self.assertFalse(executor.check_variant("T37", "perturbed", es_es)[0])
+        # Word-boundary guards: bare substring must not satisfy short markers.
+        self.assertFalse(executor._has_word(executor._fold_accents("vosotros"), "vos"))
+        self.assertFalse(executor._has_word(executor._fold_accents("noche"), "che"))
+        self.assertFalse(executor.check_t37(es_es, "novel")[0])
+        # English / off-topic replies must fail via spanish_ratio + semantics.
+        self.assertFalse(
+            executor.check_t37(
+                "Hello world, this is a test of closures and functions.", "canonical"
+            )[0]
+        )
+        self.assertFalse(executor.check_t37(GOLDEN_REPLIES["T37"][1], "canonical")[0])
+
     def test_expanded_task_variants(self):
         executor = _load_executor()
         cases = (
@@ -574,6 +637,13 @@ class AllFamiliesGoldenTests(unittest.TestCase):
             with self.subTest(family=family, result="negative"):
                 self.assertFalse(executor.check_variant(family, "perturbed", negative)[0])
         self.assertTrue(executor.check_variant("R5", "perturbed", R5_VARIANT_GOLDEN)[0])
+        # T37 dialect variants: ES-MX (perturbed) + ES-AR (novel).
+        self.assertTrue(executor.check_variant("T37", "perturbed", T37_MX_VARIANT_GOLDEN)[0])
+        self.assertTrue(executor.check_variant("T37", "novel", T37_AR_VARIANT_GOLDEN)[0])
+        # Cross-dialect replies must fail (wrong markers).
+        self.assertFalse(executor.check_variant("T37", "perturbed", GOLDEN_REPLIES["T37"][0])[0])
+        self.assertFalse(executor.check_variant("T37", "novel", T37_MX_VARIANT_GOLDEN)[0])
+        self.assertFalse(executor.check_family("T37", T37_MX_VARIANT_GOLDEN)[0])
 
         manifest_path = os.path.join(SUITE, "manifests", "T2.json")
         with open(manifest_path, encoding="utf-8") as manifest_file:
@@ -616,7 +686,7 @@ class AllFamiliesGoldenTests(unittest.TestCase):
         executor = _load_executor()
         backend = GoldenBackend()
         self.assertEqual(set(GOLDEN_REPLIES), set(executor.cases.FAMILY_IDS))
-        self.assertEqual(len(GOLDEN_REPLIES), 35)
+        self.assertEqual(len(GOLDEN_REPLIES), 36)
 
         with (
             mock.patch.object(
@@ -699,6 +769,8 @@ class AllFamiliesGoldenTests(unittest.TestCase):
             )
             if manifest["id"] in {"T2", "T3", "R2", "R5"}:
                 expected = ["canonical", "perturbed"]
+            if manifest["id"] == "T37":
+                expected = ["canonical", "perturbed", "novel"]
             self.assertEqual(manifest["variants"], expected, manifest["id"])
 
 

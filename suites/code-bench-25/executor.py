@@ -579,6 +579,47 @@ T10_SEMANTIC_GROUPS = (
     ("exemplo", "codigo"),
 )
 
+#: T37 Spanish dialect-awareness (PROMPT_PACK v2, mirrors T9/T10 pattern:
+#: spanish_ratio > 0.10 + T9 closure semantic checklist + per-variant
+#: lexical dialect markers). canonical = ES-ES peninsular, perturbed = ES-MX,
+#: novel = ES-AR rioplatense. Word-boundary matching is required for short
+#: markers ("vos", "che"): bare substring would fire inside "vosotros" or
+#: Spanish words containing "che".
+T37_SEMANTIC_GROUPS = T9_SEMANTIC_GROUPS
+
+
+def _has_word(folded, word):
+    """True iff `word` appears as a standalone word in folded text."""
+    return re.search(r"\b%s\b" % re.escape(word), folded or "") is not None
+
+
+def _t37_dialect_detail(folded, variant):
+    """Return (required_ok, forbidden_hit, detail) for a T37 variant."""
+    if variant == "canonical":
+        required_ok = "vosotros" in folded and "ordenador" in folded
+        forbidden_hit = "ustedes" in folded or "computadora" in folded
+        return required_ok, forbidden_hit, "es-es=vosotros+ordenador!ustedes/computadora"
+    if variant == "perturbed":
+        required_ok = "ustedes" in folded and "computadora" in folded
+        forbidden_hit = "vosotros" in folded or _has_word(folded, "vos")
+        return required_ok, forbidden_hit, "es-mx=ustedes+computadora!vosotros/vos"
+    if variant == "novel":
+        required_ok = _has_word(folded, "vos") and _has_word(folded, "che")
+        forbidden_hit = "vosotros" in folded
+        return required_ok, forbidden_hit, "es-ar=vos+che!vosotros"
+    raise KeyError(f"unknown T37 variant: {variant!r}")
+
+
+def check_t37(reply, variant="canonical"):
+    """Shared T37 oracle: spanish_ratio + closure semantics + dialect markers."""
+    folded = _fold_accents(reply)
+    ratio = spanish_ratio(reply)
+    sem = _all_groups_hit(reply, T37_SEMANTIC_GROUPS)
+    required_ok, forbidden_hit, detail = _t37_dialect_detail(folded, variant)
+    ok = bool(ratio > 0.10 and all(sem) and required_ok and not forbidden_hit)
+    log = f"spanish_ratio={ratio:.3f} sem={sem} {detail} required={required_ok} forbidden={forbidden_hit}"
+    return ok, log
+
 #: T5 additive semantic signal: closure-explanation keywords. At least
 #: CLOSURE_SEMANTIC_MIN_HITS must appear beside the legacy arabic_ratio
 #: gate (which is kept unchanged).
@@ -846,6 +887,8 @@ def check_family(family, reply):
         sem = _all_groups_hit(reply, T10_SEMANTIC_GROUPS)
         ok = bool(r > 0.10 and all(sem))
         return ok, f"portuguese_ratio={r:.3f} sem={sem}"
+    if family == "T37":
+        return check_t37(reply, "canonical")
     if family == "T7":
         try:
             obj = extract_json_object(reply)
@@ -1128,6 +1171,10 @@ def check_family(family, reply):
 
 def check_variant(family, variant, reply):
     """Run a declared fixed variant through the same fail-closed sandbox."""
+    if family == "T37":
+        if variant not in ("perturbed", "novel"):
+            raise KeyError(f"unsupported code-bench-25 variant: {family}/{variant}")
+        return check_t37(reply, variant)
     if variant != "perturbed":
         raise KeyError(f"unsupported code-bench-25 variant: {family}/{variant}")
     if family == "T2":
@@ -1371,7 +1418,8 @@ def run_family(
 
     variant: None/"canonical" -> canonical prompt. H3 also serves generated
       "perturbed"/"novel" instances; T2, T3, R2, and R5 have fixed
-      "perturbed" prompts and oracles. subtype is used only by H3. Any other
+      "perturbed" prompts and oracles; T37 serves fixed "perturbed" (ES-MX)
+      and "novel" (ES-AR) dialect prompts and oracles. subtype is used only by H3. Any other
       (family, variant) pair raises TypeError so the runner skips it (NA, DEN).
     """
     v = variant or "canonical"

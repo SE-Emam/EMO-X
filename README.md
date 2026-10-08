@@ -8,7 +8,7 @@
 > HumanEval is dead. EMO-X tests what agents **DO**, not what they **SAY**.
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/SE-Emam/EMO-X/blob/main/notebooks/emo_x_quickstart.ipynb) [![GitHub stars](https://img.shields.io/github/stars/SE-Emam/EMO-X)](https://github.com/SE-Emam/EMO-X/stargazers) [![pip install](https://img.shields.io/badge/pip_install-emo--x--eval-blue)](https://pypi.org/project/emo-x-eval/) [![Dataset on HF](https://img.shields.io/badge/🤗_Dataset-EMO--X--Core-yellow)](https://huggingface.co/datasets/SE-Emam/EMO-X-Core) [![PyPI](https://img.shields.io/pypi/v/emo-x-eval)](https://pypi.org/project/emo-x-eval/) [![License](https://img.shields.io/badge/License-Apache_2.0-blue)](LICENSE)
-[![Suites](https://img.shields.io/badge/suites-13-blue)](suites/) [![Tests](https://img.shields.io/badge/tests-772-green)](tests/run_all.py) [![Ollama](https://img.shields.io/badge/Ollama-supported-orange)](INSTALL.md)
+[![Suites](https://img.shields.io/badge/suites-13-blue)](suites/) [![Tests](https://img.shields.io/badge/tests-773-green)](tests/run_all.py) [![Ollama](https://img.shields.io/badge/Ollama-supported-orange)](INSTALL.md)
 
 ![EMO-X self-test demo](src/demo.gif)
 
@@ -34,7 +34,7 @@ emo --self-test
 
 | Suite | What it tests | Why it matters |
 |---|---|---|
-| code25 | 35 code/tool task families with execution or deterministic structural oracles | beyond pass/fail snippets |
+| code25 | 36 code/tool task families with execution or deterministic structural oracles | beyond pass/fail snippets |
 | agent-loop | inspect → locate → patch → test → stop | measures efficiency, not just fixing |
 | security | refusal, injection, sandboxed CTF-mini | safety under attack |
 | vision | UI grounding, Arabic reading, counting | multimodal grounding |
@@ -135,7 +135,7 @@ print(render_comparison(comp))"
 |---|---|---|
 | Test suites | 14 | `suites/*/` |
 | Task manifests | 75 | `suites/*/manifests/*.json` |
-|  Harness + unit tests | 769 (harness 324, generators 78, scoring 199, golden 30, backends 138) | `tests/run_all.py --count`, all green  |
+|  Harness + unit tests | 773 (harness 324, generators 82, scoring 199, golden 30, backends 138) | `tests/run_all.py --count`, all green  |
 | Self-test checks | 14 | `--self-test`, fail-closed |
 | Issue-style families | 15 (IS1–IS15) | vs SWE-bench Lite (300) = **5.0%** |
 

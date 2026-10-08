@@ -26,6 +26,7 @@ FAMILY_IDS = (
     "T33",
     "T34",
     "T36",
+    "T37",
     "R1",
     "R2",
     "R3",
@@ -52,6 +53,13 @@ FAMILY_IDS = (
 # families. New prompts only — v1 strings above are untouched.
 T9_PROMPT = "Explica en espa\u00f1ol: \u00bfqu\u00e9 es el concepto de closure en JavaScript?"
 T10_PROMPT = "Explica em portugu\u00eas: o que \u00e9 o conceito de closure em JavaScript?"
+
+# P1b (PROMPT_PACK v2): Spanish dialect-awareness family T37.
+# canonical = ES-ES peninsular (must stay byte-identical to manifests/T37.json);
+# perturbed = ES-MX; novel = ES-AR rioplatense.
+T37_PROMPT = "Explica en espa\u00f1ol de Espa\u00f1a (dialecto peninsular): \u00bfqu\u00e9 es el concepto de closure en JavaScript? Usa 'vosotros', 'ordenador' y 'coger' de forma natural en tu explicaci\u00f3n."
+T37_MX_PROMPT = "Explica en espa\u00f1ol de M\u00e9xico: \u00bfqu\u00e9 es el concepto de closure en JavaScript? Usa 'ustedes' y 'computadora' de forma natural en tu explicaci\u00f3n."
+T37_AR_PROMPT = "Explica en espa\u00f1ol de Argentina (rioplatense): \u00bfqu\u00e9 es el concepto de closure en JavaScript? Usa 'vos' y 'che' de forma natural en tu explicaci\u00f3n."
 
 # P2 (PROMPT_PACK v2, 2026-10-07): code25 hardening families.
 R13_PROMPT = (
@@ -180,6 +188,8 @@ VARIANT_PROMPTS = {
         "Return data on success and throw the provided error on failure. It must "
         "work with an injected client and make no network calls itself. Return ONLY code."
     ),
+    ("T37", "perturbed"): T37_MX_PROMPT,
+    ("T37", "novel"): T37_AR_PROMPT,
 }
 
 # Frozen code fragments embedded inside prompts (copied from shared/run.py).
@@ -235,6 +245,8 @@ def prompt_messages(family):
         return _user(T9_PROMPT)
     if family == "T10":
         return _user(T10_PROMPT)
+    if family == "T37":
+        return _user(T37_PROMPT)
     if family == "R1":
         return _user(
             "Write a COMPLETE Rust program with fn is_prime(n: u64) -> bool and fn main "

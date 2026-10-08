@@ -48,7 +48,8 @@
   "generation_seconds": 120
  },
  "variants": [
-  "canonical"
+  "canonical",
+  "perturbed"
  ],
  "version": "1.0"
 }

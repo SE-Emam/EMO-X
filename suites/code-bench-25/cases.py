@@ -1,10 +1,9 @@
-"""EMO-X code-bench-25 canonical cases (PROMPT_PACK v1, FROZEN).
+"""EMO-X code-bench-25 prompts and oracle cases.
 
-Every prompt string below is a byte-identical COPY of the prompt used by
-the legacy runner in shared/run.py (CODE25_ORDER t*/r*/h* functions) and
-documented in shared/PROMPT_PACK_v1.md. NEVER rephrase: any change
-(including whitespace) requires a new PROMPT_PACK version plus a full
-re-baseline, otherwise the round is void.
+The original canonical prompts are frozen PROMPT_PACK v1 copies from
+shared/run.py and shared/PROMPT_PACK_v1.md. New families and variants are
+PROMPT_PACK v2 additions; changing any prompt requires a new pack version
+and re-baseline.
 
 This module holds ONLY prompt builders + oracle checks. Execution goes
 through shared/sandbox.py (see executor.py). Scoring is owned by X-3;
@@ -21,6 +20,9 @@ FAMILY_IDS = (
     "T8",
     "T9",
     "T10",
+    "T30",
+    "T33",
+    "T36",
     "R1",
     "R2",
     "R3",
@@ -60,6 +62,61 @@ A16_PROMPT = (
     "and async def fetch_all() returning await asyncio.gather(fetch(1), fetch(2)). "
     "Return ONLY code, no explanation."
 )
+T30_PROMPT = (
+    "Repair this Python data-access helper so username is always treated as data, "
+    "not SQL. Preserve its filter behavior and return matching rows. Use a "
+    "parameterized SQLite query; do not concatenate username into SQL. "
+    "Return ONLY code defining get_user(username), which executes against a "
+    "global SQLite connection named db."
+)
+T33_PROMPT = (
+    "Write Python code defining fetch_json(url, transport, sleep_fn). The injected "
+    "transport has get(url) and returns a response with status_code and json(). "
+    "Retry transient 5xx responses with at most 3 total attempts and exponential "
+    "delays 0.1, 0.2 seconds via sleep_fn. Do not retry 4xx responses. Return exactly "
+    "{'ok': bool, 'data': value-or-None, 'attempt_count': int, "
+    "'last_error': string-or-None}; success clears last_error, and errors use "
+    "'HTTP <status>'. Do not make network requests directly. Return ONLY code."
+)
+T36_PROMPT = (
+    "Write Python code defining migrate_and_query(connection). Safely migrate "
+    "the existing accounts table by adding status TEXT NOT NULL DEFAULT 'active', "
+    "preserve all existing rows, then query and return (id, name) rows whose "
+    "status is active, ordered by id. Use a parameterized query where applicable. "
+    "Return ONLY code."
+)
+
+VARIANT_PROMPTS = {
+    ("T2", "perturbed"): (
+        "Implement fib(n) iteratively. Return 0-indexed Fibonacci values, raise "
+        "ValueError for negative n, raise TypeError for non-integer n, and support "
+        "large values such as n=500. Return ONLY Python code."
+    ),
+    ("T3", "perturbed"): (
+        "Fix this Python function, which has multiple bugs: "
+        "def safe_average(values):\n"
+        "    total = 0\n"
+        "    for value in values:\n"
+        "        total += value\n"
+        "    return total // len(values)\n"
+        "It must return the arithmetic mean (not a floored value) and return 0 "
+        "for an empty list. Return ONLY the fixed function."
+    ),
+    ("R2", "perturbed"): (
+        "SQLite tables: users(id, name) has (1,'Ali'),(2,'Sara'),(3,'Omar'); "
+        "orders(id, user_id, amount) has (1,1,50),(2,1,60),(3,2,NULL),"
+        "(4,3,110),(5,3,110). Return ONLY a query that joins users to orders, "
+        "excludes NULL amounts, returns one row per order with amount > 100, "
+        "and orders by user id then order id."
+    ),
+    ("R5", "perturbed"): (
+        "Write JavaScript async function getActiveUsers(client, page, pageSize) "
+        "using the Supabase query builder to select id,name from users where "
+        "active=true and fetch the zero-based inclusive range for the 1-based page. "
+        "Return data on success and throw the provided error on failure. It must "
+        "work with an injected client and make no network calls itself. Return ONLY code."
+    ),
+}
 
 # Frozen code fragments embedded inside prompts (copied from shared/run.py).
 T3_BUGGY = "def is_even(n):\n    return n / 2 == 0"
@@ -189,6 +246,12 @@ def prompt_messages(family):
         )
     if family == "R13":
         return _user(R13_PROMPT)
+    if family == "T30":
+        return _user(T30_PROMPT)
+    if family == "T33":
+        return _user(T33_PROMPT)
+    if family == "T36":
+        return _user(T36_PROMPT)
     if family == "H1":
         return _user(
             "How many 5-digit numbers have strictly increasing digits (left to right)? "
@@ -251,3 +314,11 @@ def prompt_text(family):
     """Return the single user prompt text for hashing/spot-checks."""
     msgs = prompt_messages(family)
     return msgs[0]["content"]
+
+
+def variant_prompt(family, variant):
+    """Return a fixed prompt for a declared non-canonical variant."""
+    try:
+        return VARIANT_PROMPTS[(family, variant)]
+    except KeyError:
+        raise KeyError("unknown code-bench-25 variant: %s/%s" % (family, variant))

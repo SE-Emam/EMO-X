@@ -364,12 +364,13 @@ should be spiked and sized before scheduling.
 
 ### 3.6 Success metrics
 
-- Keep a canonical inventory that reports **29 existing families** and
-  accurately counts additions; do not infer family count from the historic
-  “25” suite name.
-- Add at least **7 new families** in the proposed scope, targeting at least
-  **14 skill dimensions** with meaningful oracle-backed coverage, including
-  security, repository-scale work, performance, recovery, and concurrency.
+- Keep a canonical inventory; the audit baseline was **29 families** and
+  Sprint 2 raises it to **32**. Accurately count future additions; do not
+  infer family count from the historic “25” suite name.
+- The roadmap proposed **7 new families** to reach at least **14 skill
+  dimensions**. The approved Sprint 2 scope completed T30, T33, and T36;
+  T31, T32, T34, and T35 remain deferred, including repository-scale,
+  performance, and concurrency coverage.
 - Every new family has deterministic golden positive and negative cases;
   generated variants are reproducible from recorded seeds.
 - Every family’s calibration fixtures are exercised against its production
@@ -384,9 +385,34 @@ should be spiked and sized before scheduling.
 - Ensure suite docs, manifests, tests, runner family counts, and prompt-pack
   version documentation agree.
 
-## Approval boundary
+## Original approval boundary
 
-This document proposes design and prioritization only. No new tests, executor
-logic, or scoring changes are included. Implementation should begin only
-after approval of the proposed family scope, task IDs, and infrastructure
-priorities.
+This document began as an audit and plan. The implementation boundary below
+records the approved Sprint 2 scope and supersedes the original read-only
+status.
+
+## Sprint 2 implementation status
+
+The approved Sprint 2 mandate is complete:
+
+| Work item | Status | Implementation |
+|---|---|---|
+| T30 — Injection-resistant query repair | Complete | Parameterized-query candidates execute against in-memory SQLite in the network-isolated Docker sandbox; tautology and destructive-looking inputs are checked against exact results and table integrity. |
+| T33 — Resilient API client | Complete | An injected in-process transport exercises 503→200 retry/backoff and 404 fail-fast outcomes in the Docker sandbox, including attempt counts and structured errors. |
+| T36 — Safe migration and query | Complete | In-memory SQLite checks the added column's type/default/nullability, existing row preservation, and ordered query result inside the Docker sandbox. |
+| T2, T3, R2, R5 variants | Complete | Fixed perturbed prompts, deterministic oracles, canonical/negative fixtures, manifest declarations, and runner dispatch are present. R5 uses a Docker-isolated Node harness with an injected fluent mock client. |
+| Manifest, documentation, and golden coverage | Complete | The inventory now has 32 families; all new families have positive and negative golden cases. |
+
+### Lessons and scope notes
+
+- Injecting transports and database connections keeps integration cases
+  deterministic and avoids opening network access, even to local mock
+  services. All generated Python and JavaScript in these new execution oracles
+  runs through the shared fail-closed Docker sandbox.
+- The Sprint 2 mandate selected three of the proposed new families (T30,
+  T33, and T36). T31, T32, T34, and T35 remain future work; they are not
+  reported as completed by this sprint.
+- Existing-task variants use the established `perturbed` variant class and
+  fixed prompts, rather than adding separate task-family IDs or a new
+  generator format. This keeps family count at 32 and avoids a broad runner
+  or manifest-schema refactor.

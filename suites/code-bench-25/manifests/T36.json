@@ -1,0 +1,28 @@
+{
+  "capabilities": ["database_engineering", "migration", "python", "sqlite"],
+  "category": "database-engineering",
+  "difficulty": {"adaptive": false, "base": 2},
+  "estimated_human_minutes": 8,
+  "execution": {
+    "entry": "migrate_and_query",
+    "harness": "suites/code-bench-25/executor.py",
+    "type": "python"
+  },
+  "filesystem": {"sandbox_only": true},
+  "forbidden_paths": ["/etc", "/root", "/home", "~/.ssh", "/var/run/secrets"],
+  "generator": {"parameters": {}, "seed": 25360, "type": "frozen-canonical"},
+  "id": "T36",
+  "name": "safe_migration_and_query",
+  "network": {"allowed": false},
+  "oracle": {
+    "check": "Docker-sandboxed in-memory SQLite verifies schema type/default, preservation of existing rows, and ordered query results",
+    "type": "deterministic-execution"
+  },
+  "prompt": "Write Python code defining migrate_and_query(connection). Safely migrate the existing accounts table by adding status TEXT NOT NULL DEFAULT 'active', preserve all existing rows, then query and return (id, name) rows whose status is active, ordered by id. Use a parameterized query where applicable. Return ONLY code.",
+  "prompt_pack": "v2",
+  "scoring": {"correctness": 1.0},
+  "suite": "code-bench-25",
+  "timeouts": {"execution_seconds": 30, "generation_seconds": 120},
+  "variants": ["canonical"],
+  "version": "1.0"
+}

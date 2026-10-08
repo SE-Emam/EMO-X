@@ -1,0 +1,28 @@
+{
+  "capabilities": ["error_handling", "python", "resilience"],
+  "category": "error-handling",
+  "difficulty": {"adaptive": false, "base": 2},
+  "estimated_human_minutes": 8,
+  "execution": {
+    "entry": "fetch_json",
+    "harness": "suites/code-bench-25/executor.py",
+    "type": "python"
+  },
+  "filesystem": {"sandbox_only": true},
+  "forbidden_paths": ["/etc", "/root", "/home", "~/.ssh", "/var/run/secrets"],
+  "generator": {"parameters": {}, "seed": 25330, "type": "frozen-canonical"},
+  "id": "T33",
+  "name": "resilient_api_client",
+  "network": {"allowed": false},
+  "oracle": {
+    "check": "Docker-sandboxed Python runs an injected mock transport; verifies one exponential retry for 503 and fail-fast 404 metadata",
+    "type": "deterministic-execution"
+  },
+  "prompt": "Write Python code defining fetch_json(url, transport, sleep_fn). The injected transport has get(url) and returns a response with status_code and json(). Retry transient 5xx responses with at most 3 total attempts and exponential delays 0.1, 0.2 seconds via sleep_fn. Do not retry 4xx responses. Return exactly {'ok': bool, 'data': value-or-None, 'attempt_count': int, 'last_error': string-or-None}; success clears last_error, and errors use 'HTTP <status>'. Do not make network requests directly. Return ONLY code.",
+  "prompt_pack": "v2",
+  "scoring": {"correctness": 1.0},
+  "suite": "code-bench-25",
+  "timeouts": {"execution_seconds": 30, "generation_seconds": 120},
+  "variants": ["canonical"],
+  "version": "1.0"
+}

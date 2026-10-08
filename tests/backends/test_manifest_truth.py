@@ -1,6 +1,6 @@
-"""Y-8 manifest single-source-of-truth guard (stdlib unittest).
+"""Manifest single-source-of-truth guard (stdlib unittest).
 
-For all 29 code-bench-25 families asserts:
+For all 32 code-bench-25 families asserts:
   manifest["prompt"] == cases.prompt_text(family) byte-identically,
   oracle/timeouts/forbidden_paths present, H3 generator v1.1 intact.
 
@@ -38,10 +38,10 @@ def _load_manifest(family):
 
 
 class TestManifestTruth(unittest.TestCase):
-    def test_29_families_covered(self):
-        self.assertEqual(len(cb_cases.FAMILY_IDS), 29)
+    def test_32_families_covered(self):
+        self.assertEqual(len(cb_cases.FAMILY_IDS), 32)
         got = sorted(f[:-5] for f in os.listdir(MANDIR) if f.endswith(".json"))
-        self.assertEqual(len(got), 29)
+        self.assertEqual(len(got), 32)
         for fam in cb_cases.FAMILY_IDS:
             self.assertIn(fam, got)
 

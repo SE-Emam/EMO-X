@@ -634,7 +634,7 @@ def _py_ok(code, test, timeout=30):
 
 
 def check_family(family, reply):
-    """Run the frozen oracle for a family. Returns (passed, log).
+    """Run the family's canonical oracle. Returns (passed, log).
 
     Raises _MissingTool for unavailable executors (caller maps to ERROR,
     never a silent pass). SandboxTimeout propagates (caller maps to
@@ -655,6 +655,79 @@ def check_family(family, reply):
         code = extract_code(reply, "python")
         ok, log = _py_ok(code, "assert is_even(4)==True and is_even(5)==False; print('FIX_OK')")
         return bool(ok and "FIX_OK" in log), log
+    if family == "T30":
+        code = extract_code(reply, "python")
+        test = (
+            "import sqlite3\n"
+            "db=sqlite3.connect(':memory:')\n"
+            "db.execute('CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT, role TEXT)')\n"
+            "db.executemany('INSERT INTO users(username,role) VALUES (?,?)', "
+            "[('alice','user'),('bob','admin')])\n"
+            "assert get_user('alice') == [(1,'alice','user')]\n"
+            "try:\n"
+            "    injected=get_user(\"' OR '1'='1\")\n"
+            "except Exception:\n"
+            "    injected=[]\n"
+            "assert injected == []\n"
+            "try:\n"
+            '    get_user("\'; DROP TABLE users; --")\n'
+            "except Exception:\n"
+            "    pass\n"
+            "assert db.execute('SELECT COUNT(*) FROM users').fetchone() == (2,)\n"
+            "assert db.execute(\"SELECT name FROM sqlite_master WHERE type='table' "
+            "AND name='users'\").fetchone() == ('users',)\n"
+            "print('T30_OK')"
+        )
+        ok, log = _py_ok(code, test, timeout=30)
+        return bool(ok and "T30_OK" in log), log
+    if family == "T33":
+        code = extract_code(reply, "python")
+        test = (
+            "class _Response:\n"
+            "    def __init__(self,status,payload=None):\n"
+            "        self.status_code=status; self.payload=payload\n"
+            "    def json(self): return self.payload\n"
+            "class _Transport:\n"
+            "    def __init__(self,responses): self.responses=iter(responses); self.calls=[]\n"
+            "    def get(self,url): self.calls.append(url); return next(self.responses)\n"
+            "delays=[]\n"
+            "transport=_Transport([_Response(503),_Response(200,{'value':7})])\n"
+            "result=fetch_json('https://mock.invalid/data',transport,delays.append)\n"
+            "assert result == {'ok':True,'data':{'value':7},'attempt_count':2,"
+            "'last_error':None}, result\n"
+            "assert transport.calls == ['https://mock.invalid/data']*2\n"
+            "assert delays == [0.1], delays\n"
+            "permanent=_Transport([_Response(404)])\n"
+            "delays=[]\n"
+            "result=fetch_json('https://mock.invalid/missing',permanent,delays.append)\n"
+            "assert result == {'ok':False,'data':None,'attempt_count':1,"
+            "'last_error':'HTTP 404'}, result\n"
+            "assert len(permanent.calls)==1 and delays==[]\n"
+            "print('T33_OK')"
+        )
+        ok, log = _py_ok(code, test, timeout=30)
+        return bool(ok and "T33_OK" in log), log
+    if family == "T36":
+        code = extract_code(reply, "python")
+        test = (
+            "import sqlite3\n"
+            "connection=sqlite3.connect(':memory:')\n"
+            "connection.execute('CREATE TABLE accounts(id INTEGER PRIMARY KEY, name TEXT)')\n"
+            "connection.executemany('INSERT INTO accounts(id,name) VALUES (?,?)', "
+            "[(1,'Ada'),(2,'Lin')])\n"
+            "connection.commit()\n"
+            "rows=migrate_and_query(connection)\n"
+            "column=next(c for c in connection.execute('PRAGMA table_info(accounts)') "
+            "if c[1]=='status')\n"
+            "assert column[2].upper()=='TEXT' and column[3]==1 and "
+            "column[4].strip(\"'\")=='active', column\n"
+            "assert connection.execute('SELECT id,name FROM accounts ORDER BY id')"
+            ".fetchall()==[(1,'Ada'),(2,'Lin')]\n"
+            "assert rows==[(1,'Ada'),(2,'Lin')], rows\n"
+            "print('T36_OK')"
+        )
+        ok, log = _py_ok(code, test, timeout=30)
+        return bool(ok and "T36_OK" in log), log
     if family == "T4":
         code = extract_code(reply, "javascript") or extract_code(reply, "js")
         rc, log = sandbox.run_in_sandbox(
@@ -972,6 +1045,88 @@ def check_family(family, reply):
     raise KeyError(f"unknown code-bench-25 family: {family!r}")
 
 
+def check_variant(family, variant, reply):
+    """Run a declared fixed variant through the same fail-closed sandbox."""
+    if variant != "perturbed":
+        raise KeyError(f"unsupported code-bench-25 variant: {family}/{variant}")
+    if family == "T2":
+        code = extract_code(reply, "python")
+        test = (
+            "assert fib(0)==0 and fib(1)==1\n"
+            "expected_a,expected_b=0,1\n"
+            "for _ in range(500): expected_a,expected_b=expected_b,expected_a+expected_b\n"
+            "assert fib(500)==expected_a\n"
+            "try: fib(-1)\n"
+            "except ValueError: pass\n"
+            "else: raise AssertionError('negative n must raise ValueError')\n"
+            "try: fib(1.5)\n"
+            "except TypeError: pass\n"
+            "else: raise AssertionError('non-integer n must raise TypeError')\n"
+            "print('T2_VARIANT_OK')"
+        )
+        ok, log = _py_ok(code, test, timeout=30)
+        return bool(ok and "T2_VARIANT_OK" in log), log
+    if family == "T3":
+        code = extract_code(reply, "python")
+        test = (
+            "assert safe_average([1,2])==1.5\n"
+            "assert safe_average([-2,1,4])==1.0\n"
+            "assert safe_average([])==0\n"
+            "print('T3_VARIANT_OK')"
+        )
+        ok, log = _py_ok(code, test, timeout=30)
+        return bool(ok and "T3_VARIANT_OK" in log), log
+    if family == "R2":
+        query = extract_code(reply, "sql").strip().rstrip(";")
+        connection = sqlite3.connect(":memory:")
+        try:
+            connection.executescript(
+                "CREATE TABLE users(id INTEGER PRIMARY KEY,name TEXT);"
+                "CREATE TABLE orders(id INTEGER PRIMARY KEY,user_id INTEGER,amount INTEGER);"
+                "INSERT INTO users VALUES (1,'Ali'),(2,'Sara'),(3,'Omar');"
+                "INSERT INTO orders VALUES "
+                "(1,1,50),(2,1,60),(3,2,NULL),(4,3,110),(5,3,110);"
+            )
+            rows = connection.execute(query).fetchall()
+            expected = [("Omar", 110), ("Omar", 110)]
+            return rows == expected, repr(rows)
+        except sqlite3.Error as error:
+            return False, str(error)[:200]
+        finally:
+            connection.close()
+    if family == "R5":
+        code = extract_code(reply, "javascript") or extract_code(reply, "js")
+        harness = (
+            "\nconst assert = require('node:assert/strict');\n"
+            "function mockClient(data,error){\n"
+            "  const trace={};\n"
+            "  const query={\n"
+            "    select(columns){trace.select=columns;return this;},\n"
+            "    eq(field,value){trace.eq=[field,value];return this;},\n"
+            "    range(start,end){trace.range=[start,end];return this;},\n"
+            "    then(resolve,reject){return Promise.resolve({data,error}).then(resolve,reject);}\n"
+            "  };\n"
+            "  return {trace,client:{from(table){trace.table=table;return query;}}};\n"
+            "}\n"
+            "(async()=>{\n"
+            " const rows=[{id:3,name:'Omar'}];\n"
+            " const success=mockClient(rows,null);\n"
+            " assert.deepEqual(await getActiveUsers(success.client,2,2),rows);\n"
+            " assert.deepEqual(success.trace,{table:'users',select:'id,name',"
+            "eq:['active',true],range:[2,3]});\n"
+            " const problem=new Error('temporary failure');\n"
+            " const failure=mockClient(null,problem);\n"
+            " let caught;\n"
+            " try { await getActiveUsers(failure.client,1,2); } catch(error) { caught=error; }\n"
+            " assert.equal(caught && caught.message,'temporary failure');\n"
+            " console.log('R5_VARIANT_OK');\n"
+            "})().catch(error=>{console.error(error);process.exit(1);});\n"
+        )
+        rc, log = sandbox.run_in_sandbox(["node", "-e", code + harness], timeout=30)
+        return bool(rc == 0 and "R5_VARIANT_OK" in log), log[-400:]
+    raise KeyError(f"no perturbed code-bench-25 variant for family: {family!r}")
+
+
 class _MissingTool(RuntimeError):
     """Executor prerequisite missing (binary/service). Maps to ERROR."""
 
@@ -1133,27 +1288,30 @@ def run_family(
     Returns (attempt_record, response_record). The attempt record is
     schema-valid per shared/schemas.py (C4/C83). No scoring.
 
-    variant: None/"canonical" -> frozen PROMPT_PACK v1 prompt. H3 also
-      serves "perturbed"/"novel" generated instances (same oracle kind
-      as the frozen canonical prompt). subtype: explicit H3 math
-      subtype ("linear"|"exp"); when None it resolves from the passed
-      manifest dict's math_subtype field, else the suite H3.json
-      math_subtype field, else "linear" (P0-08). Any other (family,
-      variant) pair raises TypeError so the runner skips it (NA, DEN).
+    variant: None/"canonical" -> canonical prompt. H3 also serves generated
+      "perturbed"/"novel" instances; T2, T3, R2, and R5 have fixed
+      "perturbed" prompts and oracles. subtype is used only by H3. Any other
+      (family, variant) pair raises TypeError so the runner skips it (NA, DEN).
     """
     v = variant or "canonical"
     if v != "canonical":
-        if family != "H3":
+        if family == "H3":
+            sub = subtype or _h3_math_subtype(v, manifest)
+            return _run_h3_dynamic(chat, run_id, model_id, trial_id, index, seed, v, sub)
+        try:
+            prompt = cases.variant_prompt(family, v)
+        except KeyError:
             raise TypeError(f"variant {v!r} not supported for family {family!r}")
-        sub = subtype or _h3_math_subtype(v, manifest)
-        return _run_h3_dynamic(chat, run_id, model_id, trial_id, index, seed, v, sub)
-    messages = prompt_messages(family)
+        messages = [{"role": "user", "content": prompt}]
+    else:
+        prompt = cases.prompt_text(family)
+        messages = prompt_messages(family)
     opts = cases.chat_options(family)
     instance = instances.make_instance(
         family,
-        cases.prompt_text(family),
+        prompt,
         manifest or {},
-        variant="canonical",
+        variant=v,
         index=index,
         seed=seed,
     )
@@ -1161,7 +1319,10 @@ def run_family(
     passed, log, error_kind, err_msg = False, "", None, None
     try:
         text, secs, usage = chat(messages, **opts)
-        passed, log = check_family(family, text)
+        if v == "canonical":
+            passed, log = check_family(family, text)
+        else:
+            passed, log = check_variant(family, v, text)
     except sandbox.SandboxTimeout as e:
         error_kind, err_msg = "timeout", str(e)[:300]
         log = f"TIMEOUT: {err_msg}"
@@ -1177,7 +1338,7 @@ def run_family(
         "model_id": model_id,
         "task_family_id": family,
         "instance_id": instance["instance_id"],
-        "variant_class": "canonical",
+        "variant_class": v,
         "trial_id": trial_id,
         "primary_status": status,
         "score": 1.0 if status == "PASS" else 0.0,

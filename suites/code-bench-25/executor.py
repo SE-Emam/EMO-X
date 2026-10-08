@@ -620,6 +620,7 @@ def check_t37(reply, variant="canonical"):
     log = f"spanish_ratio={ratio:.3f} sem={sem} {detail} required={required_ok} forbidden={forbidden_hit}"
     return ok, log
 
+
 #: T5 additive semantic signal: closure-explanation keywords. At least
 #: CLOSURE_SEMANTIC_MIN_HITS must appear beside the legacy arabic_ratio
 #: gate (which is kept unchanged).

@@ -135,7 +135,7 @@ print(render_comparison(comp))"
 |---|---|---|
 | Test suites | 14 | `suites/*/` |
 | Task manifests | 75 | `suites/*/manifests/*.json` |
-| Harness + unit tests | 754 (harness 320, generators 67, scoring 199, golden 30, backends 138) | `tests/run_all.py --count`, all green |
+|  Harness + unit tests | 769 (harness 324, generators 78, scoring 199, golden 30, backends 138) | `tests/run_all.py --count`, all green  |
 | Self-test checks | 14 | `--self-test`, fail-closed |
 | Issue-style families | 15 (IS1–IS15) | vs SWE-bench Lite (300) = **5.0%** |
 

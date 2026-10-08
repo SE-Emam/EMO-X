@@ -1,0 +1,28 @@
+{
+  "capabilities": ["security_awareness", "sql", "python"],
+  "category": "secure-sql",
+  "difficulty": {"adaptive": false, "base": 2},
+  "estimated_human_minutes": 8,
+  "execution": {
+    "entry": "get_user",
+    "harness": "suites/code-bench-25/executor.py",
+    "type": "python"
+  },
+  "filesystem": {"sandbox_only": true},
+  "forbidden_paths": ["/etc", "/root", "/home", "~/.ssh", "/var/run/secrets"],
+  "generator": {"parameters": {}, "seed": 25300, "type": "frozen-canonical"},
+  "id": "T30",
+  "name": "injection_resistant_query_repair",
+  "network": {"allowed": false},
+  "oracle": {
+    "check": "Docker-sandboxed SQLite verifies exact normal results, injection-shaped inputs remain data, and the users table remains intact",
+    "type": "deterministic-execution"
+  },
+  "prompt": "Repair this Python data-access helper so username is always treated as data, not SQL. Preserve its filter behavior and return matching rows. Use a parameterized SQLite query; do not concatenate username into SQL. Return ONLY code defining get_user(username), which executes against a global SQLite connection named db.",
+  "prompt_pack": "v2",
+  "scoring": {"correctness": 1.0},
+  "suite": "code-bench-25",
+  "timeouts": {"execution_seconds": 30, "generation_seconds": 120},
+  "variants": ["canonical"],
+  "version": "1.0"
+}

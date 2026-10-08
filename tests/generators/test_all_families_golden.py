@@ -1,8 +1,7 @@
-"""Golden pass/fail fixtures for every canonical code25 family.
+"""Golden pass/fail fixtures for code25 families and expanded variants.
 
-External execution backends are replaced with deterministic fixture checks.
-Generated fixture programs are not executed on the host; real backend and
-sandbox behavior remains covered by the harness integration/self-tests.
+The all-family inventory test uses deterministic backend fixtures. Focused
+tests run the new execution oracles through the real fail-closed sandbox.
 """
 
 import importlib.util
@@ -86,6 +85,39 @@ PYTHON_GOLDENS = {
         "    return x * 2\n"
         "async def fetch_all():\n"
         "    return await asyncio.gather(fetch(1), fetch(2))"
+    ),
+    "T30": (
+        "def get_user(username):\n"
+        "    return db.execute(\n"
+        "        'SELECT * FROM users WHERE username = ?', (username,)\n"
+        "    ).fetchall()"
+    ),
+    "T33": (
+        "def fetch_json(url, transport, sleep_fn):\n"
+        "    for attempt in range(1, 4):\n"
+        "        response = transport.get(url)\n"
+        "        status = response.status_code\n"
+        "        if 200 <= status < 300:\n"
+        "            return {'ok': True, 'data': response.json(), "
+        "'attempt_count': attempt, 'last_error': None}\n"
+        "        error = f'HTTP {status}'\n"
+        "        if 400 <= status < 500:\n"
+        "            return {'ok': False, 'data': None, "
+        "'attempt_count': attempt, 'last_error': error}\n"
+        "        if not 500 <= status < 600 or attempt == 3:\n"
+        "            return {'ok': False, 'data': None, "
+        "'attempt_count': attempt, 'last_error': error}\n"
+        "        sleep_fn(0.1 * (2 ** (attempt - 1)))"
+    ),
+    "T36": (
+        "def migrate_and_query(connection):\n"
+        "    connection.execute(\n"
+        "        \"ALTER TABLE accounts ADD COLUMN status TEXT NOT NULL DEFAULT 'active'\"\n"
+        "    )\n"
+        "    return connection.execute(\n"
+        "        'SELECT id, name FROM accounts WHERE status = ? ORDER BY id', "
+        "('active',)\n"
+        "    ).fetchall()"
     ),
 }
 
@@ -245,7 +277,61 @@ GOLDEN_REPLIES = {
         PYTHON_GOLDENS["A16"],
         "import asyncio\nasync def fetch(x): return x\nasync def fetch_all(): return []",
     ),
+    "T30": (
+        PYTHON_GOLDENS["T30"],
+        "def get_user(username):\n"
+        "    return db.execute(f\"SELECT * FROM users WHERE username = '{username}'\").fetchall()",
+    ),
+    "T33": (
+        PYTHON_GOLDENS["T33"],
+        "def fetch_json(url, transport, sleep_fn):\n"
+        "    response=transport.get(url)\n"
+        "    return {'ok': response.status_code == 200, 'data': response.json(), "
+        "'attempt_count': 1, 'last_error': None}",
+    ),
+    "T36": (
+        PYTHON_GOLDENS["T36"],
+        "def migrate_and_query(connection):\n"
+        "    connection.execute('DROP TABLE accounts')\n"
+        "    connection.execute('CREATE TABLE accounts(id INTEGER PRIMARY KEY, "
+        'name TEXT, status TEXT NOT NULL DEFAULT "active")\')\n'
+        "    return connection.execute('SELECT id,name FROM accounts').fetchall()",
+    ),
 }
+
+T2_VARIANT_GOLDEN = (
+    "def fib(n):\n"
+    "    if not isinstance(n, int):\n"
+    "        raise TypeError('n must be an integer')\n"
+    "    if n < 0:\n"
+    "        raise ValueError('n must be non-negative')\n"
+    "    a, b = 0, 1\n"
+    "    for _ in range(n):\n"
+    "        a, b = b, a + b\n"
+    "    return a"
+)
+T3_VARIANT_GOLDEN = (
+    "def safe_average(values):\n"
+    "    if not values:\n"
+    "        return 0\n"
+    "    return sum(values) / len(values)"
+)
+R2_VARIANT_GOLDEN = (
+    "SELECT users.name, orders.amount FROM users "
+    "JOIN orders ON users.id = orders.user_id "
+    "WHERE orders.amount IS NOT NULL AND orders.amount > 100 "
+    "ORDER BY users.id, orders.id;"
+)
+R5_VARIANT_GOLDEN = (
+    "async function getActiveUsers(client, page, pageSize) {\n"
+    "  const start = (page - 1) * pageSize;\n"
+    "  const end = start + pageSize - 1;\n"
+    "  const { data, error } = await client.from('users').select('id,name')\n"
+    "    .eq('active', true).range(start, end);\n"
+    "  if (error) throw error;\n"
+    "  return data;\n"
+    "}"
+)
 
 
 class GoldenBackend:
@@ -263,6 +349,9 @@ class GoldenBackend:
             "TB_OK": PYTHON_GOLDENS["H5"],
             "BS_OK": PYTHON_GOLDENS["H6"],
             "ASYNC_OK": PYTHON_GOLDENS["A16"],
+            "T30_OK": PYTHON_GOLDENS["T30"],
+            "T33_OK": PYTHON_GOLDENS["T33"],
+            "T36_OK": PYTHON_GOLDENS["T36"],
         }
         marker = next((name for name in expected if name in test), None)
         if marker is not None and code.strip() == expected[marker].strip():
@@ -314,6 +403,80 @@ class GoldenBackend:
 
 
 class AllFamiliesGoldenTests(unittest.TestCase):
+    def test_t30(self):
+        executor = _load_executor()
+        passed, log = executor.check_family("T30", PYTHON_GOLDENS["T30"])
+        self.assertTrue(passed, log)
+        passed, log = executor.check_family("T30", GOLDEN_REPLIES["T30"][1])
+        self.assertFalse(passed, log)
+
+    def test_t33(self):
+        executor = _load_executor()
+        passed, log = executor.check_family("T33", PYTHON_GOLDENS["T33"])
+        self.assertTrue(passed, log)
+
+        no_retry = (
+            "def fetch_json(url, transport, sleep_fn):\n"
+            "    response = transport.get(url)\n"
+            "    return {'ok': response.status_code == 200, 'data': response.json(), "
+            "'attempt_count': 1, 'last_error': None}"
+        )
+        retries_4xx = (
+            "def fetch_json(url, transport, sleep_fn):\n"
+            "    for attempt in range(1, 4):\n"
+            "        response=transport.get(url)\n"
+            "        if response.status_code == 200:\n"
+            "            return {'ok':True,'data':response.json(),'attempt_count':attempt,"
+            "'last_error':None}\n"
+            "        if attempt < 3: sleep_fn(0.1 * 2 ** (attempt - 1))\n"
+            "    return {'ok':False,'data':None,'attempt_count':3,'last_error':'HTTP 404'}"
+        )
+        for source in (no_retry, retries_4xx):
+            with self.subTest(source=source):
+                passed, log = executor.check_family("T33", source)
+                self.assertFalse(passed, log)
+
+    def test_t36(self):
+        executor = _load_executor()
+        passed, log = executor.check_family("T36", PYTHON_GOLDENS["T36"])
+        self.assertTrue(passed, log)
+        passed, log = executor.check_family("T36", GOLDEN_REPLIES["T36"][1])
+        self.assertFalse(passed, log)
+
+    def test_expanded_task_variants(self):
+        executor = _load_executor()
+        cases = (
+            ("T2", T2_VARIANT_GOLDEN, "def fib(n):\n    return 0"),
+            ("T3", T3_VARIANT_GOLDEN, "def safe_average(values): return sum(values)//len(values)"),
+            ("R2", R2_VARIANT_GOLDEN, "SELECT name FROM users"),
+        )
+        for family, positive, negative in cases:
+            with self.subTest(family=family, result="positive"):
+                self.assertTrue(executor.check_variant(family, "perturbed", positive)[0])
+            with self.subTest(family=family, result="negative"):
+                self.assertFalse(executor.check_variant(family, "perturbed", negative)[0])
+        self.assertTrue(executor.check_variant("R5", "perturbed", R5_VARIANT_GOLDEN)[0])
+
+        manifest_path = os.path.join(SUITE, "manifests", "T2.json")
+        with open(manifest_path, encoding="utf-8") as manifest_file:
+            manifest = json.load(manifest_file)
+        with mock.patch.object(
+            executor.sandbox, "run_python_code", return_value=(True, "T2_VARIANT_OK")
+        ):
+            attempt, response = executor.run_family(
+                "T2",
+                lambda messages, **_options: (T2_VARIANT_GOLDEN, 0.01, {}),
+                run_id="golden",
+                model_id="fixture",
+                manifest=manifest,
+                variant="perturbed",
+            )
+        self.assertEqual(attempt["variant_class"], "perturbed")
+        self.assertEqual(attempt["instance_id"], "T2-perturbed-00001")
+        self.assertEqual(
+            response["messages"][0]["content"], executor.cases.variant_prompt("T2", "perturbed")
+        )
+
     def test_r10_oracle_is_case_insensitive_for_component_identifiers(self):
         executor = _load_executor()
         realistic = (
@@ -335,7 +498,7 @@ class AllFamiliesGoldenTests(unittest.TestCase):
         executor = _load_executor()
         backend = GoldenBackend()
         self.assertEqual(set(GOLDEN_REPLIES), set(executor.cases.FAMILY_IDS))
-        self.assertEqual(len(GOLDEN_REPLIES), 29)
+        self.assertEqual(len(GOLDEN_REPLIES), 32)
 
         with (
             mock.patch.object(
@@ -407,7 +570,7 @@ class AllFamiliesGoldenTests(unittest.TestCase):
         passed, log = executor.check_family("R13", dockerfile)
         self.assertTrue(passed, log)
 
-    def test_every_family_manifest_is_canonical_only_except_h3(self):
+    def test_family_manifests_declare_supported_variants(self):
         for filename in os.listdir(os.path.join(SUITE, "manifests")):
             if not filename.endswith(".json"):
                 continue
@@ -416,6 +579,8 @@ class AllFamiliesGoldenTests(unittest.TestCase):
             expected = (
                 ["canonical", "perturbed", "novel"] if manifest["id"] == "H3" else ["canonical"]
             )
+            if manifest["id"] in {"T2", "T3", "R2", "R5"}:
+                expected = ["canonical", "perturbed"]
             self.assertEqual(manifest["variants"], expected, manifest["id"])
 
 

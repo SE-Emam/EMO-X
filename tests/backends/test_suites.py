@@ -134,17 +134,17 @@ class TestManifestValidity(unittest.TestCase):
 
     def test_all_manifests_validate(self):
         paths = self._all_manifest_paths()
-        self.assertEqual(len(paths), 29 + 1 + 2 + 5 + 6 + 3, paths)
+        self.assertEqual(len(paths), 32 + 1 + 2 + 5 + 6 + 3, paths)
         for p in paths:
             with self.subTest(manifest=p):
                 m = manifest_lib.load_task_manifest(p)
                 self.assertIn("canonical", m["variants"])
 
-    def test_code25_covers_29_families(self):
+    def test_code25_covers_32_families(self):
         got = sorted(
             f[:-5] for f in os.listdir(os.path.join(CB25, "manifests")) if f.endswith(".json")
         )
-        self.assertEqual(len(got), 29)
+        self.assertEqual(len(got), 32)
         for fam in cb_cases.FAMILY_IDS:
             self.assertIn(fam, got)
 

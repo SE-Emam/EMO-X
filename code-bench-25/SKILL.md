@@ -1,6 +1,6 @@
 ---
 name: code-bench-25
-description: The 29-family code pack (T/R/H/A) — deterministic execution and structural oracles with documented strict gates. Use it to compare any model before adopting it.
+description: The 32-family code pack (T/R/H/A) — deterministic execution and structural oracles with documented strict gates. Use it to compare any model before adopting it.
 ---
 
 ![EMO-X banner — Execution · Measurement · Observability](../src/emo-x-banner.png)
@@ -14,18 +14,18 @@ description: The 29-family code pack (T/R/H/A) — deterministic execution and s
 Measure what agents accomplish — not what they say
 ```
 
-# code-bench-25 — 29 task families
+# code-bench-25 — 32 task families
 
 ## What is it?
 
-29 task families evaluate model answers using real compilers/interpreters
+32 task families evaluate model answers using real compilers/interpreters
 where appropriate and deterministic structural oracles for text/config
 tasks. The original prompts remain frozen in PROMPT_PACK v1; the current
 pack also includes v2 additions. Results are recorded as raw JSON.
 
-## Pack contents (29 families)
+## Pack contents (32 families)
 
-- **T (basic + multilingual):** T2 Fibonacci, T3 `is_even` fix, T4 JS sum, T5 Arabic explanation, T6 Arabic code, T7 JSON conformance, T8 file task, T9 Spanish explanation, T10 Portuguese explanation.
+- **T (basic + multilingual + resilience/security):** T2 Fibonacci, T3 `is_even` fix, T4 JS sum, T5 Arabic explanation, T6 Arabic code, T7 JSON conformance, T8 file task, T9 Spanish explanation, T10 Portuguese explanation, T30 injection-resistant SQLite query repair, T33 resilient API retries, T36 safe SQLite migration.
 - **R (realistic):** R1 complete Rust program, R2 SQLite query, R3 git commands,
   R4 vercel.json, R5 supabase-js function, R6 unified diff,
   R7 strict-format tool call, R8 commit message, R9 HTML/CSS page,
@@ -34,9 +34,15 @@ pack also includes v2 additions. Results are recorded as raw JSON.
   H4 longest palindrome, H5 token bucket, H6 first occurrence.
 - **A (async):** A16 asyncio gather.
 
-The current inventory is 9 T + 13 R + 6 H + 1 A = 29 families. Only H3
-currently supports generated `perturbed` and `novel` variants; the other
-families are canonical-only.
+The current inventory is 12 T + 13 R + 6 H + 1 A = 32 families. H3
+supports generated `perturbed` and `novel` variants; T2, T3, R2, and R5
+also expose a fixed `perturbed` variant. Other families are canonical-only.
+
+T30 executes parameterized-query candidates against injection-shaped inputs
+in network-isolated Docker SQLite; T33 injects an in-process mock transport
+to verify retry/backoff and fail-fast behavior; T36 checks schema defaults
+and data preservation during a SQLite migration. Generated Python code runs
+through the shared fail-closed Docker sandbox.
 
 ## Methodology notes (do not change frozen prompts without a new PROMPT_PACK version)
 

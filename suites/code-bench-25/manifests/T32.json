@@ -1,0 +1,28 @@
+{
+  "capabilities": ["multi_file_editing", "python", "repository_reasoning", "testing"],
+  "category": "multi-file-repository",
+  "difficulty": {"adaptive": false, "base": 3},
+  "estimated_human_minutes": 20,
+  "execution": {
+    "entry": "text_utils.py",
+    "harness": "suites/code-bench-25/executor.py",
+    "type": "python"
+  },
+  "filesystem": {"sandbox_only": true},
+  "forbidden_paths": ["/etc", "/root", "/home", "~/.ssh", "/var/run/secrets"],
+  "generator": {"parameters": {}, "seed": 25320, "type": "frozen-canonical"},
+  "id": "T32",
+  "name": "multi_file_repository_feature",
+  "network": {"allowed": false},
+  "oracle": {
+    "check": "Docker-sandboxed executor creates the fixed three-file repository (module, authoritative tests, README), installs the candidate module implementation, and requires pytest to pass against the repository's provided tests",
+    "type": "deterministic-execution"
+  },
+  "prompt": "Work in this three-file Python repository. README.md says this small package normalizes tags and preserves first-seen order. Existing README.md content is '# Tag utilities\\n\\nThis small package normalizes tag strings.\\n'. Existing text_utils.py is:\ndef normalize_tags(tags):\n    return list(tags)\n\nExisting tests/test_text_utils.py is:\nfrom text_utils import normalize_tags\n\ndef test_normalizes_and_deduplicates_in_first_seen_order():\n    assert normalize_tags([' Python ', 'python', ' SQL ']) == ['python', 'sql']\n\ndef test_discards_empty_tags_and_handles_no_values():\n    assert normalize_tags(['', '  ', 'Go']) == ['go']\n    assert normalize_tags([]) == []\n\nReplace only text_utils.py so normalize_tags(tags) returns unique, nonempty tags after stripping whitespace and lowercasing, preserving the first occurrence order after normalization. Do not modify the tests or README. Return ONLY the complete replacement contents of text_utils.py in a Python code block.",
+  "prompt_pack": "v2",
+  "scoring": {"correctness": 1.0},
+  "suite": "code-bench-25",
+  "timeouts": {"execution_seconds": 30, "generation_seconds": 120},
+  "variants": ["canonical"],
+  "version": "1.0"
+}

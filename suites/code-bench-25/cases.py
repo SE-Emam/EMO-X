@@ -21,7 +21,10 @@ FAMILY_IDS = (
     "T9",
     "T10",
     "T30",
+    "T31",
+    "T32",
     "T33",
+    "T34",
     "T36",
     "R1",
     "R2",
@@ -85,6 +88,67 @@ T36_PROMPT = (
     "status is active, ordered by id. Use a parameterized query where applicable. "
     "Return ONLY code."
 )
+T31_PROMPT = (
+    "Replace this O(N^2) implementation with an O(N log N) or O(N) "
+    "implementation. Define count_unique(values) to return the number of "
+    "distinct integer values. Preserve correctness for empty and duplicate-heavy "
+    "inputs. The production input may contain 10000 values, so avoid comparing "
+    "every pair. Current implementation:\n"
+    "def count_unique(values):\n"
+    "    return sum(1 for i, value in enumerate(values) if value not in values[:i])\n"
+    "Return ONLY Python code defining count_unique(values)."
+)
+T32_PROMPT = (
+    "Work in this three-file Python repository. README.md says this small "
+    "package normalizes tags and preserves first-seen order. Existing "
+    "README.md content is '# Tag utilities\\n\\nThis small package normalizes "
+    "tag strings.\\n'. Existing text_utils.py is:\n"
+    "def normalize_tags(tags):\n"
+    "    return list(tags)\n\n"
+    "Existing tests/test_text_utils.py is:\n"
+    "from text_utils import normalize_tags\n\n"
+    "def test_normalizes_and_deduplicates_in_first_seen_order():\n"
+    "    assert normalize_tags([' Python ', 'python', ' SQL ']) == ['python', 'sql']\n\n"
+    "def test_discards_empty_tags_and_handles_no_values():\n"
+    "    assert normalize_tags(['', '  ', 'Go']) == ['go']\n"
+    "    assert normalize_tags([]) == []\n\n"
+    "Replace only text_utils.py so normalize_tags(tags) returns unique, "
+    "nonempty tags after stripping whitespace and lowercasing, preserving the "
+    "first occurrence order after normalization. Do not modify the tests or "
+    "README. Return ONLY the complete replacement contents of text_utils.py "
+    "in a Python code block."
+)
+T34_PROMPT = (
+    "Fix the race condition in this AsyncCounter class. It must initialize "
+    "value to zero and safely add amount under concurrent calls. Keep the "
+    "asyncio.sleep(0) yield between reading and updating so the race is "
+    "deterministic; protect the read-modify-write so concurrent increments "
+    "cannot lose updates.\n"
+    "class AsyncCounter:\n"
+    "    def __init__(self):\n"
+    "        self.value = 0\n"
+    "    async def increment(self, amount):\n"
+    "        current = self.value\n"
+    "        await asyncio.sleep(0)\n"
+    "        self.value = current + amount\n"
+    "Return ONLY Python code defining AsyncCounter."
+)
+
+
+def t31_count_unique():
+    """Prompt for the algorithmic-complexity task."""
+    return T31_PROMPT
+
+
+def t32_normalize_tags():
+    """Prompt for the multi-file repository task."""
+    return T32_PROMPT
+
+
+def t34_async_counter():
+    """Prompt for the deterministic async concurrency task."""
+    return T34_PROMPT
+
 
 VARIANT_PROMPTS = {
     ("T2", "perturbed"): (
@@ -248,8 +312,14 @@ def prompt_messages(family):
         return _user(R13_PROMPT)
     if family == "T30":
         return _user(T30_PROMPT)
+    if family == "T31":
+        return _user(t31_count_unique())
+    if family == "T32":
+        return _user(t32_normalize_tags())
     if family == "T33":
         return _user(T33_PROMPT)
+    if family == "T34":
+        return _user(t34_async_counter())
     if family == "T36":
         return _user(T36_PROMPT)
     if family == "H1":

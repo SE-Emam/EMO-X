@@ -680,6 +680,73 @@ def check_family(family, reply):
         )
         ok, log = _py_ok(code, test, timeout=30)
         return bool(ok and "T30_OK" in log), log
+    if family == "T31":
+        code = extract_code(reply, "python")
+        test = (
+            "import time\n"
+            "class _CountedInt(int):\n"
+            "    comparisons = 0\n"
+            "    def __eq__(self, other):\n"
+            "        type(self).comparisons += 1\n"
+            "        return int.__eq__(self, other)\n"
+            "    def __lt__(self, other):\n"
+            "        type(self).comparisons += 1\n"
+            "        return int.__lt__(self, other)\n"
+            "    __hash__ = int.__hash__\n"
+            "for size in (100, 1000, 10000):\n"
+            "    raw_values=[(i * 7919) % 10007 for i in range(size)]\n"
+            "    values=[_CountedInt(value) for value in raw_values]\n"
+            "    expected=len(set(raw_values))\n"
+            "    for trial in range(3):\n"
+            "        _CountedInt.comparisons=0\n"
+            "        started=time.perf_counter()\n"
+            "        actual=count_unique(values)\n"
+            "        elapsed=time.perf_counter()-started\n"
+            "        assert actual==expected, (size,trial,actual,expected)\n"
+            "        if size==10000:\n"
+            "            assert elapsed < 0.5, (trial,elapsed)\n"
+            "            assert _CountedInt.comparisons <= size*50, "
+            "(trial,_CountedInt.comparisons)\n"
+            "    duplicates=[i % 37 for i in range(size)]\n"
+            "    assert count_unique([_CountedInt(value) for value in duplicates])==min(size,37)\n"
+            "assert count_unique([])==0\n"
+            "print('T31_OK')"
+        )
+        ok, log = _py_ok(code, test, timeout=30)
+        return bool(ok and "T31_OK" in log), log
+    if family == "T32":
+        code = extract_code(reply, "python")
+        root = sandbox.create_sandbox()
+        try:
+            sandbox.write_sandbox_file(
+                root, "text_utils.py", "def normalize_tags(tags):\n    return list(tags)\n"
+            )
+            sandbox.write_sandbox_file(
+                root,
+                "tests/test_text_utils.py",
+                "from text_utils import normalize_tags\n"
+                "\n"
+                "def test_normalizes_and_deduplicates_in_first_seen_order():\n"
+                "    assert normalize_tags([' Python ', 'python', ' SQL ']) == ['python', 'sql']\n"
+                "\n"
+                "def test_discards_empty_tags_and_handles_no_values():\n"
+                "    assert normalize_tags(['', '  ', 'Go']) == ['go']\n"
+                "    assert normalize_tags([]) == []\n",
+            )
+            sandbox.write_sandbox_file(
+                root,
+                "README.md",
+                "# Tag utilities\n\nThis small package normalizes tag strings.\n",
+            )
+            sandbox.write_sandbox_file(root, "text_utils.py", code)
+            rc, log = sandbox.run_in_sandbox(
+                ["python3", "-m", "pytest", "-q", "tests/test_text_utils.py"],
+                sandbox_dir=root,
+                timeout=30,
+            )
+            return bool(rc == 0 and "2 passed" in log), log[-500:]
+        finally:
+            sandbox.destroy_sandbox(root)
     if family == "T33":
         code = extract_code(reply, "python")
         test = (
@@ -728,6 +795,20 @@ def check_family(family, reply):
         )
         ok, log = _py_ok(code, test, timeout=30)
         return bool(ok and "T36_OK" in log), log
+    if family == "T34":
+        code = extract_code(reply, "python")
+        test = (
+            "import asyncio\n"
+            "counter=AsyncCounter()\n"
+            "async def _check_concurrent_updates():\n"
+            "    await asyncio.gather(*(counter.increment(amount) "
+            "for amount in range(1,101)))\n"
+            "    assert counter.value == sum(range(1,101)), counter.value\n"
+            "asyncio.run(_check_concurrent_updates())\n"
+            "print('T34_OK')"
+        )
+        ok, log = _py_ok(code, test, timeout=30)
+        return bool(ok and "T34_OK" in log), log
     if family == "T4":
         code = extract_code(reply, "javascript") or extract_code(reply, "js")
         rc, log = sandbox.run_in_sandbox(

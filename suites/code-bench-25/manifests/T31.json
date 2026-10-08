@@ -1,0 +1,28 @@
+{
+  "capabilities": ["algorithms", "complexity_analysis", "python"],
+  "category": "algorithmic-complexity",
+  "difficulty": {"adaptive": false, "base": 3},
+  "estimated_human_minutes": 15,
+  "execution": {
+    "entry": "count_unique",
+    "harness": "suites/code-bench-25/executor.py",
+    "type": "python"
+  },
+  "filesystem": {"sandbox_only": true},
+  "forbidden_paths": ["/etc", "/root", "/home", "~/.ssh", "/var/run/secrets"],
+  "generator": {"parameters": {}, "seed": 25310, "type": "frozen-canonical"},
+  "id": "T31",
+  "name": "algorithmic_complexity_repair",
+  "network": {"allowed": false},
+  "oracle": {
+    "check": "Docker-sandboxed Python runs three trials at each deterministic input size (100, 1000, 10000), validates exact unique counts on every trial, requires every 10000-item trial to complete in under 0.5 seconds, and enforces a deterministic comparison-operation budget to reject quadratic solutions",
+    "type": "deterministic-execution"
+  },
+  "prompt": "Replace this O(N^2) implementation with an O(N log N) or O(N) implementation. Define count_unique(values) to return the number of distinct integer values. Preserve correctness for empty and duplicate-heavy inputs. The production input may contain 10000 values, so avoid comparing every pair. Current implementation:\ndef count_unique(values):\n    return sum(1 for i, value in enumerate(values) if value not in values[:i])\nReturn ONLY Python code defining count_unique(values).",
+  "prompt_pack": "v2",
+  "scoring": {"correctness": 1.0},
+  "suite": "code-bench-25",
+  "timeouts": {"execution_seconds": 30, "generation_seconds": 120},
+  "variants": ["canonical"],
+  "version": "1.0"
+}

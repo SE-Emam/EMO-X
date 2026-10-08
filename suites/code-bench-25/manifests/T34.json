@@ -1,0 +1,28 @@
+{
+  "capabilities": ["async_programming", "concurrency_safety", "python"],
+  "category": "concurrency",
+  "difficulty": {"adaptive": false, "base": 3},
+  "estimated_human_minutes": 15,
+  "execution": {
+    "entry": "AsyncCounter",
+    "harness": "suites/code-bench-25/executor.py",
+    "type": "python"
+  },
+  "filesystem": {"sandbox_only": true},
+  "forbidden_paths": ["/etc", "/root", "/home", "~/.ssh", "/var/run/secrets"],
+  "generator": {"parameters": {}, "seed": 25340, "type": "frozen-canonical"},
+  "id": "T34",
+  "name": "async_counter_concurrency_safety",
+  "network": {"allowed": false},
+  "oracle": {
+    "check": "Docker-sandboxed Python launches 100 concurrent AsyncCounter.increment calls with deterministic event-loop yields and requires the exact final sum of 5050",
+    "type": "deterministic-execution"
+  },
+  "prompt": "Fix the race condition in this AsyncCounter class. It must initialize value to zero and safely add amount under concurrent calls. Keep the asyncio.sleep(0) yield between reading and updating so the race is deterministic; protect the read-modify-write so concurrent increments cannot lose updates.\nclass AsyncCounter:\n    def __init__(self):\n        self.value = 0\n    async def increment(self, amount):\n        current = self.value\n        await asyncio.sleep(0)\n        self.value = current + amount\nReturn ONLY Python code defining AsyncCounter.",
+  "prompt_pack": "v2",
+  "scoring": {"correctness": 1.0},
+  "suite": "code-bench-25",
+  "timeouts": {"execution_seconds": 30, "generation_seconds": 120},
+  "variants": ["canonical"],
+  "version": "1.0"
+}

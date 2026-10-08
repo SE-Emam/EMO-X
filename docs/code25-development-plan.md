@@ -410,9 +410,31 @@ The approved Sprint 2 mandate is complete:
   services. All generated Python and JavaScript in these new execution oracles
   runs through the shared fail-closed Docker sandbox.
 - The Sprint 2 mandate selected three of the proposed new families (T30,
-  T33, and T36). T31, T32, T34, and T35 remain future work; they are not
-  reported as completed by this sprint.
+  T33, and T36). At that point T31, T32, T34, and T35 remained future work.
 - Existing-task variants use the established `perturbed` variant class and
   fixed prompts, rather than adding separate task-family IDs or a new
-  generator format. This keeps family count at 32 and avoids a broad runner
-  or manifest-schema refactor.
+  generator format. Sprint 2 closed at 32 families without a broad runner or
+  manifest-schema refactor; Sprint 3's T31/T32/T34 additions raise it to 35.
+
+## Sprint 3 implementation status
+
+The approved Sprint 3 code-task scope (T31, T32, and T34) is implemented:
+
+| Work item | Status | Implementation |
+|---|---|---|
+| T31 — Algorithmic complexity repair | Complete | Runs three deterministic trials at sizes 100, 1,000, and 10,000; checks exact unique counts and requires every 10,000-item call to finish under 0.5 seconds. |
+| T32 — Multi-file repository feature | Complete | Creates a synthetic three-file repository (module, authoritative pytest tests, README) in a Docker sandbox, installs the candidate module only, and runs the provided tests there. |
+| T34 — Async concurrency safety | Complete | Uses `asyncio.gather` with 100 concurrent updates and a forced event-loop yield between read/write; asserts the exact total of 5050. |
+| T35 — Type-system error diagnosis | Deferred | Not included in the approved Sprint 3 request and remains future roadmap work. |
+| Golden tests, inventory, and documentation | Complete | Adds canonical positive/negative fixtures for T31/T32/T34 and updates inventory references to 35 families. |
+
+### Sprint 3 validation and lessons
+
+- All generated code remains behind the shared fail-closed, network-isolated
+  Docker sandbox. T32 fixture files are created with sandbox path-safe writes;
+  the submitted answer cannot change the authoritative tests or README.
+- T31's elapsed-time gate is inherently host-sensitive; it executes each
+  trial in the same sandbox and rejects the specified quadratic baseline
+  under the requested strict threshold.
+- The supplied T37 manifest was explicitly left untouched and excluded from
+  this Sprint 3 change set; the requested inventory remains 35 families.

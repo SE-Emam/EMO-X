@@ -119,6 +119,30 @@ PYTHON_GOLDENS = {
         "('active',)\n"
         "    ).fetchall()"
     ),
+    "T31": "def count_unique(values):\n    return len(set(values))",
+    "T32": (
+        "def normalize_tags(tags):\n"
+        "    result = []\n"
+        "    seen = set()\n"
+        "    for tag in tags:\n"
+        "        normalized = tag.strip().lower()\n"
+        "        if normalized and normalized not in seen:\n"
+        "            seen.add(normalized)\n"
+        "            result.append(normalized)\n"
+        "    return result"
+    ),
+    "T34": (
+        "import asyncio\n"
+        "class AsyncCounter:\n"
+        "    def __init__(self):\n"
+        "        self.value = 0\n"
+        "        self.lock = asyncio.Lock()\n"
+        "    async def increment(self, amount):\n"
+        "        async with self.lock:\n"
+        "            current = self.value\n"
+        "            await asyncio.sleep(0)\n"
+        "            self.value = current + amount"
+    ),
 }
 
 JS_GOLDEN = "function sumArr(arr) { return arr.reduce((a, b) => a + b, 0); }"
@@ -297,6 +321,32 @@ GOLDEN_REPLIES = {
         'name TEXT, status TEXT NOT NULL DEFAULT "active")\')\n'
         "    return connection.execute('SELECT id,name FROM accounts').fetchall()",
     ),
+    "T31": (
+        PYTHON_GOLDENS["T31"],
+        "def count_unique(values):\n"
+        "    unique = []\n"
+        "    for value in values:\n"
+        "        for existing in unique:\n"
+        "            if existing == value:\n"
+        "                break\n"
+        "        else:\n"
+        "            unique.append(value)\n"
+        "    return len(unique)",
+    ),
+    "T32": (
+        PYTHON_GOLDENS["T32"],
+        "def normalize_tags(tags):\n    return list(tags)",
+    ),
+    "T34": (
+        PYTHON_GOLDENS["T34"],
+        "import asyncio\n"
+        "class AsyncCounter:\n"
+        "    def __init__(self): self.value = 0\n"
+        "    async def increment(self, amount):\n"
+        "        current = self.value\n"
+        "        await asyncio.sleep(0)\n"
+        "        self.value = current + amount",
+    ),
 }
 
 T2_VARIANT_GOLDEN = (
@@ -352,6 +402,8 @@ class GoldenBackend:
             "T30_OK": PYTHON_GOLDENS["T30"],
             "T33_OK": PYTHON_GOLDENS["T33"],
             "T36_OK": PYTHON_GOLDENS["T36"],
+            "T31_OK": PYTHON_GOLDENS["T31"],
+            "T34_OK": PYTHON_GOLDENS["T34"],
         }
         marker = next((name for name in expected if name in test), None)
         if marker is not None and code.strip() == expected[marker].strip():
@@ -365,6 +417,19 @@ class GoldenBackend:
         if argv[0] == "python3" and "-c" in argv:
             source = argv[argv.index("-c") + 1]
             return (0, "5") if source == T8_GOLDEN else (1, "golden fixture rejected")
+        if argv[:3] == ["python3", "-m", "pytest"]:
+            target = os.path.join(sandbox_dir, "text_utils.py")
+            with open(target, encoding="utf-8") as source_file:
+                source = source_file.read()
+            readme = os.path.join(sandbox_dir, "README.md")
+            tests = os.path.join(sandbox_dir, "tests", "test_text_utils.py")
+            if (
+                source.strip() == PYTHON_GOLDENS["T32"].strip()
+                and os.path.isfile(readme)
+                and os.path.isfile(tests)
+            ):
+                return 0, "2 passed in 0.01s"
+            return 1, "golden fixture rejected"
         if argv[0] == "rustc":
             source_path = os.path.join(sandbox_dir, "t.rs")
             with open(source_path, encoding="utf-8") as source_file:
@@ -403,6 +468,59 @@ class GoldenBackend:
 
 
 class AllFamiliesGoldenTests(unittest.TestCase):
+    def test_t31(self):
+        executor = _load_executor()
+        passed, log = executor.check_family("T31", PYTHON_GOLDENS["T31"])
+        self.assertTrue(passed, log)
+
+        naive = (
+            "def count_unique(values):\n"
+            "    unique = []\n"
+            "    for value in values:\n"
+            "        for existing in unique:\n"
+            "            if existing == value:\n"
+            "                break\n"
+            "        else:\n"
+            "            unique.append(value)\n"
+            "    return len(unique)"
+        )
+        incorrect = "def count_unique(values):\n    return len(values)"
+        for source in (naive, incorrect):
+            with self.subTest(source=source):
+                passed, log = executor.check_family("T31", source)
+                self.assertFalse(passed, log)
+
+    def test_t32(self):
+        executor = _load_executor()
+        passed, log = executor.check_family("T32", PYTHON_GOLDENS["T32"])
+        self.assertTrue(passed, log)
+
+        invalid_sources = (
+            "def normalize_tags(tags)\n    return []",
+            "def normalize_tags(tags):\n    return list(tags)",
+        )
+        for source in invalid_sources:
+            with self.subTest(source=source):
+                passed, log = executor.check_family("T32", source)
+                self.assertFalse(passed, log)
+
+    def test_t34(self):
+        executor = _load_executor()
+        passed, log = executor.check_family("T34", PYTHON_GOLDENS["T34"])
+        self.assertTrue(passed, log)
+
+        unsafe = GOLDEN_REPLIES["T34"][1]
+        raises = (
+            "class AsyncCounter:\n"
+            "    def __init__(self): self.value = 0\n"
+            "    async def increment(self, amount):\n"
+            "        raise RuntimeError('increment failed')"
+        )
+        for source in (unsafe, raises):
+            with self.subTest(source=source):
+                passed, log = executor.check_family("T34", source)
+                self.assertFalse(passed, log)
+
     def test_t30(self):
         executor = _load_executor()
         passed, log = executor.check_family("T30", PYTHON_GOLDENS["T30"])
@@ -498,7 +616,7 @@ class AllFamiliesGoldenTests(unittest.TestCase):
         executor = _load_executor()
         backend = GoldenBackend()
         self.assertEqual(set(GOLDEN_REPLIES), set(executor.cases.FAMILY_IDS))
-        self.assertEqual(len(GOLDEN_REPLIES), 32)
+        self.assertEqual(len(GOLDEN_REPLIES), 35)
 
         with (
             mock.patch.object(
@@ -582,6 +700,18 @@ class AllFamiliesGoldenTests(unittest.TestCase):
             if manifest["id"] in {"T2", "T3", "R2", "R5"}:
                 expected = ["canonical", "perturbed"]
             self.assertEqual(manifest["variants"], expected, manifest["id"])
+
+
+def test_t31():
+    AllFamiliesGoldenTests().test_t31()
+
+
+def test_t32():
+    AllFamiliesGoldenTests().test_t32()
+
+
+def test_t34():
+    AllFamiliesGoldenTests().test_t34()
 
 
 if __name__ == "__main__":

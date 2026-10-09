@@ -1,0 +1,54 @@
+{
+ "capabilities": [
+  "multimodal",
+  "chart_reading"
+ ],
+ "category": "vision",
+ "difficulty": {
+  "adaptive": false,
+  "base": 2
+ },
+ "estimated_human_minutes": 5,
+ "execution": {
+  "harness": "suites/vision/executor.py",
+  "type": "vision"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "fixture": "chart.png",
+ "fixture_sha": "1f50431c5f890c79c8daffa0c3963baed3eb3cc50b69e1579c10b488bde23292",
+ "generator": {
+  "parameters": {},
+  "seed": 25609,
+  "type": "frozen-canonical"
+ },
+ "id": "V9",
+ "image_count": 1,
+ "modalities": [
+  "text",
+  "image"
+ ],
+ "name": "chart_red_value",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "normalize_int reply equals target_value 7; off_by_1 logged as WRONG_RESULT (off_by_1), no-int as INVALID_NO_INT",
+  "tolerance": "count_tolerance off_by_1 logged",
+  "type": "deterministic"
+ },
+ "prompt_pack": "vision-v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "vision",
+ "timeouts": {
+  "execution_seconds": 60,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

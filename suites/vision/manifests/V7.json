@@ -1,0 +1,63 @@
+{
+ "capabilities": [
+  "multimodal",
+  "multi_image_compare"
+ ],
+ "category": "vision",
+ "difficulty": {
+  "adaptive": false,
+  "base": 3
+ },
+ "estimated_human_minutes": 8,
+ "execution": {
+  "harness": "suites/vision/executor.py",
+  "type": "vision"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "fixture": "diff_a.png",
+ "fixture_sha": "241d935d11cfd2f7d66687ae8546658deb8d8ab0cb67b239d52442aaec0d0fa2",
+ "fixtures": [
+  "diff_a.png",
+  "diff_b.png"
+ ],
+ "fixtures_sha": [
+  "241d935d11cfd2f7d66687ae8546658deb8d8ab0cb67b239d52442aaec0d0fa2",
+  "ce1145b885efeece548ce688c156c921775ae41c7f576168216ab18f9a9bc208"
+ ],
+ "generator": {
+  "parameters": {},
+  "seed": 25607,
+  "type": "frozen-canonical"
+ },
+ "id": "V7",
+ "image_count": 2,
+ "modalities": [
+  "text",
+  "image",
+  "image"
+ ],
+ "name": "diff_pair",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "normalized keyword match middle+square+red (aliases: center/box/rectangle); missing or hallucinated difference is WRONG_RESULT",
+  "tolerance": "none: exact keyword set",
+  "type": "deterministic"
+ },
+ "prompt_pack": "vision-v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "vision",
+ "timeouts": {
+  "execution_seconds": 60,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

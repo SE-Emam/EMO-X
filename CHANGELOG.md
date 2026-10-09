@@ -31,6 +31,22 @@ prompt/harness changes + mandatory re-baseline).
   `progress_token`; progress never touches scored events (bundles
   byte-identical on/off).
 
+### Added (vision Sprint 2 — V7 multi-image diff, V8 spatial, V9 chart, 2026-10-09)
+
+- New families V7 (2-image diff, `image_count: 2`), V8 (Arabic spatial
+  relation), V9 (chart exact-int) with deterministic oracles
+  (`judge_diff` / `judge_spatial` / `judge_chart`), frozen prompts
+  (`P_DIFF` / `P_SPATIAL_AR` / `P_CHART`), and Pillow-only fixtures
+  (`diff_a.png` / `diff_b.png` seed 25607, `spatial.png` seed 25608,
+  `chart.png` seed 25609).
+- Executor integration: `FAMILY_IDS` V1–V9, `FAMILY_TEST_MAP` +3,
+  multi-image dispatch via `vision_messages_multi` + `run_one_multi`
+  with 5MB fail-closed VOID guard; `prompt_pack_sha256` covers new
+  prompts + fixtures.
+- Tests: `tests/backends/test_vision_v7_v9_golden.py` (17 goldens:
+  pos+neg per family + executor + 5MB VOID); `tests/run_all.py --count`
+  now 811 (scoring 210, backends 165).
+
 ### Added (vision Sprint 1 — oracle hardening + perturbed robustness, 2026-10-09)
 
 - Canonical `shared/scoring.py` utils (`normalize_arabic`,

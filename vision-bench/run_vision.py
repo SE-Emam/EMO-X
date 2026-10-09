@@ -55,6 +55,19 @@ P_ARABIC = (
 P_COUNT = (
     "How many {what} are visible in this image? Reply with ONLY a single integer, no explanation."
 )
+# Sprint 2 frozen prompts (PROMPT_PACK vision-v1 extension, byte-frozen).
+P_DIFF = (
+    "Compare Image 1 and Image 2. What is the single difference between them? "
+    "Reply with ONLY a short phrase naming the difference, no explanation."
+)
+P_SPATIAL_AR = (
+    "صف موضع الدائرة الحمراء بالنسبة إلى المربع الأزرق. "
+    "أجب بكلمة واحدة فقط من هذه الكلمات: فوق، تحت، يسار، يمين."
+)
+P_CHART = (
+    "What is the exact integer value of the {color} bar in the chart? "
+    "Reply with ONLY a single integer, no explanation."
+)
 
 # tokens suggesting an endpoint/model accepts images (best-effort only;
 # the probe image call below is the binding check, not this list)
@@ -108,6 +121,30 @@ def vision_messages(prompt, image_path):
             ],
         }
     ]
+
+
+# Sprint 2: multi-image messages (V7 image_count=2). Ordered parts with
+# explicit Image 1 / Image 2 labels so the model can reference them.
+# Fail-closed size guard: total raw payload > ~5MB -> caller VOIDs.
+VISION_MULTI_MAX_BYTES = 5 * 1024 * 1024
+
+
+def vision_messages_multi(prompt, image_paths):
+    content = [{"type": "text", "text": prompt}]
+    for i, path in enumerate(image_paths, start=1):
+        content.append({"type": "text", "text": "Image %d:" % i})
+        content.append({"type": "image_url", "image_url": {"url": img_data_url(path)}})
+    return [{"role": "user", "content": content}]
+
+
+def multi_payload_bytes(image_paths):
+    total = 0
+    for path in image_paths:
+        try:
+            total += os.path.getsize(path)
+        except OSError:
+            total += 10**9
+    return total
 
 
 # Sprint 1: canonical -> perturbed fixture routing (counting only).
@@ -393,6 +430,92 @@ def judge_arabic(reply, keywords):
 INT_RE = re.compile(r"-?\d+")
 
 
+# ---------------- Sprint 2 judges (deterministic, no LLM-judge) ----------------
+
+# V7: accepted content words per GT keyword (normalized EN substring match).
+# GT keywords: middle + square + red. Each must appear via an alias.
+V7_KEYWORD_ALIASES = {
+    "middle": ("middle", "center", "centre"),
+    "square": ("square", "box", "rectangle"),
+    "red": ("red",),
+}
+
+
+def judge_diff(reply, keywords):
+    """Pass iff every GT keyword (or alias) appears normalized, order-free.
+
+    Hallucinated differences (wrong color/object with no GT hit) fail
+    closed as WRONG_RESULT. "No difference" with zero hits fails too.
+    """
+    r = (reply or "").lower()
+    r = re.sub(r"\s+", " ", r).strip()
+    hits = []
+    missing = []
+    for kw in keywords:
+        aliases = V7_KEYWORD_ALIASES.get(kw, (kw,))
+        if any(a in r for a in aliases):
+            hits.append(kw)
+        else:
+            missing.append(kw)
+    return {"pass": len(missing) == 0, "hits": hits, "missing": missing}
+
+
+# V8: strict preposition check (EN + AR). Arabic prompt -> Arabic answer
+# expected, but EN equivalents accepted (normalized, word-boundary for EN).
+V8_RELATIONS = {
+    "above": ("above", "over", "on top", "فوق", "فوقه", "اعلى", "أعلى"),
+    "below": ("below", "under", "beneath", "تحت", "تحته", "اسفل", "أسفل"),
+    "left": ("left", "left of", "يسار", "شمال"),
+    "right": ("right", "right of", "يمين"),
+}
+
+
+def judge_spatial(reply, expected):
+    """Pass iff the expected relation (or alias) appears, and NO competing
+    relation appears. Competing preposition -> WRONG_RESULT (hallucination).
+    """
+    r_norm = normalize_arabic(reply)
+    r_low = (reply or "").lower()
+    exp_aliases = V8_RELATIONS.get(expected, (expected,))
+    found_expected = any(
+        (a in r_norm)
+        if any("\u0600" <= c <= "\u06ff" for c in a)
+        else re.search(r"\b%s\b" % re.escape(a), r_low)
+        for a in exp_aliases
+    )
+    competing = []
+    for rel, aliases in V8_RELATIONS.items():
+        if rel == expected:
+            continue
+        for a in aliases:
+            if any("\u0600" <= c <= "\u06ff" for c in a):
+                if a in r_norm:
+                    competing.append(rel)
+                    break
+            elif re.search(r"\b%s\b" % re.escape(a), r_low):
+                competing.append(rel)
+                break
+    ok = bool(found_expected) and not competing
+    return {"pass": ok, "found": found_expected, "competing": competing}
+
+
+def judge_chart(reply, expected):
+    """Pass iff normalize_int(reply) equals expected exactly (Sprint 1 util).
+
+    Mirrors judge_count semantics: off_by_1 + invalid flags for the
+    executor's INVALID_NO_INT vs WRONG_RESULT (off_by_1) split.
+    """
+    got = normalize_int(reply)
+    off_by_one = got is not None and isinstance(expected, int) and abs(got - expected) == 1
+    return {
+        "pass": got == expected,
+        "got": got,
+        "expected": expected,
+        "off_by_one": off_by_one,
+        "invalid": got is None,
+    }
+
+
 def judge_count(reply, expected):
     got = normalize_int(reply)
     off_by_one = got is not None and isinstance(expected, int) and abs(got - expected) == 1
@@ -446,7 +569,89 @@ def build_tests(gt):
             P_COUNT.format(what="red squares (squares only, not circles)"),
             ("count", gt["grid_count.png"]["red_squares"]),
         ),
+        # Sprint 2: V7 multi-image diff (image_count=2). img is a [a, b] list;
+        # executor routes lists via vision_messages_multi + 5MB fail-closed guard.
+        (
+            "V7_diff_pair",
+            [os.path.join(FIX_DIR, "diff_a.png"), os.path.join(FIX_DIR, "diff_b.png")],
+            P_DIFF,
+            ("diff", gt["diff_pair"]["keywords"]),
+        ),
+        # Sprint 2: V8 spatial relation (single image, Arabic prompt).
+        (
+            "V8_spatial_above",
+            os.path.join(FIX_DIR, "spatial.png"),
+            P_SPATIAL_AR,
+            ("spatial", gt["spatial.png"]["relation"]),
+        ),
+        # Sprint 2: V9 chart reading (single image, exact int).
+        (
+            "V9_chart_red",
+            os.path.join(FIX_DIR, "chart.png"),
+            P_CHART.format(color=gt["chart.png"]["target_color"]),
+            ("chart", gt["chart.png"]["target_value"]),
+        ),
     ]
+
+
+def run_one_multi(chat, kind, target, prompt, images):
+    """Multi-image call (Sprint 2 V7). Fail-closed size guard.
+
+    Total raw payload > VISION_MULTI_MAX_BYTES -> VOID record (never FAIL
+    or ERROR for the model). Otherwise chats via vision_messages_multi and
+    judges with the deterministic kind oracle.
+    """
+    if multi_payload_bytes(images) > VISION_MULTI_MAX_BYTES:
+        return {
+            "pass": False,
+            "void": True,
+            "log": "multi-image payload too large",
+            "sample": "",
+            "error": None,
+        }
+    try:
+        text, secs, usage = chat(
+            vision_messages_multi(prompt, images), temp=TEMP, max_tokens=MAX_TOKENS
+        )
+    except Exception as e:
+        msg = str(e)[:300]
+        if NO_IMAGE_RE.search(msg):
+            return {"pass": False, "error": "unsupported-image-call", "log": msg, "sample": ""}
+        return {"pass": False, "error": msg, "sample": ""}
+    rec = {"secs": round(secs, 1), "usage": usage, "sample": (text or "")[:600]}
+    if kind == "diff":
+        j = judge_diff(text, target)
+        rec.update({"pass": j["pass"], "log": "hits=%s missing=%s" % (j["hits"], j["missing"])})
+    elif kind == "spatial":
+        j = judge_spatial(text, target)
+        rec.update(
+            {"pass": j["pass"], "log": "found=%s competing=%s" % (j["found"], j["competing"])}
+        )
+    elif kind == "chart":
+        j = judge_chart(text, target)
+        if j.get("invalid"):
+            rec.update(
+                {
+                    "pass": False,
+                    "invalid": True,
+                    "off_by_one": False,
+                    "log": "got=%s expected=%s INVALID_NO_INT" % (j["got"], j["expected"]),
+                }
+            )
+        elif j.get("off_by_one"):
+            rec.update(
+                {
+                    "pass": False,
+                    "off_by_one": True,
+                    "log": "got=%s expected=%s WRONG_RESULT (off_by_1)" % (j["got"], j["expected"]),
+                }
+            )
+        else:
+            rec.update({"pass": j["pass"], "log": "got=%s expected=%s" % (j["got"], j["expected"])})
+    else:
+        rec.update({"pass": False, "log": "unknown multi kind %r" % (kind,)})
+    rec["error"] = None
+    return rec
 
 
 def run_one(chat, kind, target, prompt, image):
@@ -479,6 +684,38 @@ def run_one(chat, kind, target, prompt, image):
     elif kind == "arabic":
         j = judge_arabic(text, target)
         rec.update({"pass": j["pass"], "log": "hits=%s missing=%s" % (j["hits"], j["missing"])})
+    elif kind == "diff":
+        # Sprint 2 V7 via single-image path (should not happen; multi uses run_one_multi).
+        j = judge_diff(text, target)
+        rec.update({"pass": j["pass"], "log": "hits=%s missing=%s" % (j["hits"], j["missing"])})
+    elif kind == "spatial":
+        # Sprint 2 V8: strict preposition (competing relation -> WRONG_RESULT).
+        j = judge_spatial(text, target)
+        rec.update(
+            {"pass": j["pass"], "log": "found=%s competing=%s" % (j["found"], j["competing"])}
+        )
+    elif kind == "chart":
+        # Sprint 2 V9: exact int (mirrors count INVALID vs off_by_1 split).
+        j = judge_chart(text, target)
+        if j.get("invalid"):
+            rec.update(
+                {
+                    "pass": False,
+                    "invalid": True,
+                    "off_by_one": False,
+                    "log": "got=%s expected=%s INVALID_NO_INT" % (j["got"], j["expected"]),
+                }
+            )
+        elif j.get("off_by_one"):
+            rec.update(
+                {
+                    "pass": False,
+                    "off_by_one": True,
+                    "log": "got=%s expected=%s WRONG_RESULT (off_by_1)" % (j["got"], j["expected"]),
+                }
+            )
+        else:
+            rec.update({"pass": j["pass"], "log": "got=%s expected=%s" % (j["got"], j["expected"])})
     else:
         j = judge_count(text, target)
         if j.get("invalid"):
@@ -521,7 +758,7 @@ def _run_via_runner(args):
 
         chat = make_chat(args.backend, args.base_url, args.model, args.api_key)
     only = [x.strip().upper() for x in args.only.split(",") if x.strip()]
-    order = ["V1", "V2", "V3", "V4", "V5", "V6"]
+    order = ["V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9"]
     families = [v for v in order if (not only) or v in only] or None
     model_id = args.model or os.environ.get("MODEL", "model")
     rundir, summary = runner.run_suite(
@@ -570,7 +807,10 @@ def main(argv=None):
     tests = build_tests(gt)
     if args.list:
         for name, img, _p, _t in tests:
-            print("%s  %s" % (name, os.path.basename(img)))
+            if isinstance(img, (list, tuple)):
+                print("%s  %s" % (name, ",".join(os.path.basename(p) for p in img)))
+            else:
+                print("%s  %s" % (name, os.path.basename(img)))
         return 0
 
     # P0-7: all execution flows through the unified runner.

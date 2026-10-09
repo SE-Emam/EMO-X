@@ -188,6 +188,24 @@ Deferred to S2/S3 per §3.5: V1/V2 paraphrase referents, V10
 noisy-grounding family, V7 multi-image (`image_count:2`), V8/V9,
 V11/V12, PARTIAL curves (behind `partial_curve` opt-in).
 
+## Sprint 2 implementation status — 2026-10-09 (complete)
+
+The approved Sprint 2 core gaps (§3.5: V7 diff + V8 relation + V9
+chart) are implemented with deterministic oracles and programmatic
+fixtures.
+
+| Work item | Status | Implementation |
+|---|---|---|
+| V7 multi-image diff (`image_count:2`) | Complete | `diff_a.png`/`diff_b.png` (seed 25607, middle square BLUE→RED); `P_DIFF` frozen; `vision_messages_multi` + `run_one_multi` with 5MB fail-closed VOID guard; `judge_diff` keyword aliases (middle/center, square/box/rectangle, red). |
+| V8 spatial relation (AR prompt) | Complete | `spatial.png` (seed 25608, red circle ABOVE blue square); `P_SPATIAL_AR` frozen; `judge_spatial` strict preposition + competing-relation fail, `normalize_arabic`. |
+| V9 chart reading (exact int) | Complete | `chart.png` (seed 25609, blue=4/red=7/green=3, target red=7); `P_CHART` frozen; `judge_chart` exact `normalize_int` with INVALID vs off-by-1 split. |
+| Executor integration | Complete | `FAMILY_IDS` V1–V9, `FAMILY_TEST_MAP` +9 entries, multi-list dispatch, 5MB VOID guard, prompts+fixtures in `prompt_pack_sha256`. |
+| Manifests + schema | Complete | `V7.json` (`image_count:2`, `modalities:[text,image,image]`), `V8.json`, `V9.json`; `image_count`/`modalities`/`fixture_sha` schema fields. |
+| Golden coverage | Complete | `tests/backends/test_vision_v7_v9_golden.py` 17 tests (pos+neg per family + executor + 5MB VOID); backends 148→165, total 794→811. |
+
+Frozen `vision-v1` prompts extended only by append (V1–V6 prefix
+stable). Gate fail-closed preserved (multi payload >5MB → VOID).
+
 ## Appendix provenance
 
 Read executor 218 run_vision 414 make_fixtures 403 SKILL 133 V1-V6 46-47 GT tests test_vision_executor test_realworld_vision shared runner sandbox scoring denominators schemas manifests docs architecture status task-dsl metrics adding-suite code25-plan. Not run/modified. Frozen PROMPT_PACK vision-v1 IOU 0.5 TEMP 0.2 MAX 512 counts 7/3/4 keywords test-data box_scale1000 800x600. Plan-only no implementation per mandate.

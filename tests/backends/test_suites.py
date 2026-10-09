@@ -134,7 +134,7 @@ class TestManifestValidity(unittest.TestCase):
 
     def test_all_manifests_validate(self):
         paths = self._all_manifest_paths()
-        self.assertEqual(len(paths), 36 + 1 + 2 + 5 + 6 + 3, paths)
+        self.assertEqual(len(paths), 36 + 1 + 2 + 5 + 9 + 3, paths)
         for p in paths:
             with self.subTest(manifest=p):
                 m = manifest_lib.load_task_manifest(p)
@@ -163,7 +163,10 @@ class TestManifestValidity(unittest.TestCase):
     def test_pilot_stubs_gated(self):
         # Vision is a real executor now (gated at runtime, not PILOT).
         self.assertEqual(vis_exec.SUITE, "vision")
-        self.assertEqual(tuple(vis_exec.FAMILY_IDS), ("V1", "V2", "V3", "V4", "V5", "V6"))
+        self.assertEqual(
+            tuple(vis_exec.FAMILY_IDS),
+            ("V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9"),
+        )
         self.assertTrue(cu_stub.pilot_status()["status"] == "PILOT")
         for f in sorted(os.listdir(os.path.join(VIS, "manifests"))):
             m = manifest_lib.load_task_manifest(os.path.join(VIS, "manifests", f))

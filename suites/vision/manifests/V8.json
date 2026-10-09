@@ -1,0 +1,54 @@
+{
+ "capabilities": [
+  "multimodal",
+  "spatial_relation"
+ ],
+ "category": "vision",
+ "difficulty": {
+  "adaptive": false,
+  "base": 2
+ },
+ "estimated_human_minutes": 5,
+ "execution": {
+  "harness": "suites/vision/executor.py",
+  "type": "vision"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "fixture": "spatial.png",
+ "fixture_sha": "46c5a6d3c69431f2b924fabbd6f59a3fa4126f20005938e8e4bd2e5d5358b5ec",
+ "generator": {
+  "parameters": {},
+  "seed": 25608,
+  "type": "frozen-canonical"
+ },
+ "id": "V8",
+ "image_count": 1,
+ "modalities": [
+  "text",
+  "image"
+ ],
+ "name": "spatial_above",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "normalized preposition match: expected relation above (aliases فوق/over); competing relation present is WRONG_RESULT",
+  "tolerance": "none: exact relation",
+  "type": "deterministic"
+ },
+ "prompt_pack": "vision-v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "vision",
+ "timeouts": {
+  "execution_seconds": 60,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

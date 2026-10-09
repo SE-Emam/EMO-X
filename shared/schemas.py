@@ -69,7 +69,11 @@ TASK_MANIFEST_REQUIRED = (
     "filesystem",
 )
 
-VALID_REASONING_MODES = ("enabled", "disabled", "provider_default", "native")
+# Sprint 2: optional vision task-manifest fields (additive, backward-compat).
+# V1-V6 manifests omit these (default image_count=1, single-image).
+# V7 declares image_count=2 + modalities ["text","image","image"].
+VISION_IMAGE_COUNT_DEFAULT = 1
+VISION_MODALITIES_DEFAULT = ("text", "image")
 
 
 class SchemaError(ValueError):
@@ -192,7 +196,71 @@ def validate_task_manifest(record):
     fs = record["filesystem"]
     if "sandbox_only" in fs and not isinstance(fs["sandbox_only"], bool):
         raise _err("filesystem.sandbox_only must be bool")
+    # Sprint 2 (additive, backward-compat): optional vision fields.
+    # V1-V6 omit these (default image_count=1, modalities=["text","image"]).
+    # V7 declares image_count=2 + modalities=["text","image","image"].
+    if "image_count" in record:
+        ic = record["image_count"]
+        if isinstance(ic, bool) or not isinstance(ic, int) or ic < 1:
+            raise _err("image_count must be a positive int")
+    if "modalities" in record:
+        mods = record["modalities"]
+        if (
+            not isinstance(mods, list)
+            or not mods
+            or any(not isinstance(m, str) or not m.strip() for m in mods)
+        ):
+            raise _err("modalities must be a non-empty string list")
+        if "image_count" in record and len(mods) != record["image_count"] + 1:
+            raise _err("modalities length must equal image_count + 1 (text + images)")
+    if "fixture_sha" in record and record["fixture_sha"] is not None:
+        sha = record["fixture_sha"]
+        if not isinstance(sha, str) or not sha.strip():
+            raise _err("fixture_sha must be a non-empty string")
+    if "fixtures" in record:
+        fixs = record["fixtures"]
+        if (
+            not isinstance(fixs, list)
+            or not fixs
+            or any(not isinstance(f, str) or not f.strip() for f in fixs)
+        ):
+            raise _err("fixtures must be a non-empty string list")
+    if "fixtures_sha" in record:
+        shas = record["fixtures_sha"]
+        if (
+            not isinstance(shas, list)
+            or not shas
+            or any(not isinstance(s, str) or not s.strip() for s in shas)
+        ):
+            raise _err("fixtures_sha must be a non-empty string list")
+        if "fixtures" in record and len(shas) != len(record["fixtures"]):
+            raise _err("fixtures_sha length must match fixtures length")
     return dict(record)
+
+
+def vision_image_count(manifest_dict):
+    """Return manifest image_count with default 1 (Sprint 2)."""
+    try:
+        ic = (manifest_dict or {}).get("image_count", VISION_IMAGE_COUNT_DEFAULT)
+    except AttributeError:
+        return VISION_IMAGE_COUNT_DEFAULT
+    if isinstance(ic, bool) or not isinstance(ic, int) or ic < 1:
+        raise _err("image_count must be a positive int")
+    return ic
+
+
+def vision_modalities(manifest_dict):
+    """Return manifest modalities with default ["text","image"] (Sprint 2)."""
+    mods = (manifest_dict or {}).get("modalities")
+    if mods is None:
+        return ["text", "image"]
+    if (
+        not isinstance(mods, list)
+        or not mods
+        or any(not isinstance(m, str) or not m.strip() for m in mods)
+    ):
+        raise _err("modalities must be a non-empty string list")
+    return list(mods)
 
 
 def attempt_identity(record):

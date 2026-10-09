@@ -421,6 +421,108 @@ def make_toolbar_perturbed(font_path):
     return img, gt
 
 
+# ---------------- Sprint 2 fixtures (V7/V8/V9) ----------------
+# Deterministic Pillow-only scenes (fixed coordinates; seeds 25607-25609
+# continue the V1-V6 series 25601-25606). All PNGs < 200KB.
+
+
+def _diff_scene(middle_fill):
+    """Shared V7 scene: blue circle left, square middle, green circle right."""
+    img = Image.new("RGB", (W, H), "white")
+    d = ImageDraw.Draw(img)
+    d.text(
+        (40, 20),
+        "Compare the two images",
+        font=ImageFont.load_default(),
+        fill="black",
+    )
+    d.ellipse((110, 260, 190, 340), fill="#2471A3", outline="black")
+    d.rectangle((360, 260, 440, 340), fill=middle_fill, outline="black")
+    d.ellipse((610, 260, 690, 340), fill="#27AE60", outline="black")
+    return img
+
+
+def make_diff_pair():
+    """V7 multi-image diff: ONLY change is middle square BLUE -> RED.
+
+    Positions/sizes identical; GT keywords (normalized, order-free):
+    middle + square + red.
+    """
+    img_a = _diff_scene("#2471A3")
+    img_b = _diff_scene("#C0392B")
+    gt = {
+        "image_a": "diff_a.png",
+        "image_b": "diff_b.png",
+        "difference": "middle square changed color from blue to red",
+        "change": {
+            "object": "middle square",
+            "type": "color",
+            "from": "blue",
+            "to": "red",
+        },
+        "keywords": ["middle", "square", "red"],
+        "note": "only difference; positions/sizes unchanged",
+    }
+    return img_a, img_b, gt
+
+
+def make_spatial():
+    """V8 spatial relations: red circle strictly ABOVE blue square."""
+    img = Image.new("RGB", (W, H), "white")
+    d = ImageDraw.Draw(img)
+    d.text(
+        (40, 20),
+        "Look at the shapes",
+        font=ImageFont.load_default(),
+        fill="black",
+    )
+    d.ellipse((350, 130, 450, 230), fill="#C0392B", outline="black")
+    d.rectangle((350, 370, 450, 470), fill="#2471A3", outline="black")
+    gt = {
+        "object_a": "red circle",
+        "object_b": "blue square",
+        "relation": "above",
+        "relation_ar": "فوق",
+        "prompt_lang": "ar",
+        "note": "circle center (400,180); square center (400,420); 140px gap",
+    }
+    return img, gt
+
+
+def make_chart():
+    """V9 bar chart: blue=4, red=7, green=3 on a 0-10 y-axis. Target red=7."""
+    img = Image.new("RGB", (W, H), "white")
+    d = ImageDraw.Draw(img)
+    font = ImageFont.load_default()
+    d.text((40, 20), "Bar chart", font=font, fill="black")
+    x0, y0 = 120, 500  # origin (y-axis foot)
+    d.line((x0, y0, 700, y0), fill="black", width=2)
+    d.line((x0, y0, x0, 100), fill="black", width=2)
+    for v in range(0, 11):
+        y = y0 - v * 40
+        d.line((x0 - 8, y, x0, y), fill="black", width=1)
+        d.text((90, y - 7), str(v), font=font, fill="black")
+    bars = [
+        ("blue", 180, 4, "#2471A3"),
+        ("red", 330, 7, "#C0392B"),
+        ("green", 480, 3, "#27AE60"),
+    ]
+    for _name, x, value, fill in bars:
+        top = y0 - value * 40
+        d.rectangle((x, top, x + 80, y0), fill=fill, outline="black")
+    d.text((200, 515), "blue", font=font, fill="black")
+    d.text((355, 515), "red", font=font, fill="black")
+    d.text((495, 515), "green", font=font, fill="black")
+    gt = {
+        "bars": {"blue": 4, "red": 7, "green": 3},
+        "target_color": "red",
+        "target_value": 7,
+        "y_max": 10,
+        "note": "values read off the 0-10 y-axis; not printed on bars",
+    }
+    return img, gt
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Generate vision-bench fixtures")
     ap.add_argument("--out", default=HERE, help="output dir (default: fixtures/)")
@@ -468,6 +570,32 @@ def main(argv=None):
             fixture_sha256[fname] = hashlib.sha256(f.read()).hexdigest()
         gt_all[fname] = gt
         print("wrote %s sha=%s (perturbed)" % (fname, fixture_sha256[fname][:16]))
+
+    # Sprint 2 new families (deterministic fixed coords; seeds 25607-25609).
+    img_a, img_b, gt_diff = make_diff_pair()
+    for fname, img in (("diff_a.png", img_a), ("diff_b.png", img_b)):
+        img.save(os.path.join(args.out, fname))
+        with open(os.path.join(args.out, fname), "rb") as f:
+            fixture_sha256[fname] = hashlib.sha256(f.read()).hexdigest()
+        print("wrote %s sha=%s (sprint2-V7)" % (fname, fixture_sha256[fname][:16]))
+    gt_all["diff_a.png"] = {"role": "image_a", "seed": 25607}
+    gt_all["diff_b.png"] = {"role": "image_b", "seed": 25607}
+    gt_all["diff_pair"] = gt_diff
+
+    img_spatial, gt_spatial = make_spatial()
+    img_spatial.save(os.path.join(args.out, "spatial.png"))
+    with open(os.path.join(args.out, "spatial.png"), "rb") as f:
+        fixture_sha256["spatial.png"] = hashlib.sha256(f.read()).hexdigest()
+    gt_all["spatial.png"] = gt_spatial
+    print("wrote spatial.png sha=%s (sprint2-V8)" % fixture_sha256["spatial.png"][:16])
+
+    img_chart, gt_chart = make_chart()
+    img_chart.save(os.path.join(args.out, "chart.png"))
+    with open(os.path.join(args.out, "chart.png"), "rb") as f:
+        fixture_sha256["chart.png"] = hashlib.sha256(f.read()).hexdigest()
+    gt_all["chart.png"] = gt_chart
+    print("wrote chart.png sha=%s (sprint2-V9)" % fixture_sha256["chart.png"][:16])
+
     gt_all["fixture_sha256"] = fixture_sha256
 
     with open(os.path.join(args.out, "ground_truth.json"), "w") as f:

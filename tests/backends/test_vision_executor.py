@@ -66,7 +66,7 @@ class VisionGateTests(unittest.TestCase):
     def test_unknown_family_raises(self):
         with self.assertRaises(KeyError):
             EXEC.run_family(
-                "V9", _no_image_chat, run_id="R", model_id="m", trial_id=1, base_url="", force=True
+                "V99", _no_image_chat, run_id="R", model_id="m", trial_id=1, base_url="", force=True
             )
 
 

@@ -173,12 +173,60 @@
   "toolbar_button_count": 3,
   "perturbation": "buttons shifted +6px equivalent redraw + 250px seeded speckle; button count unchanged"
  },
+ "diff_a.png": {
+  "role": "image_a",
+  "seed": 25607
+ },
+ "diff_b.png": {
+  "role": "image_b",
+  "seed": 25607
+ },
+ "diff_pair": {
+  "image_a": "diff_a.png",
+  "image_b": "diff_b.png",
+  "difference": "middle square changed color from blue to red",
+  "change": {
+   "object": "middle square",
+   "type": "color",
+   "from": "blue",
+   "to": "red"
+  },
+  "keywords": [
+   "middle",
+   "square",
+   "red"
+  ],
+  "note": "only difference; positions/sizes unchanged"
+ },
+ "spatial.png": {
+  "object_a": "red circle",
+  "object_b": "blue square",
+  "relation": "above",
+  "relation_ar": "فوق",
+  "prompt_lang": "ar",
+  "note": "circle center (400,180); square center (400,420); 140px gap"
+ },
+ "chart.png": {
+  "bars": {
+   "blue": 4,
+   "red": 7,
+   "green": 3
+  },
+  "target_color": "red",
+  "target_value": 7,
+  "y_max": 10,
+  "note": "values read off the 0-10 y-axis; not printed on bars"
+ },
  "fixture_sha256": {
   "ui_login.png": "7234b3c9555730ea2b700363e5a07f53b7e11e1af138f82fb8e4ab3c501f166c",
   "ui_toolbar.png": "eba9ce36f15c0eac3dd8ef2c70628730b11c8f43f89a32d89fa935f16fcb64f9",
   "arabic_card.png": "e1584fe25340cf86a32c561ae4e62544922171db48fc221093da2630ad799acd",
   "grid_count.png": "de8921feed9790a570a18f8c8e23edc8b80fbb5d7a65bfe951aabb2f11bedc26",
   "grid_count_perturbed.png": "ceafabcba0149adcb61efcc8117214eb4a607ed0e13862ebd7b2771fd1f6efde",
-  "ui_toolbar_perturbed.png": "4bc87ede2c025ebb414e100803ea3465fac68d38176e37fcd858c8df932987e3"
+  "ui_toolbar_perturbed.png": "4bc87ede2c025ebb414e100803ea3465fac68d38176e37fcd858c8df932987e3",
+  "diff_a.png": "241d935d11cfd2f7d66687ae8546658deb8d8ab0cb67b239d52442aaec0d0fa2",
+  "diff_b.png": "ce1145b885efeece548ce688c156c921775ae41c7f576168216ab18f9a9bc208",
+  "spatial.png": "46c5a6d3c69431f2b924fabbd6f59a3fa4126f20005938e8e4bd2e5d5358b5ec",
+  "chart.png": "1f50431c5f890c79c8daffa0c3963baed3eb3cc50b69e1579c10b488bde23292"
  }
 }

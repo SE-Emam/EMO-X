@@ -34,10 +34,11 @@ from schemas import validate_attempt  # noqa: E402
 from manifests import sha256_bytes, sha256_manifest  # noqa: E402
 
 SUITE = "vision"
-FAMILY_IDS = ("V1", "V2", "V3", "V4", "V5", "V6")
+FAMILY_IDS = ("V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9")
 VARIANTS = ("canonical", "perturbed")
 
 # Sprint 1: exact deterministic family -> test-name map.
+# Sprint 2: V7 (multi-image diff), V8 (spatial), V9 (chart) added.
 # Replaces brittle startswith + sorted[0] dispatch (routing errors
 # impossible: unknown family raises KeyError, ambiguous raises RuntimeError).
 FAMILY_TEST_MAP = {
@@ -47,6 +48,9 @@ FAMILY_TEST_MAP = {
     "V4": "V4_count_circles",
     "V5": "V5_count_toolbar_buttons",
     "V6": "V6_count_red_squares",
+    "V7": "V7_diff_pair",
+    "V8": "V8_spatial_above",
+    "V9": "V9_chart_red",
 }
 
 # Families supporting the perturbed variant (Sprint 1: counting only).
@@ -77,7 +81,9 @@ def load_manifest(family):
 def prompt_pack_sha256():
     """SHA256 over frozen vision-v1 prompts + fixture bytes (B58)."""
     vb = _load_vbench()
-    parts = [vb.P_GROUND, vb.P_ARABIC, vb.P_COUNT]
+    # Sprint 1: V1-V6 prompts. Sprint 2: V7/V8/V9 prompts appended
+    # (prompts frozen; appending keeps V1-V6 prefix stable).
+    parts = [vb.P_GROUND, vb.P_ARABIC, vb.P_COUNT, vb.P_DIFF, vb.P_SPATIAL_AR, vb.P_CHART]
     gt_path = os.path.join(VBENCH, "fixtures", "ground_truth.json")
     with open(gt_path, "rb") as f:
         parts.append(f.read().decode("utf-8"))
@@ -88,6 +94,10 @@ def prompt_pack_sha256():
         "grid_count.png",
         "grid_count_perturbed.png",
         "ui_toolbar_perturbed.png",
+        "diff_a.png",
+        "diff_b.png",
+        "spatial.png",
+        "chart.png",
     ):
         with open(os.path.join(VBENCH, "fixtures", png), "rb") as f:
             parts.append(hashlib.sha256(f.read()).hexdigest())
@@ -194,24 +204,63 @@ def run_family(
         if pimg is not None:
             img = pimg
         # Count target is UNCHANGED under perturbation (same GT numbers).
-    messages = vb.vision_messages(prompt, img)
-    try:
-        rec = vb.run_one(chat, kind, target, prompt, img)
-    except Exception as e:
-        err = str(e)[:300]
-        if vb.NO_IMAGE_RE.search(err):
+    # Sprint 2: V7 carries a [image_a, image_b] list (image_count=2).
+    # Route lists via vision_messages_multi + run_one_multi (5MB fail-closed
+    # guard inside returns a VOID record, never FAIL/ERROR for the model).
+    if isinstance(img, (list, tuple)):
+        messages = vb.vision_messages_multi(prompt, list(img))
+        try:
+            rec = vb.run_one_multi(chat, kind, target, prompt, list(img))
+        except Exception as e:
+            err = str(e)[:300]
+            if vb.NO_IMAGE_RE.search(err):
+                attempt = _void_attempt(
+                    family, run_id, model_id, trial_id, "endpoint rejects image content: %s" % err
+                )
+                return attempt, {
+                    "instance_id": attempt["instance_id"],
+                    "trial_id": trial_id,
+                    "reply": "",
+                    "usage": {},
+                    "void": True,
+                    "gate": err,
+                }
+            raise
+        if rec.get("void"):
             attempt = _void_attempt(
-                family, run_id, model_id, trial_id, "endpoint rejects image content: %s" % err
+                family,
+                run_id,
+                model_id,
+                trial_id,
+                str(rec.get("log", "multi-image payload too large")),
             )
             return attempt, {
                 "instance_id": attempt["instance_id"],
                 "trial_id": trial_id,
                 "reply": "",
-                "usage": {},
+                "usage": rec.get("usage") if isinstance(rec.get("usage"), dict) else {},
                 "void": True,
-                "gate": err,
+                "gate": rec.get("log", ""),
             }
-        raise
+    else:
+        messages = vb.vision_messages(prompt, img)
+        try:
+            rec = vb.run_one(chat, kind, target, prompt, img)
+        except Exception as e:
+            err = str(e)[:300]
+            if vb.NO_IMAGE_RE.search(err):
+                attempt = _void_attempt(
+                    family, run_id, model_id, trial_id, "endpoint rejects image content: %s" % err
+                )
+                return attempt, {
+                    "instance_id": attempt["instance_id"],
+                    "trial_id": trial_id,
+                    "reply": "",
+                    "usage": {},
+                    "void": True,
+                    "gate": err,
+                }
+            raise
     passed = bool(rec.get("pass"))
     # Sprint 1: INVALID (no parseable int) vs WRONG_RESULT (+off_by_1 tag).
     if passed:

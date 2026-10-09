@@ -48,7 +48,6 @@ prompt/harness changes + mandatory re-baseline).
 - Tests: `tests/backends/test_vision_v10_v12_golden.py` (21 goldens:
   pos+neg per family + executor + PARTIAL on/off + scoring units);
   `tests/run_all.py --count` now 832 (scoring 210, backends 186).
-  Detail: `docs/vision-sprint3-report.md`.
 
 ### Added (vision Sprint 2 — V7 multi-image diff, V8 spatial, V9 chart, 2026-10-09)
 
@@ -79,7 +78,7 @@ prompt/harness changes + mandatory re-baseline).
   `PERTURBED_IMAGE_MAP` routing, `FAMILY_TEST_MAP` exact dispatch,
   per-fixture `fixture_sha256` in `ground_truth.json` + `fixture_sha`
   in V1–V6 manifests. V4/V5 declare `variants: [canonical,
-  perturbed]`. Detail: `docs/vision-sprint1-report.md`.
+  perturbed]`.
 - Tests: +10 executor cases + 11 scoring unit cases
   (`tests/scoring/test_vision_norm.py`); `tests/run_all.py --count`
   now 794 (scoring 210, backends 148).

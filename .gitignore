@@ -50,6 +50,7 @@ Thumbs.db
 
 # Logs & Temp Files
 *.log
+*.tmp
 temp/
 tmp/
 

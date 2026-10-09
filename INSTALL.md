@@ -124,7 +124,7 @@ Every run writes an immutable bundle to
 | long-horizon / gauntlet | yes | Docker sandbox image | compound scenarios |
 | security S1–S5 | yes | Docker sandbox image | 100% synthetic fixtures |
 | security S3–S5 scope | no (gate) | env approval only | `EMOX_SCOPE_APPROVED=1` + `EMOX_SCOPE_TARGET=synthetic:...` (or `fixture:`/`offline:`) required — without it S3–S5 are SAFETY-SKIP (fail-closed, `pass: false`), S1/S2 still run |
-| vision V1–V5 | yes, **multimodal** endpoint | python3 | skips gracefully on text-only endpoints |
+| vision V1–V12 | yes, **multimodal** endpoint | python3 | skips gracefully on text-only endpoints |
 | computer-use C1–C3 | yes | spec-only runner (manual for now) | PILOT |
 | adapters | local agent CLI + its auth | task verification uses Docker; third-party CLI execution is outside this sandbox | labeled NON-COMPARABLE by design |
 

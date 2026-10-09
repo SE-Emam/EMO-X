@@ -20,15 +20,59 @@ Real runs, real numbers (DC1 subset, 2026-09-28 UTC):
 
 ## Quickstart (60 seconds)
 
-```bash
-git clone https://github.com/SE-Emam/EMO-X
-cd EMO-X
-python3 shared/run.py --self-test   # must end: RESULT: PASS
-```
+> Requires Docker Desktop **running**. First time only, build the sandbox
+> image once: `make sandbox-image` (provides `emox-sandbox:latest` for
+> all code execution; without it runs fail closed, never silently).
+
+**Option 1 — Try in Colab (no install):**
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/SE-Emam/EMO-X/blob/main/notebooks/emo_x_quickstart.ipynb)
+
+Runs the frozen `code25` stub suite + chart in ~3 minutes, free, no API key.
+
+**Option 2 — pip (benchmark users):**
+
 ```bash
 pip install emo-x-eval
-emo --self-test
+docker build -f "$(python3 -c 'import emox; print(emox.tree_root() + "/Dockerfile.sandbox")')" \
+  -t emox-sandbox:latest \
+  "$(python3 -c 'import emox; print(emox.tree_root())')"
+emo --self-test   # must end: RESULT: PASS
 ```
+
+**Option 3 — clone (harness developers):**
+
+```bash
+git clone https://github.com/SE-Emam/EMO-X.git emo-x
+cd emo-x
+make sandbox-image                   # required once per checkout/image version
+python3 shared/run.py --self-test   # harness check, must end: RESULT: PASS
+python3 tests/run_all.py            # full suite, must end: RESULT: PASS (all 5 suites green)
+```
+
+Expected tail (live `main`, `v2.0.0-rc1`):
+
+```text
+  code-extraction  PASS  ok
+  python-executor  PASS  ok
+  ...
+  golden-outputs   PASS  ok
+RESULT: PASS
+```
+
+If either fails, stop — a broken harness invalidates every later number.
+Docker missing = fail-closed (`SandboxRuntimeUnavailable`), never silent.
+
+## Who is this for? (30 s)
+
+- **Model builders** — compare two endpoints on the same frozen suite with paired 95% CIs, not point gaps.
+- **Agent builders** — measure inspect→patch→test→stop efficiency, recoveries, and clean stops.
+- **Evaluators / researchers** — sealed bundles + health board catch saturation, flakiness, contamination.
+
+### Arabic + Vision — why EMO-X is different
+
+- **Arabic-first**: `T5` Arabic explanation + `V3` Arabic OCR (`arabic_card.png`, 6 keywords, order-free) — rare in code benchmarks.
+- **Vision-grounded**: `V1–V12` UI grounding (IoU ≥ 0.5), counting, diff-pair, charts, tables — deterministic oracles, no LLM-judge.
 
 ## What it measures
 
@@ -133,7 +177,7 @@ print(render_comparison(comp))"
 
 | What | Count | Source |
 |---|---|---|
-| Test suites | 14 | `suites/*/` |
+| Test suites | 13 executable (+1 PILOT `computer-use`) | `shared/runner.py:SUITE_DIRS` (badge source); `suites/*/` has 14 dirs incl. PILOT |
 | Task manifests | 98 | `suites/*/manifests/*.json` |
 |  Harness + unit tests | 832 (harness 324, generators 82, scoring 210, golden 30, backends 186) | `tests/run_all.py --count`, all green  |
 | Self-test checks | 14 | `--self-test`, fail-closed |

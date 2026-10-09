@@ -6,6 +6,10 @@ Contract refs: SPEC sections 32-34, DEN C4, C83, C90-C91.
 PRIMARY_STATUSES = ("PASS", "PARTIAL", "FAIL", "TIMEOUT", "INVALID", "ERROR", "VOID")
 SCORED_STATUSES = ("PASS", "PARTIAL", "FAIL", "TIMEOUT", "INVALID")
 
+# SPEC section 37 (Y-5): closed reasoning-mode vocabulary.
+# Produced by shared/backends.py:reasoning_mode_for, validated here (Y-1).
+VALID_REASONING_MODES = ("enabled", "disabled", "provider_default", "native")
+
 ATTEMPT_REQUIRED = (
     "run_id",
     "model_id",

@@ -68,6 +68,13 @@ P_CHART = (
     "What is the exact integer value of the {color} bar in the chart? "
     "Reply with ONLY a single integer, no explanation."
 )
+# Sprint 3 frozen prompt (PROMPT_PACK vision-v1 extension, byte-frozen).
+# V12 table: asks for two exact ints (rows excl header, AMOUNT for item C).
+P_TABLE = (
+    "How many data rows (excluding the header) are in the orders table, "
+    "and what is the AMOUNT for item C? "
+    "Reply with ONLY two integers separated by a comma: rows,amount with no explanation."
+)
 
 # tokens suggesting an endpoint/model accepts images (best-effort only;
 # the probe image call below is the binding check, not this list)
@@ -528,6 +535,101 @@ def judge_count(reply, expected):
     }
 
 
+def _extract_all_ints(reply):
+    """Extract all ints (digits + Arabic-Indic) in order. Words ignored."""
+    if reply is None:
+        return []
+    s_ascii = _arabic_indic_to_ascii(str(reply))
+    ints = []
+    for m in re.finditer(r"-?\d+", s_ascii):
+        try:
+            ints.append(int(m.group(0)))
+        except ValueError:
+            continue
+    return ints
+
+
+def judge_table(reply, expected_rows, expected_amount):
+    """Table extraction check (Sprint 3 V12): two exact ints.
+
+    P_TABLE asks for "rows,amount" (e.g. "3,15"). Pass iff BOTH match.
+    off_by_one iff total absolute error == 1 (single off-by-one).
+    Fewer than 2 parseable ints -> INVALID (incomplete, not FAIL).
+    """
+    ints = _extract_all_ints(reply)
+    if len(ints) < 2:
+        return {
+            "pass": False,
+            "got_rows": (ints[0] if len(ints) == 1 else None),
+            "got_amount": None,
+            "expected_rows": expected_rows,
+            "expected_amount": expected_amount,
+            "invalid": True,
+            "off_by_one": False,
+        }
+    got_rows, got_amount = ints[0], ints[1]
+    if got_rows == expected_rows and got_amount == expected_amount:
+        return {
+            "pass": True,
+            "got_rows": got_rows,
+            "got_amount": got_amount,
+            "expected_rows": expected_rows,
+            "expected_amount": expected_amount,
+            "invalid": False,
+            "off_by_one": False,
+        }
+    err = abs(got_rows - expected_rows) + abs(got_amount - expected_amount)
+    return {
+        "pass": False,
+        "got_rows": got_rows,
+        "got_amount": got_amount,
+        "expected_rows": expected_rows,
+        "expected_amount": expected_amount,
+        "invalid": False,
+        "off_by_one": err == 1,
+    }
+
+
+def iou_partial_score(iou_value):
+    """Tiered partial score for grounding (Sprint 3, flag-gated).
+
+    Mirrors shared/scoring.iou_partial_score (duplicated so the runner
+    stays stdlib-only): >=0.9->1.0, >=0.7->0.75, >=0.5->0.5 else 0.0.
+    None/non-numeric -> 0.0 (fail-closed).
+    """
+    try:
+        v = float(iou_value)
+    except (TypeError, ValueError):
+        return 0.0
+    if v >= 0.9:
+        return 1.0
+    if v >= 0.7:
+        return 0.75
+    if v >= 0.5:
+        return 0.5
+    return 0.0
+
+
+def vision_partial_status(score_value, passed, invalid=False):
+    """Map numeric vision score to PASS/PARTIAL/FAIL/INVALID.
+
+    Mirrors shared/scoring.vision_partial_status: INVALID wins, then
+    0<score<1 PARTIAL band (before the binary pass flag so IoU-tier
+    0.75/0.5 maps to PARTIAL, not PASS), then PASS iff passed.
+    """
+    if bool(invalid):
+        return "INVALID"
+    try:
+        s = float(score_value)
+    except (TypeError, ValueError):
+        return "FAIL"
+    if 0.0 < s < 1.0:
+        return "PARTIAL"
+    if bool(passed):
+        return "PASS"
+    return "FAIL"
+
+
 # ---------------- suite ----------------
 
 
@@ -590,6 +692,33 @@ def build_tests(gt):
             os.path.join(FIX_DIR, "chart.png"),
             P_CHART.format(color=gt["chart.png"]["target_color"]),
             ("chart", gt["chart.png"]["target_value"]),
+        ),
+        # Sprint 3: V10 noisy grounding (same GT login box under noise).
+        (
+            "V10_ground_noisy",
+            os.path.join(FIX_DIR, "ui_login_noisy.png"),
+            P_GROUND.format(label="red LOGIN button"),
+            ("ground", gt["ui_login_noisy.png"]["login_button"]["box"]),
+        ),
+        # Sprint 3: V11 dense occluded count (amodal: 12 blue circles).
+        (
+            "V11_count_dense",
+            os.path.join(FIX_DIR, "grid_dense.png"),
+            P_COUNT.format(what="blue circles (including partly hidden ones)"),
+            ("count", gt["grid_dense.png"]["blue_circles"]),
+        ),
+        # Sprint 3: V12 table extraction (rows excl header, AMOUNT for C).
+        (
+            "V12_table_orders",
+            os.path.join(FIX_DIR, "table_orders.png"),
+            P_TABLE,
+            (
+                "table",
+                (
+                    gt["table_orders.png"]["row_count"],
+                    gt["table_orders.png"]["target_amount"],
+                ),
+            ),
         ),
     ]
 
@@ -654,7 +783,7 @@ def run_one_multi(chat, kind, target, prompt, images):
     return rec
 
 
-def run_one(chat, kind, target, prompt, image):
+def run_one(chat, kind, target, prompt, image, partial_curve=False):
     try:
         text, secs, usage = chat(vision_messages(prompt, image), temp=TEMP, max_tokens=MAX_TOKENS)
     except Exception as e:
@@ -667,15 +796,26 @@ def run_one(chat, kind, target, prompt, image):
         box = parse_box(text)
         if box is None:
             rec.update(
-                {"pass": False, "iou": 0.0, "iou_tier": 0.0, "log": "no parseable {x,y,w,h} box"}
+                {
+                    "pass": False,
+                    "iou": 0.0,
+                    "iou_tier": 0.0,
+                    "score": 0.0,
+                    "log": "no parseable {x,y,w,h} box",
+                }
             )
         else:
             v = iou(box, target)
+            passed = bool(v >= IOU_PASS)
+            # Sprint 3 PARTIAL (flag-gated, default OFF): tier score
+            # >=0.9->1.0, >=0.7->0.75, >=0.5->0.5 else 0.0.
+            score = iou_partial_score(v) if partial_curve else (1.0 if passed else 0.0)
             rec.update(
                 {
-                    "pass": bool(v >= IOU_PASS),
+                    "pass": passed,
                     "iou": v,
                     "iou_tier": iou_tier(v),
+                    "score": score,
                     "pred": [round(x, 1) for x in box],
                     "expected": target,
                     "log": "iou=%.3f tier=%s" % (v, iou_tier(v)),
@@ -683,19 +823,36 @@ def run_one(chat, kind, target, prompt, image):
             )
     elif kind == "arabic":
         j = judge_arabic(text, target)
-        rec.update({"pass": j["pass"], "log": "hits=%s missing=%s" % (j["hits"], j["missing"])})
+        rec.update(
+            {
+                "pass": j["pass"],
+                "score": (1.0 if j["pass"] else 0.0),
+                "log": "hits=%s missing=%s" % (j["hits"], j["missing"]),
+            }
+        )
     elif kind == "diff":
         # Sprint 2 V7 via single-image path (should not happen; multi uses run_one_multi).
         j = judge_diff(text, target)
-        rec.update({"pass": j["pass"], "log": "hits=%s missing=%s" % (j["hits"], j["missing"])})
+        rec.update(
+            {
+                "pass": j["pass"],
+                "score": (1.0 if j["pass"] else 0.0),
+                "log": "hits=%s missing=%s" % (j["hits"], j["missing"]),
+            }
+        )
     elif kind == "spatial":
         # Sprint 2 V8: strict preposition (competing relation -> WRONG_RESULT).
         j = judge_spatial(text, target)
         rec.update(
-            {"pass": j["pass"], "log": "found=%s competing=%s" % (j["found"], j["competing"])}
+            {
+                "pass": j["pass"],
+                "score": (1.0 if j["pass"] else 0.0),
+                "log": "found=%s competing=%s" % (j["found"], j["competing"]),
+            }
         )
     elif kind == "chart":
         # Sprint 2 V9: exact int (mirrors count INVALID vs off_by_1 split).
+        # Sprint 3 PARTIAL (flag-gated, default OFF): off_by_one -> 0.5.
         j = judge_chart(text, target)
         if j.get("invalid"):
             rec.update(
@@ -703,6 +860,7 @@ def run_one(chat, kind, target, prompt, image):
                     "pass": False,
                     "invalid": True,
                     "off_by_one": False,
+                    "score": 0.0,
                     "log": "got=%s expected=%s INVALID_NO_INT" % (j["got"], j["expected"]),
                 }
             )
@@ -711,12 +869,55 @@ def run_one(chat, kind, target, prompt, image):
                 {
                     "pass": False,
                     "off_by_one": True,
+                    "score": (0.5 if partial_curve else 0.0),
                     "log": "got=%s expected=%s WRONG_RESULT (off_by_1)" % (j["got"], j["expected"]),
                 }
             )
         else:
-            rec.update({"pass": j["pass"], "log": "got=%s expected=%s" % (j["got"], j["expected"])})
+            rec.update(
+                {
+                    "pass": j["pass"],
+                    "score": (1.0 if j["pass"] else 0.0),
+                    "log": "got=%s expected=%s" % (j["got"], j["expected"]),
+                }
+            )
+    elif kind == "table":
+        # Sprint 3 V12: two exact ints (rows excl header, AMOUNT for C).
+        # Sprint 3 PARTIAL (flag-gated, default OFF): single off_by_1 -> 0.5.
+        exp_rows, exp_amt = target
+        j = judge_table(text, exp_rows, exp_amt)
+        if j.get("invalid"):
+            rec.update(
+                {
+                    "pass": False,
+                    "invalid": True,
+                    "off_by_one": False,
+                    "score": 0.0,
+                    "log": "got=%s,%s expected=%s,%s INVALID_NO_INT"
+                    % (j["got_rows"], j["got_amount"], j["expected_rows"], j["expected_amount"]),
+                }
+            )
+        elif j.get("off_by_one"):
+            rec.update(
+                {
+                    "pass": False,
+                    "off_by_one": True,
+                    "score": (0.5 if partial_curve else 0.0),
+                    "log": "got=%s,%s expected=%s,%s WRONG_RESULT (off_by_1)"
+                    % (j["got_rows"], j["got_amount"], j["expected_rows"], j["expected_amount"]),
+                }
+            )
+        else:
+            rec.update(
+                {
+                    "pass": j["pass"],
+                    "score": (1.0 if j["pass"] else 0.0),
+                    "log": "got=%s,%s expected=%s,%s"
+                    % (j["got_rows"], j["got_amount"], j["expected_rows"], j["expected_amount"]),
+                }
+            )
     else:
+        # Sprint 3 PARTIAL (flag-gated, default OFF): off_by_one -> 0.5.
         j = judge_count(text, target)
         if j.get("invalid"):
             rec.update(
@@ -724,6 +925,7 @@ def run_one(chat, kind, target, prompt, image):
                     "pass": False,
                     "invalid": True,
                     "off_by_one": False,
+                    "score": 0.0,
                     "log": "got=%s expected=%s INVALID_NO_INT" % (j["got"], j["expected"]),
                 }
             )
@@ -732,11 +934,18 @@ def run_one(chat, kind, target, prompt, image):
                 {
                     "pass": False,
                     "off_by_one": True,
+                    "score": (0.5 if partial_curve else 0.0),
                     "log": "got=%s expected=%s WRONG_RESULT (off_by_1)" % (j["got"], j["expected"]),
                 }
             )
         else:
-            rec.update({"pass": j["pass"], "log": "got=%s expected=%s" % (j["got"], j["expected"])})
+            rec.update(
+                {
+                    "pass": j["pass"],
+                    "score": (1.0 if j["pass"] else 0.0),
+                    "log": "got=%s expected=%s" % (j["got"], j["expected"]),
+                }
+            )
     rec["error"] = None
     return rec
 
@@ -758,7 +967,7 @@ def _run_via_runner(args):
 
         chat = make_chat(args.backend, args.base_url, args.model, args.api_key)
     only = [x.strip().upper() for x in args.only.split(",") if x.strip()]
-    order = ["V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9"]
+    order = ["V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10", "V11", "V12"]
     families = [v for v in order if (not only) or v in only] or None
     model_id = args.model or os.environ.get("MODEL", "model")
     rundir, summary = runner.run_suite(
@@ -773,6 +982,7 @@ def _run_via_runner(args):
         args.out,
         families=families,
         force=bool(args.force),
+        partial_curve=bool(args.partial_curve),
         # This entry IS the vision suite: running it asserts a
         # vision-capable model (the live image probe still gates
         # per-family VOIDs at execution time).
@@ -799,6 +1009,12 @@ def main(argv=None):
         "--force",
         action="store_true",
         help="skip the image-support gate (failures then count as errors)",
+    )
+    ap.add_argument(
+        "--partial-curve",
+        action="store_true",
+        help="Sprint 3 opt-in tiered PARTIAL scoring (IoU tiers + "
+        "off_by_1 -> PARTIAL); default OFF keeps binary PASS/FAIL",
     )
     ap.add_argument("--list", action="store_true", help="list tests, run nothing")
     args = ap.parse_args(argv)

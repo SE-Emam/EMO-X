@@ -523,6 +523,173 @@ def make_chart():
     return img, gt
 
 
+# ---------------- Sprint 3 fixtures (V10/V11/V12) ----------------
+# Deterministic Pillow-only scenes (seeds 25610-25612 continue the
+# V1-V9 series 25601-25609). All PNGs < 200KB. V10 reuses the V1 login
+# geometry (same GT box) under noise; V11 is a dense occluded grid;
+# V12 is a 3-row orders table with exact-int GT params.
+
+
+def _gaussian_noise(img, seed, sigma=10.0, box=None):
+    """Additive Gaussian noise (seeded, stdlib random only).
+
+    Correlated mono noise (small random field upscaled) keeps the PNG
+    < 200KB. When box=(x0,y0,x1,y1) is given, noise applies ONLY inside
+    that region (background stays flat white = compressible) while the
+    target area keeps full difficulty (sigma=10, blur r=2 applied by
+    the caller). box=None noises the whole image.
+    """
+    import random
+
+    from PIL import Image as _I
+
+    rng = random.Random(seed)
+    if box is None:
+        x0, y0, x1, y1 = 0, 0, W, H
+    else:
+        x0, y0, x1, y1 = box
+    bw, bh = x1 - x0, y1 - y0
+    sw, sh = max(1, bw // 4), max(1, bh // 4)
+    small = _I.new("L", (sw, sh))
+    spx = small.load()
+    for y in range(sh):
+        for x in range(sw):
+            spx[x, y] = int(max(0, min(255, 128 + rng.gauss(0.0, sigma * 4.0))))
+    field = small.resize((bw, bh), _I.BILINEAR)
+    px = img.load()
+    fpx = field.load()
+    for y in range(bh):
+        for x in range(bw):
+            n = int(fpx[x, y]) - 128
+            r, g, b = px[x0 + x, y0 + y]
+            px[x0 + x, y0 + y] = (
+                max(0, min(255, r + n)),
+                max(0, min(255, g + n)),
+                max(0, min(255, b + n)),
+            )
+    return img
+
+
+def make_login_noisy(font_path):
+    """V10 noisy grounding: V1 login + sigma=10 noise + blur r=2.
+
+    Same GT login box as ui_login.png (oracle unchanged: IoU>=0.5).
+    Corner occlusion bars are placed AWAY from all buttons (top strip
+    y<60 and side strips) so the LOGIN target stays >=95% visible;
+    the maker asserts this (fail-closed: raises if violated).
+    """
+    from PIL import ImageFilter
+
+    img, gt = make_login(font_path)
+    # Seeded Gaussian noise (sigma=10) INSIDE the window only (100,60,700,540):
+    # keeps PNG < 200KB (flat white background stays compressible) while
+    # the target area keeps full difficulty; then blur radius=2.
+    _gaussian_noise(img, seed=25610, sigma=10.0, box=(100, 60, 700, 540))
+    img = img.filter(ImageFilter.GaussianBlur(radius=2))
+    d = ImageDraw.Draw(img)
+    # Corner/side occlusion AWAY from buttons: top strip (y 0-40) and
+    # left strip (x 0-30, y 0-200) — login buttons live at y>=150.
+    d.rectangle((0, 0, W, 40), fill="#8A8A8A")
+    d.rectangle((0, 0, 30, 200), fill="#8A8A8A")
+    d.rectangle((W - 30, 0, W, 200), fill="#8A8A8A")
+    # Fail-closed visibility check: LOGIN box region must stay >=95%
+    # unoccluded. Occlusion rects above never intersect the login box
+    # (login y0=190px); assert to prevent silent unsolvable fixtures.
+    # GT boxes are 0-1000 normalized; convert to pixels for the check.
+    login_box = gt["login_button"]["box"]
+    lx0 = login_box[0] / 1000.0 * W
+    ly0 = login_box[1] / 1000.0 * H
+    lx1 = login_box[2] / 1000.0 * W
+    assert ly0 >= 150, "V10 login box moved into occlusion zone"
+    assert lx0 >= 40 and lx1 <= W - 40, "V10 login box in side occlusion"
+    gt = dict(gt)
+    gt["perturbation"] = (
+        "gaussian noise sigma=10 + GaussianBlur r=2 (seed 25610) + "
+        "corner/side gray occlusion away from buttons; LOGIN box unchanged"
+    )
+    gt["seed"] = 25610
+    return img, gt
+
+
+def make_grid_dense():
+    """V11 dense occluded count: 12 blue circles + 6 red squares.
+
+    Three gray occlusion bars are drawn AFTER shapes (30% occluded
+    grid); GT counts are UNCHANGED (amodal: partially visible still
+    counts). Oracle: normalize_int reply == blue_circles (12);
+    off_by_1 logged, no-int INVALID (same split as V4/V6).
+    """
+    img = Image.new("RGB", (W, H), "white")
+    d = ImageDraw.Draw(img)
+    d.text((42, 22), "Count the shapes (some partly hidden)", font=ImageFont.load_default(), fill="black")
+    # 12 blue circles on a 4x3 lattice.
+    circles = [
+        (110, 130), (250, 130), (390, 130), (530, 130),
+        (110, 250), (250, 250), (390, 250), (530, 250),
+        (110, 370), (250, 370), (390, 370), (530, 370),
+    ]
+    # 6 red squares interleaved below/right.
+    squares = [
+        (180, 470), (320, 470), (460, 470),
+        (640, 180), (640, 300), (640, 420),
+    ]
+    r = 24
+    for (cx, cy) in circles:
+        d.ellipse((cx - r, cy - r, cx + r, cy + r), fill="blue", outline="black")
+    s = 24
+    for (cx, cy) in squares:
+        d.rectangle((cx - s, cy - s, cx + s, cy + s), fill="red", outline="black")
+    # Gray occlusion bars AFTER shapes (amodal counting: still count).
+    d.rectangle((200, 100, 260, 400), fill="#8A8A8A")
+    d.rectangle((420, 200, 700, 250), fill="#8A8A8A")
+    d.rectangle((100, 440, 500, 490), fill="#8A8A8A")
+    gt = {"blue_circles": len(circles), "red_squares": len(squares),
+          "total_shapes": len(circles) + len(squares),
+          "occlusion": "3 gray bars after shapes (seed 25611); partially visible still counts",
+          "seed": 25611}
+    return img, gt
+
+
+def make_table():
+    """V12 table extraction: 3x3 orders table (header + 3 data rows).
+
+    Columns: ITEM | QTY | AMOUNT. Rows: A/2/20, B/1/35, C/4/15.
+    GT params (not pixels): rows=3 (excl header), amount for row 3
+    (C) = 15. Oracle: exact ints (normalize_int), no-int INVALID.
+    """
+    img = Image.new("RGB", (W, H), "white")
+    d = ImageDraw.Draw(img)
+    font = ImageFont.load_default()
+    d.text((40, 20), "Orders table", font=font, fill="black")
+    # Table geometry: 3 cols x 4 rows (header + 3 data).
+    tx0, ty0 = 150, 120
+    col_w = [220, 120, 160]
+    row_h = 70
+    headers = ["ITEM", "QTY", "AMOUNT"]
+    rows = [("A", 2, 20), ("B", 1, 35), ("C", 4, 15)]
+    # Grid + header.
+    for ci, h in enumerate(headers):
+        x0 = tx0 + sum(col_w[:ci])
+        d.rectangle((x0, ty0, x0 + col_w[ci], ty0 + row_h), outline="black", width=2)
+        d.text((x0 + 12, ty0 + 22), h, font=font, fill="black")
+    for ri, (item, qty, amt) in enumerate(rows):
+        y0 = ty0 + (ri + 1) * row_h
+        for ci, val in enumerate((item, str(qty), str(amt))):
+            x0 = tx0 + sum(col_w[:ci])
+            d.rectangle((x0, y0, x0 + col_w[ci], y0 + row_h), outline="black", width=1)
+            d.text((x0 + 12, y0 + 22), val, font=font, fill="black")
+    gt = {
+        "headers": headers,
+        "rows": [{"item": a, "qty": q, "amount": m} for (a, q, m) in rows],
+        "row_count": len(rows),
+        "target_item": "C",
+        "target_amount": 15,
+        "note": "row_count excludes header; target_amount is AMOUNT for item C",
+        "seed": 25612,
+    }
+    return img, gt
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Generate vision-bench fixtures")
     ap.add_argument("--out", default=HERE, help="output dir (default: fixtures/)")
@@ -595,6 +762,33 @@ def main(argv=None):
         fixture_sha256["chart.png"] = hashlib.sha256(f.read()).hexdigest()
     gt_all["chart.png"] = gt_chart
     print("wrote chart.png sha=%s (sprint2-V9)" % fixture_sha256["chart.png"][:16])
+
+    # Sprint 3 new families (deterministic; seeds 25610-25612).
+    img_noisy, gt_noisy = make_login_noisy(font_path)
+    img_noisy.save(os.path.join(args.out, "ui_login_noisy.png"))
+    with open(os.path.join(args.out, "ui_login_noisy.png"), "rb") as f:
+        fixture_sha256["ui_login_noisy.png"] = hashlib.sha256(f.read()).hexdigest()
+    # Strip non-JSON-serializable _px helper before writing GT.
+    gt_noisy_out = {k: v for k, v in gt_noisy.items() if k != "_px"}
+    for _bk in ("login_button", "cancel_button", "help_button", "search_box", "username_field"):
+        if isinstance(gt_noisy_out.get(_bk), dict):
+            gt_noisy_out[_bk] = {k: v for k, v in gt_noisy_out[_bk].items() if k != "_px"}
+    gt_all["ui_login_noisy.png"] = gt_noisy_out
+    print("wrote ui_login_noisy.png sha=%s (sprint3-V10)" % fixture_sha256["ui_login_noisy.png"][:16])
+
+    img_dense, gt_dense = make_grid_dense()
+    img_dense.save(os.path.join(args.out, "grid_dense.png"))
+    with open(os.path.join(args.out, "grid_dense.png"), "rb") as f:
+        fixture_sha256["grid_dense.png"] = hashlib.sha256(f.read()).hexdigest()
+    gt_all["grid_dense.png"] = gt_dense
+    print("wrote grid_dense.png sha=%s (sprint3-V11)" % fixture_sha256["grid_dense.png"][:16])
+
+    img_table, gt_table = make_table()
+    img_table.save(os.path.join(args.out, "table_orders.png"))
+    with open(os.path.join(args.out, "table_orders.png"), "rb") as f:
+        fixture_sha256["table_orders.png"] = hashlib.sha256(f.read()).hexdigest()
+    gt_all["table_orders.png"] = gt_table
+    print("wrote table_orders.png sha=%s (sprint3-V12)" % fixture_sha256["table_orders.png"][:16])
 
     gt_all["fixture_sha256"] = fixture_sha256
 

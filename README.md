@@ -8,7 +8,7 @@
 > HumanEval is dead. EMO-X tests what agents **DO**, not what they **SAY**.
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/SE-Emam/EMO-X/blob/main/notebooks/emo_x_quickstart.ipynb) [![GitHub stars](https://img.shields.io/github/stars/SE-Emam/EMO-X)](https://github.com/SE-Emam/EMO-X/stargazers) [![pip install](https://img.shields.io/badge/pip_install-emo--x--eval-blue)](https://pypi.org/project/emo-x-eval/) [![Dataset on HF](https://img.shields.io/badge/🤗_Dataset-EMO--X--Core-yellow)](https://huggingface.co/datasets/SE-Emam/EMO-X-Core) [![PyPI](https://img.shields.io/pypi/v/emo-x-eval)](https://pypi.org/project/emo-x-eval/) [![License](https://img.shields.io/badge/License-Apache_2.0-blue)](LICENSE)
-[![Suites](https://img.shields.io/badge/suites-13-blue)](suites/) [![Tests](https://img.shields.io/badge/tests-794-green)](tests/run_all.py) [![Ollama](https://img.shields.io/badge/Ollama-supported-orange)](INSTALL.md)
+[![Suites](https://img.shields.io/badge/suites-13-blue)](suites/) [![Tests](https://img.shields.io/badge/tests-832-green)](tests/run_all.py) [![Ollama](https://img.shields.io/badge/Ollama-supported-orange)](INSTALL.md)
 
 ![EMO-X self-test demo](src/demo.gif)
 
@@ -134,8 +134,8 @@ print(render_comparison(comp))"
 | What | Count | Source |
 |---|---|---|
 | Test suites | 14 | `suites/*/` |
-| Task manifests | 75 | `suites/*/manifests/*.json` |
-|  Harness + unit tests | 794 (harness 324, generators 82, scoring 210, golden 30, backends 148) | `tests/run_all.py --count`, all green  |
+| Task manifests | 98 | `suites/*/manifests/*.json` |
+|  Harness + unit tests | 832 (harness 324, generators 82, scoring 210, golden 30, backends 186) | `tests/run_all.py --count`, all green  |
 | Self-test checks | 14 | `--self-test`, fail-closed |
 | Issue-style families | 15 (IS1–IS15) | vs SWE-bench Lite (300) = **5.0%** |
 

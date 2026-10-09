@@ -1,0 +1,54 @@
+{
+ "capabilities": [
+  "multimodal",
+  "table_extraction"
+ ],
+ "category": "vision",
+ "difficulty": {
+  "adaptive": false,
+  "base": 3
+ },
+ "estimated_human_minutes": 8,
+ "execution": {
+  "harness": "suites/vision/executor.py",
+  "type": "vision"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "fixture": "table_orders.png",
+ "fixture_sha": "677fd8257769ae145b714209998750a039f3443f4c0cf20ff245389a5b56462e",
+ "generator": {
+  "parameters": {},
+  "seed": 25612,
+  "type": "frozen-canonical"
+ },
+ "id": "V12",
+ "image_count": 1,
+ "modalities": [
+  "text",
+  "image"
+ ],
+ "name": "table_orders_rows_amount",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "two exact ints rows,amount (3,15); BOTH must match; single total-error 1 logged as WRONG_RESULT (off_by_1), fewer than 2 ints as INVALID_NO_INT",
+  "tolerance": "count_tolerance off_by_1 logged (total absolute error == 1)",
+  "type": "deterministic"
+ },
+ "prompt_pack": "vision-v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "vision",
+ "timeouts": {
+  "execution_seconds": 60,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

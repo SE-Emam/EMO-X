@@ -1,0 +1,55 @@
+{
+ "capabilities": [
+  "multimodal",
+  "visual_counting",
+  "occlusion_amodal"
+ ],
+ "category": "vision",
+ "difficulty": {
+  "adaptive": false,
+  "base": 3
+ },
+ "estimated_human_minutes": 5,
+ "execution": {
+  "harness": "suites/vision/executor.py",
+  "type": "vision"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "fixture": "grid_dense.png",
+ "fixture_sha": "99c633ca3a8916225a45423f0ec9c0ba4ce46286ba559686edd8d99d62a9f5a7",
+ "generator": {
+  "parameters": {},
+  "seed": 25611,
+  "type": "frozen-canonical"
+ },
+ "id": "V11",
+ "image_count": 1,
+ "modalities": [
+  "text",
+  "image"
+ ],
+ "name": "count_dense_blue_circles",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "normalize_int reply equals blue_circles 12 (partly hidden still counts); off_by_1 logged as WRONG_RESULT (off_by_1), no-int as INVALID_NO_INT",
+  "tolerance": "count_tolerance off_by_1 logged",
+  "type": "deterministic"
+ },
+ "prompt_pack": "vision-v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "vision",
+ "timeouts": {
+  "execution_seconds": 60,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

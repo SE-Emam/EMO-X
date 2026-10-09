@@ -406,6 +406,7 @@ def _run_suite_loop(
     responses,
     stream,
     force=False,
+    partial_curve=False,
 ):
     """Attempt loop with per-attempt streaming (Phase 3)."""
     for index in range(1, max(instances, 1) + 1):
@@ -453,6 +454,12 @@ def _run_suite_loop(
                         # (bypass capability gate; failures then ERROR).
                         if "force" in _supported_params(executor.run_family):
                             call_kwargs["force"] = force
+                        # Sprint 3: vision PARTIAL curve (default OFF).
+                        # Threaded generically: any executor advertising
+                        # partial_curve receives it; others ignore it via
+                        # _filter_kwargs (no signature break).
+                        if "partial_curve" in _supported_params(executor.run_family):
+                            call_kwargs["partial_curve"] = partial_curve
                         attempt, response = executor.run_family(family, chat, **call_kwargs)
                     except Exception as e:
                         # Scope refusals are round-level errors, not VOID
@@ -520,6 +527,7 @@ def run_suite(
     sampling=None,
     progress=None,
     force=False,
+    partial_curve=False,
     model_modalities=None,
     model_type=None,
 ):
@@ -531,6 +539,9 @@ def run_suite(
     scope: forwarded to scope-gated executors (hidden/security).
       Hidden suites refuse without scope "hidden-ok" BEFORE any model
       call (Y-4); the refusal surfaces as a clean error, not a bundle.
+    partial_curve: Sprint 3 vision PARTIAL tier (default OFF, binary
+      PASS/FAIL preserved). Threaded to executors advertising the
+      parameter (vision); ignored elsewhere via _filter_kwargs.
     model_modalities: declared model capabilities ("text,vision" or
       list; default text-only). Suites require a modality
       (SUITE_MODALITIES, default text); mismatch raises
@@ -616,6 +627,7 @@ def run_suite(
             responses,
             stream,
             force=force,
+            partial_curve=partial_curve,
         )
     except BaseException:
         stream.abort()

@@ -134,7 +134,7 @@ class TestManifestValidity(unittest.TestCase):
 
     def test_all_manifests_validate(self):
         paths = self._all_manifest_paths()
-        self.assertEqual(len(paths), 36 + 1 + 2 + 5 + 9 + 3, paths)
+        self.assertEqual(len(paths), 36 + 1 + 2 + 5 + 12 + 3, paths)
         for p in paths:
             with self.subTest(manifest=p):
                 m = manifest_lib.load_task_manifest(p)
@@ -165,7 +165,7 @@ class TestManifestValidity(unittest.TestCase):
         self.assertEqual(vis_exec.SUITE, "vision")
         self.assertEqual(
             tuple(vis_exec.FAMILY_IDS),
-            ("V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9"),
+            ("V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10", "V11", "V12"),
         )
         self.assertTrue(cu_stub.pilot_status()["status"] == "PILOT")
         for f in sorted(os.listdir(os.path.join(VIS, "manifests"))):

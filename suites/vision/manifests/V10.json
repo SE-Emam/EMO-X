@@ -1,0 +1,56 @@
+{
+ "capabilities": [
+  "multimodal",
+  "visual_grounding",
+  "robustness_noisy"
+ ],
+ "category": "vision",
+ "difficulty": {
+  "adaptive": false,
+  "base": 3
+ },
+ "estimated_human_minutes": 5,
+ "execution": {
+  "harness": "suites/vision/executor.py",
+  "iou_pass": 0.5,
+  "type": "vision"
+ },
+ "filesystem": {
+  "sandbox_only": true
+ },
+ "fixture": "ui_login_noisy.png",
+ "fixture_sha": "d9b1ac1c30dd6935968b7f349ebadff573109204223e82d357b8c69f7fd723a0",
+ "generator": {
+  "parameters": {},
+  "seed": 25610,
+  "type": "frozen-canonical"
+ },
+ "id": "V10",
+ "image_count": 1,
+ "modalities": [
+  "text",
+  "image"
+ ],
+ "name": "ground_noisy_login",
+ "network": {
+  "allowed": false
+ },
+ "oracle": {
+  "check": "IoU >= 0.5 on login button box under noise; iou_tier 0.5/0.7/0.9 logged",
+  "tolerance": "iou tiers 0.5/0.7/0.9 logged, pass at 0.5",
+  "type": "deterministic"
+ },
+ "prompt_pack": "vision-v1",
+ "scoring": {
+  "correctness": 1.0
+ },
+ "suite": "vision",
+ "timeouts": {
+  "execution_seconds": 60,
+  "generation_seconds": 120
+ },
+ "variants": [
+  "canonical"
+ ],
+ "version": "1.0"
+}

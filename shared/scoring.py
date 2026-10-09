@@ -1914,3 +1914,80 @@ def iou_tier(iou_value):
         if v >= tier:
             return tier
     return 0.0
+
+
+def iou_partial_score(iou_value):
+    """Return partial score based on IoU tier (Sprint 3, flag-gated).
+
+    Tiers (deterministic, no model judgement):
+      IoU >= 0.9 -> 1.0
+      IoU >= 0.7 -> 0.75
+      IoU >= 0.5 -> 0.5
+      else       -> 0.0
+    None / non-numeric -> 0.0 (fail-closed).
+    """
+    try:
+        v = float(iou_value)
+    except (TypeError, ValueError):
+        return 0.0
+    if v >= 0.9:
+        return 1.0
+    if v >= 0.7:
+        return 0.75
+    if v >= 0.5:
+        return 0.5
+    return 0.0
+
+
+def vision_grounding_score(iou_value, threshold=0.5, partial_curve=False):
+    """Score a grounding verdict (Sprint 3 PARTIAL infrastructure).
+
+    Backward compatible: partial_curve=False (default) returns binary
+    1.0 iff IoU >= threshold else 0.0 — identical to legacy behavior.
+    partial_curve=True returns iou_partial_score(iou_value) tier scoring
+    for V1/V2/V10 grounding tasks.
+    """
+    if partial_curve:
+        return iou_partial_score(iou_value)
+    try:
+        v = float(iou_value)
+    except (TypeError, ValueError):
+        return 0.0
+    return 1.0 if v >= threshold else 0.0
+
+
+def vision_count_score(passed, off_by_one=False, partial_curve=False):
+    """Score a counting verdict (Sprint 3 PARTIAL infrastructure).
+
+    Backward compatible: partial_curve=False returns 1.0 iff passed
+    else 0.0. With partial_curve=True, off_by_one earns 0.5 (PARTIAL)
+    for V4/V5/V6/V11 counting tasks. INVALID callers should map no-int
+    to 0.0 separately (status INVALID, not PARTIAL).
+    """
+    if passed:
+        return 1.0
+    if partial_curve and bool(off_by_one):
+        return 0.5
+    return 0.0
+
+
+def vision_partial_status(score_value, passed, invalid=False):
+    """Map a numeric vision score to a primary status string.
+
+    PASS iff score is 1.0 (strict pass), INVALID iff invalid, PARTIAL iff
+    0 < score < 1 (only reachable with partial_curve=True), else FAIL.
+    Checks the PARTIAL band before the binary pass flag so IoU-tier
+    0.75/0.5 (passed=True but score<1) maps to PARTIAL, not PASS.
+    Keeps binary path identical when partial_curve=False.
+    """
+    if bool(invalid):
+        return "INVALID"
+    try:
+        s = float(score_value)
+    except (TypeError, ValueError):
+        return "FAIL"
+    if 0.0 < s < 1.0:
+        return "PARTIAL"
+    if bool(passed):
+        return "PASS"
+    return "FAIL"

@@ -31,6 +31,25 @@ prompt/harness changes + mandatory re-baseline).
   `progress_token`; progress never touches scored events (bundles
   byte-identical on/off).
 
+### Added (vision Sprint 3 — V10 noisy grounding, V11 dense count, V12 table + tiered PARTIAL, 2026-10-09)
+
+- New families V10 (noisy grounding, same LOGIN box under noise),
+  V11 (dense occluded count, 12 blue circles), V12 (table extraction,
+  rows + AMOUNT exact ints) with deterministic oracles (`judge_table`
+  new; grounding/count oracles reused), frozen prompt append (`P_TABLE`
+  only), and Pillow-only fixtures (`ui_login_noisy.png` seed 25610,
+  `grid_dense.png` seed 25611, `table_orders.png` seed 25612).
+- Flag-gated tiered PARTIAL scoring (`--partial-curve` / `partial_curve`,
+  default OFF keeps binary PASS/FAIL/INVALID): IoU tiers 1.0/0.75/0.5
+  for grounding + off-by-one 0.5 for counting/table; executor maps
+  0<score<1 to PARTIAL (`PARTIAL_IOU` / `PARTIAL_OFF_BY_ONE`);
+  INVALID never becomes PARTIAL. Generic runner threading via
+  `_supported_params`; `prompt_pack_sha256` covers `P_TABLE`.
+- Tests: `tests/backends/test_vision_v10_v12_golden.py` (21 goldens:
+  pos+neg per family + executor + PARTIAL on/off + scoring units);
+  `tests/run_all.py --count` now 832 (scoring 210, backends 186).
+  Detail: `docs/vision-sprint3-report.md`.
+
 ### Added (vision Sprint 2 — V7 multi-image diff, V8 spatial, V9 chart, 2026-10-09)
 
 - New families V7 (2-image diff, `image_count: 2`), V8 (Arabic spatial

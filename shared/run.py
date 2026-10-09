@@ -1206,6 +1206,13 @@ def main(argv=None):
         help="recovery-suite injection rate (new suites)",
     )
     ap.add_argument(
+        "--partial-curve",
+        action="store_true",
+        help="Sprint 3 vision opt-in: tiered PARTIAL scoring (IoU tiers + "
+        "off_by_1 -> PARTIAL). Default OFF keeps binary PASS/FAIL; "
+        "threaded to executors advertising partial_curve only.",
+    )
+    ap.add_argument(
         "--model-modalities",
         default=None,
         help="declared model capabilities, e.g. text,vision "
@@ -1421,6 +1428,7 @@ def main(argv=None):
                 progress=_prog,
                 model_modalities=args.model_modalities,
                 model_type=args.model_type,
+                partial_curve=bool(args.partial_curve),
             )
         except Exception as e:
             # Hidden/scope/capability refusals surface cleanly before

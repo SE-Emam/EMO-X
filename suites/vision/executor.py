@@ -34,11 +34,13 @@ from schemas import validate_attempt  # noqa: E402
 from manifests import sha256_bytes, sha256_manifest  # noqa: E402
 
 SUITE = "vision"
-FAMILY_IDS = ("V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9")
+FAMILY_IDS = ("V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10", "V11", "V12")
 VARIANTS = ("canonical", "perturbed")
 
 # Sprint 1: exact deterministic family -> test-name map.
 # Sprint 2: V7 (multi-image diff), V8 (spatial), V9 (chart) added.
+# Sprint 3: V10 (noisy grounding), V11 (dense occluded count),
+# V12 (table extraction) added.
 # Replaces brittle startswith + sorted[0] dispatch (routing errors
 # impossible: unknown family raises KeyError, ambiguous raises RuntimeError).
 FAMILY_TEST_MAP = {
@@ -51,6 +53,9 @@ FAMILY_TEST_MAP = {
     "V7": "V7_diff_pair",
     "V8": "V8_spatial_above",
     "V9": "V9_chart_red",
+    "V10": "V10_ground_noisy",
+    "V11": "V11_count_dense",
+    "V12": "V12_table_orders",
 }
 
 # Families supporting the perturbed variant (Sprint 1: counting only).
@@ -81,9 +86,17 @@ def load_manifest(family):
 def prompt_pack_sha256():
     """SHA256 over frozen vision-v1 prompts + fixture bytes (B58)."""
     vb = _load_vbench()
-    # Sprint 1: V1-V6 prompts. Sprint 2: V7/V8/V9 prompts appended
-    # (prompts frozen; appending keeps V1-V6 prefix stable).
-    parts = [vb.P_GROUND, vb.P_ARABIC, vb.P_COUNT, vb.P_DIFF, vb.P_SPATIAL_AR, vb.P_CHART]
+    # Sprint 1: V1-V6 prompts. Sprint 2: V7/V8/V9 prompts appended.
+    # Sprint 3: P_TABLE appended (frozen append-only; V1-V9 prefix stable).
+    parts = [
+        vb.P_GROUND,
+        vb.P_ARABIC,
+        vb.P_COUNT,
+        vb.P_DIFF,
+        vb.P_SPATIAL_AR,
+        vb.P_CHART,
+        vb.P_TABLE,
+    ]
     gt_path = os.path.join(VBENCH, "fixtures", "ground_truth.json")
     with open(gt_path, "rb") as f:
         parts.append(f.read().decode("utf-8"))
@@ -98,6 +111,9 @@ def prompt_pack_sha256():
         "diff_b.png",
         "spatial.png",
         "chart.png",
+        "ui_login_noisy.png",
+        "grid_dense.png",
+        "table_orders.png",
     ):
         with open(os.path.join(VBENCH, "fixtures", png), "rb") as f:
             parts.append(hashlib.sha256(f.read()).hexdigest())
@@ -164,6 +180,7 @@ def run_family(
     variant=None,
     base_url="",
     force=False,
+    partial_curve=False,
 ):
     """Run one vision family. Returns (attempt, response), schema-valid.
 
@@ -171,6 +188,9 @@ def run_family(
     for V4/V5 (Sprint 1 counting robustness); other families raise
     TypeError on perturbed (NA, DEN). Unknown family raises KeyError.
     Gate failure -> VOID attempt (never FAIL/ERROR for the model).
+    partial_curve (default False, Sprint 3): tiered PARTIAL scoring
+    (IoU 0.5->0.5 / 0.7->0.75 / 0.9->1.0, off_by_1->0.5). OFF keeps
+    binary PASS/FAIL/INVALID identical to legacy behavior.
     """
     v = variant or "canonical"
     if family not in FAMILY_IDS:
@@ -245,7 +265,7 @@ def run_family(
     else:
         messages = vb.vision_messages(prompt, img)
         try:
-            rec = vb.run_one(chat, kind, target, prompt, img)
+            rec = vb.run_one(chat, kind, target, prompt, img, partial_curve=partial_curve)
         except Exception as e:
             err = str(e)[:300]
             if vb.NO_IMAGE_RE.search(err):
@@ -263,14 +283,30 @@ def run_family(
             raise
     passed = bool(rec.get("pass"))
     # Sprint 1: INVALID (no parseable int) vs WRONG_RESULT (+off_by_1 tag).
-    if passed:
-        status, failure = "PASS", None
-    elif rec.get("invalid"):
-        status, failure = "INVALID", "INVALID_NO_INT"
+    # Sprint 3: partial_curve=True maps tier/off-by-one scores in
+    # (0,1) to PARTIAL (score preserved, failure PARTIAL_*).
+    # Default OFF keeps binary PASS/FAIL/INVALID identical to legacy.
+    try:
+        score_val = float(rec.get("score", 1.0 if passed else 0.0))
+    except (TypeError, ValueError):
+        score_val = 1.0 if passed else 0.0
+    if rec.get("invalid"):
+        status, failure, score = "INVALID", "INVALID_NO_INT", 0.0
+    elif partial_curve and 0.0 < score_val < 1.0:
+        if rec.get("off_by_one"):
+            status, failure, score = "PARTIAL", "PARTIAL_OFF_BY_ONE", score_val
+        else:
+            status, failure, score = (
+                "PARTIAL",
+                "PARTIAL_IOU (tier=%s)" % (rec.get("iou_tier", 0.0),),
+                score_val,
+            )
+    elif passed:
+        status, failure, score = "PASS", None, 1.0
     elif rec.get("off_by_one"):
-        status, failure = "FAIL", "WRONG_RESULT (off_by_1)"
+        status, failure, score = "FAIL", "WRONG_RESULT (off_by_1)", 0.0
     else:
-        status, failure = "FAIL", "WRONG_RESULT"
+        status, failure, score = "FAIL", "WRONG_RESULT", 0.0
     attempt = validate_attempt(
         {
             "run_id": run_id,
@@ -280,7 +316,7 @@ def run_family(
             "variant_class": v,
             "trial_id": trial_id,
             "primary_status": status,
-            "score": 1.0 if passed else 0.0,
+            "score": score,
             "eligible_for_task_score": True,
             "eligible_for_pass_rate": True,
             "eligible_for_efficiency": True,

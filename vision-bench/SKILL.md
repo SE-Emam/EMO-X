@@ -53,7 +53,9 @@ vision-bench/
     ui_toolbar.png         # fake toolbar (blue SAVE button + 3 buttons)
     arabic_card.png        # Arabic card (3 lines, ground truth in logical order)
     grid_count.png         # 7 blue circles + 4 red squares (fixed positions)
-    ground_truth.json      # boxes at 0-1000 scale + texts + counts + font used
+    grid_count_perturbed.png # Sprint 1 perturbed grid (5-10px shifts + 350px speckle, counts 7/4 unchanged)
+    ui_toolbar_perturbed.png # Sprint 1 perturbed toolbar (redraw + 250px speckle, count 3 unchanged)
+    ground_truth.json      # boxes at 0-1000 scale + texts + counts + font used + fixture_sha256
 ```
 
 Regenerate with `python3 fixtures/make_fixtures.py` (no network, no randomness).
@@ -71,13 +73,13 @@ Arabic font.
   success is `IoU >= 0.5` (`x_min/y_min/x_max/y_max` also accepted).
 - **V2 grounding:** the blue SAVE button in `ui_toolbar.png` — same verdict.
 - **V3 Arabic from image:** `Read ALL Arabic text …` — success = all
-  ground-truth keywords present as substrings, order-free (tolerant of
-  OCR noise, strict about absence). Keywords are Arabic strings
-  (functional test data — see `fixtures/ground_truth.json`).
-- **V4 counting:** how many blue circles? (`7`) — first integer in the
-  reply = the answer, exact match.
+  6 ground-truth keywords present as normalized substrings
+  (`normalize_arabic`: tashkeel-stripped, alef/ة-normalized), order-free.
+- **V4 counting:** how many blue circles? (`7`) — `normalize_int` accepts
+  digits, Arabic-Indic digits, EN words ("seven"), AR words ("سبعة").
+  Off-by-one logged as `WRONG_RESULT (off_by_1)`; no-int as `INVALID`.
 - **V5 button counting:** how many buttons in the dark toolbar (excluding
-  the search field)? (`3`).
+  the search field)? (`3`, same normalization/tolerance as V4).
 - **V6 conjunctive counting:** how many RED SQUARES (squares only, not
   circles)? (`4`) — color+shape conjunction, harder than V4's single
   attribute.
@@ -116,12 +118,12 @@ itself; the live image probe still gates per-family VOIDs.
 ```python
 # V1/V2 grounding (OSWorld-G/ScreenSpot-style)
 box = parse_box(reply)  # {x,y,w,h} or {x_min,...} -> [x0,y0,x1,y1]
-ok = box is not None and iou(box, GT) >= 0.5  # raw iou always logged
-# V3 Arabic-from-image (keyword-substring, order-free)
-ok = all(k in reply for k in ("تسجيل", "الدخول"))  # Arabic keywords: test data
-# V4/V5/V6 counting (first integer wins, exact match)
-m = re.search(r"-?\d+", reply)
-ok = m and int(m.group(0)) == 7
+ok = box is not None and iou(box, GT) >= 0.5  # raw iou + iou_tier 0.5/0.7/0.9 logged
+# V3 Arabic-from-image (normalize_arabic substring, order-free, 6 keywords)
+ok = all(normalize_arabic(k) in normalize_arabic(reply) for k in GT_KEYWORDS_6)
+# V4/V5/V6 counting (normalize_int: digits/AR-indic/EN-words/AR-words)
+got = normalize_int(reply)  # None -> INVALID_NO_INT
+ok = got == EXPECTED  # abs(got-expected)==1 logged WRONG_RESULT (off_by_1)
 ```
 
 ## Reports

@@ -31,6 +31,24 @@ prompt/harness changes + mandatory re-baseline).
   `progress_token`; progress never touches scored events (bundles
   byte-identical on/off).
 
+### Added (vision Sprint 1 — oracle hardening + perturbed robustness, 2026-10-09)
+
+- Canonical `shared/scoring.py` utils (`normalize_arabic`,
+  `normalize_int`, `iou_tier`) hardened vision oracles: V3 6-keyword
+  normalized substring, V4/V5/V6 word-form + Arabic-Indic counts with
+  `INVALID_NO_INT` vs `WRONG_RESULT (off_by_1)` split, V1/V2 raw `iou`
+  + tier logging (verdict still 0.5). Frozen `vision-v1` prompts
+  unchanged.
+- First perturbed robustness: deterministic `grid_count_perturbed.png`
+  (7/4) + `ui_toolbar_perturbed.png` (3) with seeded speckle,
+  `PERTURBED_IMAGE_MAP` routing, `FAMILY_TEST_MAP` exact dispatch,
+  per-fixture `fixture_sha256` in `ground_truth.json` + `fixture_sha`
+  in V1–V6 manifests. V4/V5 declare `variants: [canonical,
+  perturbed]`. Detail: `docs/vision-sprint1-report.md`.
+- Tests: +10 executor cases + 11 scoring unit cases
+  (`tests/scoring/test_vision_norm.py`); `tests/run_all.py --count`
+  now 794 (scoring 210, backends 148).
+
 ### Added (P1 conformance — external review)
 - Canonical bootstrap inputs (`scoring.family_value_lists`,
   `family_strict_lists`, `instance_mean_scores`): one implementation

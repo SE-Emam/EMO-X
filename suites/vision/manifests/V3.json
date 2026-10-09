@@ -17,6 +17,7 @@
   "sandbox_only": true
  },
  "fixture": "arabic_card.png",
+ "fixture_sha": "e1584fe25340cf86a32c561ae4e62544922171db48fc221093da2630ad799acd",
  "generator": {
   "parameters": {},
   "seed": 25603,
@@ -28,7 +29,7 @@
   "allowed": false
  },
  "oracle": {
-  "check": "all ground-truth keywords transcribed",
+  "check": "all 6 ground-truth keywords transcribed (normalize_arabic substring, order-free)",
   "type": "deterministic"
  },
  "prompt_pack": "vision-v1",

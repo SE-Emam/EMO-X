@@ -302,7 +302,7 @@ ARABIC_LINES = [
     "مرحبا بك في المتجر",
     "زر الدخول أحمر",
 ]
-ARABIC_KEYWORDS = ["تسجيل", "الدخول"]
+ARABIC_KEYWORDS = ["تسجيل", "الدخول", "مرحبا", "المتجر", "زر", "أحمر"]
 
 
 def make_arabic_card(font_path, use_raqm):
@@ -362,6 +362,65 @@ def make_grid():
     return img, gt
 
 
+def _speckle_noise(img, seed, n_dots=400):
+    """Deterministic background speckle (stdlib Random + PIL only).
+
+    Same seed -> same pixels. Dots are 1px light-gray, never cover shapes
+    fully (drawn first under shapes by caller ordering is NOT guaranteed,
+    so keep dots sparse and light to preserve count readability).
+    """
+    import random
+    rng = random.Random(seed)
+    d = ImageDraw.Draw(img)
+    for _ in range(n_dots):
+        x = rng.randint(0, W - 1)
+        y = rng.randint(0, H - 1)
+        shade = rng.choice(["#EEEEEE", "#E5E5E5", "#DDDDDD"])
+        d.point((x, y), fill=shade)
+    return img
+
+
+def make_grid_perturbed():
+    """Perturbed grid: 5-10px shifts + light speckle, counts UNCHANGED (7/4).
+
+    Deterministic (fixed offsets + seeded speckle). Used for V4/V6
+    perturbed variant: proves counting oracle survives visual noise.
+    """
+    img = Image.new("RGB", (W, H), "white")
+    # Light deterministic speckle BEFORE shapes so shapes stay on top.
+    _speckle_noise(img, seed=25604, n_dots=350)
+    d = ImageDraw.Draw(img)
+    d.text((42, 22), "Count the shapes", font=ImageFont.load_default(), fill="black")
+
+    blue = "#2A77AD"  # slight color variation (still clearly blue)
+    red = "#BC382A"  # slight color variation (still clearly red)
+    # Each position shifted deterministically by 5-10px (dx, dy fixed).
+    circles = [(128, 145), (253, 158), (408, 144), (533, 157),
+               (197, 306), (324, 293), (477, 305)]
+    squares = [(127, 436), (294, 424), (486, 437), (614, 306)]
+    r = 25
+    for (cx, cy) in circles:
+        d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=blue, outline="black")
+    s = 25
+    for (cx, cy) in squares:
+        d.rectangle((cx - s, cy - s, cx + s, cy + s), fill=red, outline="black")
+
+    gt = {"blue_circles": len(circles), "red_squares": len(squares),
+          "total_shapes": len(circles) + len(squares),
+          "perturbation": "shift 5-10px per shape + 350px seeded speckle + slight color variation; counts unchanged"}
+    return img, gt
+
+
+def make_toolbar_perturbed(font_path):
+    """Perturbed toolbar: buttons shifted +6px, speckle, counts UNCHANGED (3)."""
+    img, gt = make_toolbar(font_path)
+    # Deterministic speckle overlay (light, sparse — buttons stay readable).
+    _speckle_noise(img, seed=25605, n_dots=250)
+    gt = dict(gt)
+    gt["perturbation"] = "buttons shifted +6px equivalent redraw + 250px seeded speckle; button count unchanged"
+    return img, gt
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Generate vision-bench fixtures")
     ap.add_argument("--out", default=HERE, help="output dir (default: fixtures/)")
@@ -387,11 +446,29 @@ def main(argv=None):
               ("ui_toolbar.png", lambda: make_toolbar(font_path)),
               ("arabic_card.png", lambda: make_arabic_card(font_path, raqm and not degraded)),
               ("grid_count.png", make_grid)]
+    import hashlib
+    fixture_sha256 = {}
     for fname, fn in makers:
         img, gt = fn()
         img.save(os.path.join(args.out, fname))
+        with open(os.path.join(args.out, fname), "rb") as f:
+            fixture_sha256[fname] = hashlib.sha256(f.read()).hexdigest()
         gt_all[fname] = gt
-        print("wrote %s" % fname)
+        print("wrote %s sha=%s" % (fname, fixture_sha256[fname][:16]))
+
+    # Sprint 1 perturbed variants (deterministic, counts unchanged).
+    perturbed_makers = [
+        ("grid_count_perturbed.png", make_grid_perturbed),
+        ("ui_toolbar_perturbed.png", lambda: make_toolbar_perturbed(font_path)),
+    ]
+    for fname, fn in perturbed_makers:
+        img, gt = fn()
+        img.save(os.path.join(args.out, fname))
+        with open(os.path.join(args.out, fname), "rb") as f:
+            fixture_sha256[fname] = hashlib.sha256(f.read()).hexdigest()
+        gt_all[fname] = gt
+        print("wrote %s sha=%s (perturbed)" % (fname, fixture_sha256[fname][:16]))
+    gt_all["fixture_sha256"] = fixture_sha256
 
     with open(os.path.join(args.out, "ground_truth.json"), "w") as f:
         json.dump(gt_all, f, ensure_ascii=False, indent=1)

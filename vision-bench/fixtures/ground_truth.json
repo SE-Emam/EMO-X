@@ -110,7 +110,11 @@
   ],
   "keywords": [
    "تسجيل",
-   "الدخول"
+   "الدخول",
+   "مرحبا",
+   "المتجر",
+   "زر",
+   "أحمر"
   ],
   "note": "ground truth stored in logical order; image rendered with engine=raqm"
  },
@@ -118,5 +122,63 @@
   "blue_circles": 7,
   "red_squares": 4,
   "total_shapes": 11
+ },
+ "grid_count_perturbed.png": {
+  "blue_circles": 7,
+  "red_squares": 4,
+  "total_shapes": 11,
+  "perturbation": "shift 5-10px per shape + 350px seeded speckle + slight color variation; counts unchanged"
+ },
+ "ui_toolbar_perturbed.png": {
+  "save_button": {
+   "box": [
+    75,
+    87,
+    225,
+    163
+   ],
+   "label": "blue SAVE button",
+   "color": "blue"
+  },
+  "settings_button": {
+   "box": [
+    250,
+    87,
+    425,
+    163
+   ],
+   "label": "gray Settings button",
+   "color": "gray"
+  },
+  "delete_button": {
+   "box": [
+    450,
+    87,
+    612,
+    163
+   ],
+   "label": "red Delete button",
+   "color": "red"
+  },
+  "toolbar_search": {
+   "box": [
+    638,
+    87,
+    925,
+    163
+   ],
+   "label": "toolbar search field",
+   "color": "white"
+  },
+  "toolbar_button_count": 3,
+  "perturbation": "buttons shifted +6px equivalent redraw + 250px seeded speckle; button count unchanged"
+ },
+ "fixture_sha256": {
+  "ui_login.png": "7234b3c9555730ea2b700363e5a07f53b7e11e1af138f82fb8e4ab3c501f166c",
+  "ui_toolbar.png": "eba9ce36f15c0eac3dd8ef2c70628730b11c8f43f89a32d89fa935f16fcb64f9",
+  "arabic_card.png": "e1584fe25340cf86a32c561ae4e62544922171db48fc221093da2630ad799acd",
+  "grid_count.png": "de8921feed9790a570a18f8c8e23edc8b80fbb5d7a65bfe951aabb2f11bedc26",
+  "grid_count_perturbed.png": "ceafabcba0149adcb61efcc8117214eb4a607ed0e13862ebd7b2771fd1f6efde",
+  "ui_toolbar_perturbed.png": "4bc87ede2c025ebb414e100803ea3465fac68d38176e37fcd858c8df932987e3"
  }
 }

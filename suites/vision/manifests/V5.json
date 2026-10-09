@@ -17,6 +17,7 @@
   "sandbox_only": true
  },
  "fixture": "ui_toolbar.png",
+ "fixture_sha": "eba9ce36f15c0eac3dd8ef2c70628730b11c8f43f89a32d89fa935f16fcb64f9",
  "generator": {
   "parameters": {},
   "seed": 25605,
@@ -28,8 +29,16 @@
   "allowed": false
  },
  "oracle": {
-  "check": "integer reply equals toolbar_button_count",
+  "check": "normalize_int reply equals toolbar_button_count; off_by_1 logged, no-int INVALID",
+  "tolerance": "count_tolerance off_by_1 logged",
   "type": "deterministic"
+ },
+ "perturbation": {
+  "description": "ui_toolbar_perturbed.png: redraw + 250px seeded speckle; button count unchanged (3)",
+  "fixture": "ui_toolbar_perturbed.png",
+  "fixture_sha": "4bc87ede2c025ebb414e100803ea3465fac68d38176e37fcd858c8df932987e3",
+  "kind": "perturbed",
+  "seed": 25605
  },
  "prompt_pack": "vision-v1",
  "scoring": {
@@ -41,7 +50,8 @@
   "generation_seconds": 120
  },
  "variants": [
-  "canonical"
+  "canonical",
+  "perturbed"
  ],
  "version": "1.0"
 }

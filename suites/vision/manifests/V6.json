@@ -18,6 +18,7 @@
   "sandbox_only": true
  },
  "fixture": "grid_count.png",
+ "fixture_sha": "de8921feed9790a570a18f8c8e23edc8b80fbb5d7a65bfe951aabb2f11bedc26",
  "generator": {
   "parameters": {},
   "seed": 25606,
@@ -29,7 +30,8 @@
   "allowed": false
  },
  "oracle": {
-  "check": "integer reply equals red_squares (squares only, not circles)",
+  "check": "normalize_int reply equals red_squares (squares only); off_by_1 logged, no-int INVALID",
+  "tolerance": "count_tolerance off_by_1 logged",
   "type": "deterministic"
  },
  "prompt_pack": "vision-v1",

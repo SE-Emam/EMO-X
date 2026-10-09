@@ -97,7 +97,23 @@ class VisionOracleTests(unittest.TestCase):
         self.assertEqual(rec["primary_status"], "FAIL")
 
     def test_arabic_keywords(self):
+        chat = _vision_chat_factory("تسجيل الدخول مرحبا بك في المتجر زر الدخول أحمر")
+        rec, _ = EXEC.run_family(
+            "V3", chat, run_id="R", model_id="m", trial_id=1, base_url="", force=True
+        )
+        self.assertEqual(rec["primary_status"], "PASS")
+
+    def test_arabic_partial_keywords_fail(self):
+        # Sprint 1: V3 now requires 6 keywords; 2/6 must FAIL.
         chat = _vision_chat_factory("تسجيل الدخول مرحبا")
+        rec, _ = EXEC.run_family(
+            "V3", chat, run_id="R", model_id="m", trial_id=1, base_url="", force=True
+        )
+        self.assertEqual(rec["primary_status"], "FAIL")
+
+    def test_arabic_normalized_match(self):
+        # Normalized alef (أحمر with hamza) matches despite variant form.
+        chat = _vision_chat_factory("تسجيل الدخول مرحبا بك في المتجر زر الدخول احمر")
         rec, _ = EXEC.run_family(
             "V3", chat, run_id="R", model_id="m", trial_id=1, base_url="", force=True
         )
@@ -117,6 +133,94 @@ class VisionOracleTests(unittest.TestCase):
             "V6", chat, run_id="R", model_id="m", trial_id=1, base_url="", force=True
         )
         self.assertEqual(rec["primary_status"], "FAIL")
+
+    def test_count_word_form_pass(self):
+        # Sprint 1: normalize_int accepts English words.
+        chat = _vision_chat_factory("seven")
+        rec, _ = EXEC.run_family(
+            "V4", chat, run_id="R", model_id="m", trial_id=1, base_url="", force=True
+        )
+        self.assertEqual(rec["primary_status"], "PASS")
+
+    def test_count_arabic_indic_pass(self):
+        # Sprint 1: Arabic-Indic digits accepted.
+        chat = _vision_chat_factory("٧")
+        rec, _ = EXEC.run_family(
+            "V4", chat, run_id="R", model_id="m", trial_id=1, base_url="", force=True
+        )
+        self.assertEqual(rec["primary_status"], "PASS")
+
+    def test_count_off_by_one_fingerprint(self):
+        # Sprint 1: 6 vs 7 logs WRONG_RESULT (off_by_1), still FAIL/0.0.
+        chat = _vision_chat_factory("6")
+        rec, _ = EXEC.run_family(
+            "V4", chat, run_id="R", model_id="m", trial_id=1, base_url="", force=True
+        )
+        self.assertEqual(rec["primary_status"], "FAIL")
+        self.assertEqual(rec.get("primary_failure"), "WRONG_RESULT (off_by_1)")
+
+    def test_count_invalid_no_int(self):
+        # Sprint 1: no parseable number -> INVALID (not FAIL).
+        chat = _vision_chat_factory("I cannot see clearly")
+        rec, _ = EXEC.run_family(
+            "V4", chat, run_id="R", model_id="m", trial_id=1, base_url="", force=True
+        )
+        self.assertEqual(rec["primary_status"], "INVALID")
+        self.assertEqual(rec.get("primary_failure"), "INVALID_NO_INT")
+
+    def test_exact_dispatch_map(self):
+        # Sprint 1: FAMILY_TEST_MAP covers all families deterministically.
+        self.assertEqual(set(EXEC.FAMILY_TEST_MAP.keys()), set(EXEC.FAMILY_IDS))
+        for fam, tname in EXEC.FAMILY_TEST_MAP.items():
+            self.assertTrue(tname.startswith(fam + "_"), (fam, tname))
+
+    def test_perturbed_variant_v4(self):
+        # Sprint 1: V4 perturbed routes to same count oracle (7).
+        chat = _vision_chat_factory("7")
+        rec, resp = EXEC.run_family(
+            "V4",
+            chat,
+            run_id="R",
+            model_id="m",
+            trial_id=1,
+            base_url="",
+            force=True,
+            variant="perturbed",
+        )
+        self.assertEqual(rec["primary_status"], "PASS")
+        self.assertEqual(rec["variant_class"], "perturbed")
+        self.assertIn("perturbed", rec["instance_id"])
+
+    def test_perturbed_variant_v5(self):
+        # Sprint 1: V5 perturbed routes to same count oracle (3).
+        chat = _vision_chat_factory("3")
+        rec, _ = EXEC.run_family(
+            "V5",
+            chat,
+            run_id="R",
+            model_id="m",
+            trial_id=1,
+            base_url="",
+            force=True,
+            variant="perturbed",
+        )
+        self.assertEqual(rec["primary_status"], "PASS")
+        self.assertEqual(rec["variant_class"], "perturbed")
+
+    def test_perturbed_rejected_for_grounding(self):
+        # Sprint 1: perturbed only valid for V4/V5.
+        chat = _vision_chat_factory("7")
+        with self.assertRaises(TypeError):
+            EXEC.run_family(
+                "V1",
+                chat,
+                run_id="R",
+                model_id="m",
+                trial_id=1,
+                base_url="",
+                force=True,
+                variant="perturbed",
+            )
 
     def test_hashes_stable(self):
         h1, h2 = EXEC.prompt_pack_sha256(), EXEC.prompt_pack_sha256()

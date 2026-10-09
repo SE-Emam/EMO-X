@@ -18,6 +18,7 @@
   "sandbox_only": true
  },
  "fixture": "ui_toolbar.png",
+ "fixture_sha": "eba9ce36f15c0eac3dd8ef2c70628730b11c8f43f89a32d89fa935f16fcb64f9",
  "generator": {
   "parameters": {},
   "seed": 25602,
@@ -29,7 +30,8 @@
   "allowed": false
  },
  "oracle": {
-  "check": "IoU >= 0.5 on save button box",
+  "check": "IoU >= 0.5 on save button box; iou_tier 0.5/0.7/0.9 logged",
+  "tolerance": "iou tiers 0.5/0.7/0.9 logged, pass at 0.5",
   "type": "deterministic"
  },
  "prompt_pack": "vision-v1",

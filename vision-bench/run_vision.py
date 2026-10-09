@@ -110,6 +110,25 @@ def vision_messages(prompt, image_path):
     ]
 
 
+# Sprint 1: canonical -> perturbed fixture routing (counting only).
+# Returns the perturbed image path for a canonical path, or None when the
+# family has no perturbed variant. Count GT is UNCHANGED under perturbation.
+PERTURBED_IMAGE_MAP = {
+    "grid_count.png": "grid_count_perturbed.png",
+    "ui_toolbar.png": "ui_toolbar_perturbed.png",
+}
+
+
+def perturbed_image_for(image_path):
+    """Map a canonical fixture path to its perturbed sibling (or None)."""
+    base = os.path.basename(image_path or "")
+    pert = PERTURBED_IMAGE_MAP.get(base)
+    if not pert:
+        return None
+    cand = os.path.join(os.path.dirname(image_path), pert)
+    return cand if os.path.isfile(cand) else os.path.join(FIX_DIR, pert)
+
+
 # ---------------- capability gating ----------------
 
 
@@ -239,14 +258,135 @@ def norm_ar(t):
     return re.sub(r"\s+", " ", (t or "").strip())
 
 
+# --- Sprint 1 normalization utils (mirrors shared/scoring.py, stdlib only) ---
+
+
+def normalize_arabic(text):
+    """Normalize Arabic for robust deterministic substring matching."""
+    import unicodedata
+
+    if text is None:
+        return ""
+    s = str(text)
+    s = re.sub("[ً-ْٰـ]", "", s)
+    s = re.sub("[آأإٱ]", "ا", s)
+    s = s.replace("ة", "ه").replace("ى", "ي")
+    s = unicodedata.normalize("NFC", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
+_EN_WORD_NUMS = {
+    "zero": 0,
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+    "eleven": 11,
+    "twelve": 12,
+    "thirteen": 13,
+    "fourteen": 14,
+    "fifteen": 15,
+    "sixteen": 16,
+    "seventeen": 17,
+    "eighteen": 18,
+    "nineteen": 19,
+    "twenty": 20,
+}
+
+_AR_WORD_NUMS = {
+    "صفر": 0,
+    "واحد": 1,
+    "واحده": 1,
+    "احد": 1,
+    "اثنان": 2,
+    "اثنين": 2,
+    "اثنتان": 2,
+    "اثنتين": 2,
+    "ثلاثه": 3,
+    "ثلاث": 3,
+    "اربعه": 4,
+    "اربع": 4,
+    "خمسه": 5,
+    "خمس": 5,
+    "سته": 6,
+    "ست": 6,
+    "سبعه": 7,
+    "سبع": 7,
+    "ثمانيه": 8,
+    "ثماني": 8,
+    "ثمان": 8,
+    "تسعه": 9,
+    "تسع": 9,
+    "عشره": 10,
+    "عشر": 10,
+    "عشرون": 20,
+    "عشرين": 20,
+}
+
+
+def _arabic_indic_to_ascii(s):
+    out = []
+    for ch in s:
+        o = ord(ch)
+        if 0x0660 <= o <= 0x0669:
+            out.append(str(o - 0x0660))
+        elif 0x06F0 <= o <= 0x06F9:
+            out.append(str(o - 0x06F0))
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def normalize_int(text):
+    """Parse count reply to int: digits, EN words, AR words. None if absent."""
+    if text is None:
+        return None
+    s = str(text)
+    s_ascii = _arabic_indic_to_ascii(s)
+    m = re.search(r"-?\d+", s_ascii)
+    if m:
+        try:
+            return int(m.group(0))
+        except ValueError:
+            pass
+    low = s_ascii.lower()
+    for word in sorted(_EN_WORD_NUMS, key=len, reverse=True):
+        if re.search(r"\b%s\b" % re.escape(word), low):
+            return _EN_WORD_NUMS[word]
+    norm = normalize_arabic(s_ascii)
+    for word in sorted(_AR_WORD_NUMS, key=len, reverse=True):
+        if word in norm:
+            return _AR_WORD_NUMS[word]
+    return None
+
+
+def iou_tier(iou_value):
+    """Return highest passed IoU tier in (0.9, 0.7, 0.5) or 0.0."""
+    try:
+        v = float(iou_value)
+    except (TypeError, ValueError):
+        return 0.0
+    for tier in (0.9, 0.7, 0.5):
+        if v >= tier:
+            return tier
+    return 0.0
+
+
 def judge_arabic(reply, keywords):
-    """Pass iff every ground-truth keyword appears (substring, order-free)."""
-    r = norm_ar(reply)
-    hits = [k for k in keywords if k in r]
+    """Pass iff every keyword appears (normalized substring, order-free)."""
+    r = normalize_arabic(reply)
+    hits = [k for k in keywords if normalize_arabic(k) in r]
     return {
         "pass": len(hits) == len(keywords),
         "hits": hits,
-        "missing": [k for k in keywords if k not in r],
+        "missing": [k for k in keywords if normalize_arabic(k) not in r],
     }
 
 
@@ -254,9 +394,15 @@ INT_RE = re.compile(r"-?\d+")
 
 
 def judge_count(reply, expected):
-    m = INT_RE.search(reply or "")
-    got = int(m.group(0)) if m else None
-    return {"pass": got == expected, "got": got, "expected": expected}
+    got = normalize_int(reply)
+    off_by_one = got is not None and isinstance(expected, int) and abs(got - expected) == 1
+    return {
+        "pass": got == expected,
+        "got": got,
+        "expected": expected,
+        "off_by_one": off_by_one,
+        "invalid": got is None,
+    }
 
 
 # ---------------- suite ----------------
@@ -315,16 +461,19 @@ def run_one(chat, kind, target, prompt, image):
     if kind == "ground":
         box = parse_box(text)
         if box is None:
-            rec.update({"pass": False, "iou": 0.0, "log": "no parseable {x,y,w,h} box"})
+            rec.update(
+                {"pass": False, "iou": 0.0, "iou_tier": 0.0, "log": "no parseable {x,y,w,h} box"}
+            )
         else:
             v = iou(box, target)
             rec.update(
                 {
                     "pass": bool(v >= IOU_PASS),
                     "iou": v,
+                    "iou_tier": iou_tier(v),
                     "pred": [round(x, 1) for x in box],
                     "expected": target,
-                    "log": "iou=%.3f" % v,
+                    "log": "iou=%.3f tier=%s" % (v, iou_tier(v)),
                 }
             )
     elif kind == "arabic":
@@ -332,7 +481,25 @@ def run_one(chat, kind, target, prompt, image):
         rec.update({"pass": j["pass"], "log": "hits=%s missing=%s" % (j["hits"], j["missing"])})
     else:
         j = judge_count(text, target)
-        rec.update({"pass": j["pass"], "log": "got=%s expected=%s" % (j["got"], j["expected"])})
+        if j.get("invalid"):
+            rec.update(
+                {
+                    "pass": False,
+                    "invalid": True,
+                    "off_by_one": False,
+                    "log": "got=%s expected=%s INVALID_NO_INT" % (j["got"], j["expected"]),
+                }
+            )
+        elif j.get("off_by_one"):
+            rec.update(
+                {
+                    "pass": False,
+                    "off_by_one": True,
+                    "log": "got=%s expected=%s WRONG_RESULT (off_by_1)" % (j["got"], j["expected"]),
+                }
+            )
+        else:
+            rec.update({"pass": j["pass"], "log": "got=%s expected=%s" % (j["got"], j["expected"])})
     rec["error"] = None
     return rec
 

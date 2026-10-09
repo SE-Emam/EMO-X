@@ -17,6 +17,7 @@
   "sandbox_only": true
  },
  "fixture": "grid_count.png",
+ "fixture_sha": "de8921feed9790a570a18f8c8e23edc8b80fbb5d7a65bfe951aabb2f11bedc26",
  "generator": {
   "parameters": {},
   "seed": 25604,
@@ -28,8 +29,16 @@
   "allowed": false
  },
  "oracle": {
-  "check": "integer reply equals blue_circles",
+  "check": "normalize_int reply equals blue_circles; off_by_1 logged as WRONG_RESULT (off_by_1), no-int as INVALID_NO_INT",
+  "tolerance": "count_tolerance off_by_1 logged",
   "type": "deterministic"
+ },
+ "perturbation": {
+  "description": "grid_count_perturbed.png: 5-10px shifts + 350px seeded speckle + slight color variation; count unchanged (7)",
+  "fixture": "grid_count_perturbed.png",
+  "fixture_sha": "ceafabcba0149adcb61efcc8117214eb4a607ed0e13862ebd7b2771fd1f6efde",
+  "kind": "perturbed",
+  "seed": 25604
  },
  "prompt_pack": "vision-v1",
  "scoring": {
@@ -41,7 +50,8 @@
   "generation_seconds": 120
  },
  "variants": [
-  "canonical"
+  "canonical",
+  "perturbed"
  ],
  "version": "1.0"
 }

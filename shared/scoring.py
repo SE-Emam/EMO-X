@@ -1786,3 +1786,131 @@ def recovery_precision(post_fault_actions: Any) -> Optional[float]:
         if is_linked:
             linked += 1
     return linked / total
+
+
+# ---------------------------------------------------------------------------
+# Sprint 1 (vision): deterministic text/count normalization utils, stdlib only.
+# Canonical source for vision oracles. vision-bench/run_vision.py mirrors
+# these locally to stay stdlib-only when run standalone.
+# ---------------------------------------------------------------------------
+
+
+def normalize_arabic(text):
+    """Normalize Arabic text for robust deterministic substring matching."""
+    import re
+    import unicodedata
+
+    if text is None:
+        return ""
+    s = str(text)
+    s = re.sub("[ً-ْٰـ]", "", s)
+    s = re.sub("[آأإٱ]", "ا", s)
+    s = s.replace("ة", "ه").replace("ى", "ي")
+    s = unicodedata.normalize("NFC", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
+_EN_WORD_NUMS = {
+    "zero": 0,
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+    "eleven": 11,
+    "twelve": 12,
+    "thirteen": 13,
+    "fourteen": 14,
+    "fifteen": 15,
+    "sixteen": 16,
+    "seventeen": 17,
+    "eighteen": 18,
+    "nineteen": 19,
+    "twenty": 20,
+}
+
+_AR_WORD_NUMS = {
+    "صفر": 0,
+    "واحد": 1,
+    "واحده": 1,
+    "احد": 1,
+    "اثنان": 2,
+    "اثنين": 2,
+    "اثنتان": 2,
+    "اثنتين": 2,
+    "ثلاثه": 3,
+    "ثلاث": 3,
+    "اربعه": 4,
+    "اربع": 4,
+    "خمسه": 5,
+    "خمس": 5,
+    "سته": 6,
+    "ست": 6,
+    "سبعه": 7,
+    "سبع": 7,
+    "ثمانيه": 8,
+    "ثماني": 8,
+    "ثمان": 8,
+    "تسعه": 9,
+    "تسع": 9,
+    "عشره": 10,
+    "عشر": 10,
+    "عشرون": 20,
+    "عشرين": 20,
+}
+
+
+def _arabic_indic_to_ascii(s):
+    out = []
+    for ch in s:
+        o = ord(ch)
+        if 0x0660 <= o <= 0x0669:
+            out.append(str(o - 0x0660))
+        elif 0x06F0 <= o <= 0x06F9:
+            out.append(str(o - 0x06F0))
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def normalize_int(text):
+    """Parse a count reply to int. Digits, EN words, AR words. None if absent."""
+    import re
+
+    if text is None:
+        return None
+    s = str(text)
+    s_ascii = _arabic_indic_to_ascii(s)
+    m = re.search(r"-?\d+", s_ascii)
+    if m:
+        try:
+            return int(m.group(0))
+        except ValueError:
+            pass
+    low = s_ascii.lower()
+    for word in sorted(_EN_WORD_NUMS, key=len, reverse=True):
+        if re.search(r"\b%s\b" % re.escape(word), low):
+            return _EN_WORD_NUMS[word]
+    norm = normalize_arabic(s_ascii)
+    for word in sorted(_AR_WORD_NUMS, key=len, reverse=True):
+        if word in norm:
+            return _AR_WORD_NUMS[word]
+    return None
+
+
+def iou_tier(iou_value):
+    """Return highest passed IoU tier in (0.9, 0.7, 0.5) or 0.0."""
+    try:
+        v = float(iou_value)
+    except (TypeError, ValueError):
+        return 0.0
+    for tier in (0.9, 0.7, 0.5):
+        if v >= tier:
+            return tier
+    return 0.0

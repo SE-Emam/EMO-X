@@ -18,6 +18,7 @@
   "sandbox_only": true
  },
  "fixture": "ui_login.png",
+ "fixture_sha": "7234b3c9555730ea2b700363e5a07f53b7e11e1af138f82fb8e4ab3c501f166c",
  "generator": {
   "parameters": {},
   "seed": 25601,
@@ -29,7 +30,8 @@
   "allowed": false
  },
  "oracle": {
-  "check": "IoU >= 0.5 on login button box",
+  "check": "IoU >= 0.5 on login button box; iou_tier 0.5/0.7/0.9 logged",
+  "tolerance": "iou tiers 0.5/0.7/0.9 logged, pass at 0.5",
   "type": "deterministic"
  },
  "prompt_pack": "vision-v1",

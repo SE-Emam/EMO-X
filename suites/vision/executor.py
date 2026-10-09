@@ -35,7 +35,22 @@ from manifests import sha256_bytes, sha256_manifest  # noqa: E402
 
 SUITE = "vision"
 FAMILY_IDS = ("V1", "V2", "V3", "V4", "V5", "V6")
-VARIANTS = ("canonical",)
+VARIANTS = ("canonical", "perturbed")
+
+# Sprint 1: exact deterministic family -> test-name map.
+# Replaces brittle startswith + sorted[0] dispatch (routing errors
+# impossible: unknown family raises KeyError, ambiguous raises RuntimeError).
+FAMILY_TEST_MAP = {
+    "V1": "V1_ground_login",
+    "V2": "V2_ground_save",
+    "V3": "V3_arabic_read",
+    "V4": "V4_count_circles",
+    "V5": "V5_count_toolbar_buttons",
+    "V6": "V6_count_red_squares",
+}
+
+# Families supporting the perturbed variant (Sprint 1: counting only).
+PERTURBED_FAMILIES = ("V4", "V5")
 
 
 def _load_vbench():
@@ -66,7 +81,14 @@ def prompt_pack_sha256():
     gt_path = os.path.join(VBENCH, "fixtures", "ground_truth.json")
     with open(gt_path, "rb") as f:
         parts.append(f.read().decode("utf-8"))
-    for png in ("ui_login.png", "ui_toolbar.png", "arabic_card.png", "grid_count.png"):
+    for png in (
+        "ui_login.png",
+        "ui_toolbar.png",
+        "arabic_card.png",
+        "grid_count.png",
+        "grid_count_perturbed.png",
+        "ui_toolbar_perturbed.png",
+    ):
         with open(os.path.join(VBENCH, "fixtures", png), "rb") as f:
             parts.append(hashlib.sha256(f.read()).hexdigest())
     blob = "\n".join(parts)
@@ -135,14 +157,18 @@ def run_family(
 ):
     """Run one vision family. Returns (attempt, response), schema-valid.
 
-    variant other than None/"canonical" raises TypeError (NA, DEN).
+    variant None defaults to "canonical". "perturbed" is supported only
+    for V4/V5 (Sprint 1 counting robustness); other families raise
+    TypeError on perturbed (NA, DEN). Unknown family raises KeyError.
     Gate failure -> VOID attempt (never FAIL/ERROR for the model).
     """
     v = variant or "canonical"
-    if v != "canonical":
-        raise TypeError("variant %r not supported for family %r" % (v, family))
     if family not in FAMILY_IDS:
         raise KeyError("unknown vision family: %r" % (family,))
+    if v not in VARIANTS:
+        raise TypeError("variant %r not supported for family %r" % (v, family))
+    if v == "perturbed" and family not in PERTURBED_FAMILIES:
+        raise TypeError("variant %r not supported for family %r" % (v, family))
     vb = _load_vbench()
     reason = _gate(chat, base_url, force)
     if reason is not None:
@@ -156,14 +182,18 @@ def run_family(
             "gate": reason,
         }
     gt = vb.load_ground_truth()
-    tests = {
-        name: (img, prompt, target)
-        for name, img, prompt, target in vb.build_tests(gt)
-        if name.startswith(family)
-    }
-    if not tests:
+    # Sprint 1: exact deterministic dispatch (no startswith/sorted[0]).
+    test_name = FAMILY_TEST_MAP[family]
+    tests = {name: (img, prompt, target) for name, img, prompt, target in vb.build_tests(gt)}
+    if test_name not in tests:
         raise KeyError("no vision test maps to family: %r" % (family,))
-    name, (img, prompt, (kind, target)) = sorted(tests.items())[0]
+    name = test_name
+    img, prompt, (kind, target) = tests[name]
+    if v == "perturbed":
+        pimg = vb.perturbed_image_for(img)
+        if pimg is not None:
+            img = pimg
+        # Count target is UNCHANGED under perturbation (same GT numbers).
     messages = vb.vision_messages(prompt, img)
     try:
         rec = vb.run_one(chat, kind, target, prompt, img)
@@ -183,14 +213,22 @@ def run_family(
             }
         raise
     passed = bool(rec.get("pass"))
-    status = "PASS" if passed else "FAIL"
+    # Sprint 1: INVALID (no parseable int) vs WRONG_RESULT (+off_by_1 tag).
+    if passed:
+        status, failure = "PASS", None
+    elif rec.get("invalid"):
+        status, failure = "INVALID", "INVALID_NO_INT"
+    elif rec.get("off_by_one"):
+        status, failure = "FAIL", "WRONG_RESULT (off_by_1)"
+    else:
+        status, failure = "FAIL", "WRONG_RESULT"
     attempt = validate_attempt(
         {
             "run_id": run_id,
             "model_id": model_id,
             "task_family_id": family,
-            "instance_id": "%s-canonical-%03d" % (family, index),
-            "variant_class": "canonical",
+            "instance_id": "%s-%s-%03d" % (family, v, index),
+            "variant_class": v,
             "trial_id": trial_id,
             "primary_status": status,
             "score": 1.0 if passed else 0.0,
@@ -198,7 +236,7 @@ def run_family(
             "eligible_for_pass_rate": True,
             "eligible_for_efficiency": True,
             "eligible_for_calibration": False,
-            "primary_failure": None if passed else "WRONG_RESULT",
+            "primary_failure": failure,
             "secondary_failure_tags": [],
             "seed": seed,
             "reasoning_mode": "provider_default",

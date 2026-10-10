@@ -27,6 +27,6 @@ results/raw/RUN-ID/
 
 ```bash
 python3 shared/run.py --self-test   # harness healthy?
-python3 tests/run_all.py            # 5/5 suites green?
+python3 tests/run_all.py            # 5/5 test groups green (harness/generators/scoring/golden/backends; 13 benchmark suites live in shared/runner.py:SUITE_DIRS)?
 # recompute any derived metric from results/raw/RUN-ID/ with shared/scoring.py
 ```

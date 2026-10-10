@@ -5,7 +5,27 @@ Versioning rules: `SPEC.md` §45 (PATCH = semantics-preserving fixes;
 MINOR = new optional suites/metrics; MAJOR = task/oracle/scoring/
 prompt/harness changes + mandatory re-baseline).
 
-## [Unreleased] — v2.0.0-rc1 (Adaptive Agent Evaluation)
+## [Unreleased]
+
+### Fixed
+- `validate_attempt` now enforces the SPEC 37 closed `reasoning_mode`
+  vocabulary (`enabled`/`disabled`/`provider_default`/`native`; absent and
+  `None` pass for backward-compat), matching `validate_run_manifest`;
+  `RUN_MANIFEST_OPTIONAL` marked documentary-only. Single source
+  `VALID_REASONING_MODES` (`shared/schemas.py`); `test_reasoning_mode.py`
+  no longer carries a local copy; 3 new `test_schemas.py` cases.
+- Docs/counts: `CHANGELOG` lists IS1–IS15; `README`/`INSTALL`/
+  `REPRODUCIBILITY`/`CHANGELOG`/PR template/`run_all` print say
+  `5 test groups green` (harness/generators/scoring/golden/backends) vs
+  `13 benchmark suites` in `SUITE_DIRS`; `PROFILE_SUITES=7` documented;
+  sandbox `make` vs `docker build` marked equivalent; `CHANGELOG` split to
+  `[Unreleased]` + `[v2.0.0-rc1] — 2026-10-10`.
+- Version lock: `test_packaging` now checks
+  pyproject == runner == emox == SKILL == `CITATION.cff`, and
+  `test_emo_cli_version` compares against `pyproject` (no hardcoded
+  version). Test totals 832 → 835 (harness 324 → 327).
+
+## [v2.0.0-rc1] — 2026-10-10 (Adaptive Agent Evaluation)
 
 ### Added
 - `pip install emo-x-eval` (Track 1): `pyproject.toml` + `src/emox/`
@@ -21,7 +41,9 @@ prompt/harness changes + mandatory re-baseline).
 - `suites/issues/` (IS1 csv-quoted-commas, IS2 config-deep-merge,
   IS3 backoff-cap, IS4 url-join-slash, IS5 budget-sum-check,
   IS6 json-required-keys, IS7 dedup-order, IS8 utc-offset-sign,
-  IS9 ttl-expiry): GitHub-issue-style repair tasks with a
+  IS9 ttl-expiry, IS10 bytes-unit-convert, IS11 slug-edge-cases,
+  IS12 chunk-remainder, IS13 flatten-one-level, IS14 env-int-cast,
+  IS15 semver-numeric-compare): GitHub-issue-style repair tasks with a
   SWE-bench-shaped oracle — visible fixture tests plus held-out hidden
   tests executed post-episode and deleted unseen; PASS needs fixture
   green AND hidden green AND FINAL stop. Registered in runner + CLI.
@@ -280,7 +302,7 @@ prompt/harness changes + mandatory re-baseline).
 - H3 dynamic equations (SPEC 9): `perturbed`/`novel` variants generated
   from `H3.seed` (numbers/names/representation/wording/context) with the
   same oracle kind (unique modular-equation solution); H3 manifest v1.1.
-- `RESULT: PASS (all 5 suites green)` gate via `tests/run_all.py`.
+- `RESULT: PASS (all 5 test groups green)` gate via `tests/run_all.py` (harness/generators/scoring/golden/backends; 13 benchmark suites live in shared/runner.py:SUITE_DIRS).
 - Novelty Robustness (`scoring.novelty_robustness`): harmonic C/P/N.
 - Human Time Horizon Lite: `estimated_human_minutes` in 55+ manifests,
   auto-attached by the runner; stub-backend capability fallback.

@@ -85,6 +85,9 @@ SUITE_MODALITIES = {
 DEFAULT_SUITE_MODALITY = "text"
 
 #: Full capability profile (SPEC 42 --suite profile).
+#: 7-suite subset of the 13 in SUITE_DIRS: code25-hidden stays hidden-validation,
+#: security needs scope approval, vision needs a multimodal endpoint,
+#: realworld/issues/agent-loop are measured separately (cost/scope/trajectory).
 PROFILE_SUITES = (
     "code25",
     "dynamic-code",

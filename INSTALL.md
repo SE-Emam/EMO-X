@@ -52,7 +52,7 @@ Keys/endpoints are supplied per run (see §4).
 ```bash
 make sandbox-image                   # required once per checkout/image version
 python3 shared/run.py --self-test   # harness check, must end: RESULT: PASS
-python3 tests/run_all.py            # full suite, must end: RESULT: PASS (all 5 suites green)
+python3 tests/run_all.py            # unit-test groups, must end: RESULT: PASS (all 5 test groups green: harness/generators/scoring/golden/backends; 13 benchmark suites live in shared/runner.py:SUITE_DIRS)
 ```
 
 If either fails, stop — a broken harness invalidates every later number
@@ -89,7 +89,7 @@ python3 shared/run.py --backend openai-generic --suite agent-loop --max-steps 15
 python3 shared/run.py --suite dynamic-code --instances 20 --seed 12345
 python3 shared/run.py --suite recovery --fault-rate 0.25
 python3 shared/run.py --suite gauntlet --model MODEL-ID
-python3 shared/run.py --suite profile --trials 3        # full capability profile
+python3 shared/run.py --suite profile --trials 3        # 7-suite capability profile (SPEC 42: code25/dynamic-code/recovery/robustness/calibration/long-horizon/gauntlet; full 13 via --suite all)
 
 # Benchmark health snapshot over existing raw runs:
 python3 shared/run.py --health

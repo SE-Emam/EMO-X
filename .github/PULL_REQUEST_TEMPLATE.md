@@ -6,7 +6,7 @@
 
 ## Test evidence (required)
 
-- [ ] `python3 tests/run_all.py` → `RESULT: PASS (all 5 suites green)`
+- [ ] `python3 tests/run_all.py` → `RESULT: PASS (all 5 test groups green: harness/generators/scoring/golden/backends)`
 - [ ] `python3 shared/run.py --self-test` → `RESULT: PASS`
 - [ ] `CHANGELOG.md` updated (Unreleased section; SPEC §45 versioning rules)
 - [ ] No new top-level dependency (core stays stdlib-only; any exception has a recorded decision)

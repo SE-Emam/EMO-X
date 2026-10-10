@@ -8,7 +8,7 @@
 > HumanEval is dead. EMO-X tests what agents **DO**, not what they **SAY**.
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/SE-Emam/EMO-X/blob/main/notebooks/emo_x_quickstart.ipynb) [![GitHub stars](https://img.shields.io/github/stars/SE-Emam/EMO-X)](https://github.com/SE-Emam/EMO-X/stargazers) [![pip install](https://img.shields.io/badge/pip_install-emo--x--eval-blue)](https://pypi.org/project/emo-x-eval/) [![Dataset on HF](https://img.shields.io/badge/🤗_Dataset-EMO--X--Core-yellow)](https://huggingface.co/datasets/SE-Emam/EMO-X-Core) [![PyPI](https://img.shields.io/pypi/v/emo-x-eval)](https://pypi.org/project/emo-x-eval/) [![License](https://img.shields.io/badge/License-Apache_2.0-blue)](LICENSE)
-[![Suites](https://img.shields.io/badge/suites-13-blue)](suites/) [![Tests](https://img.shields.io/badge/tests-832-green)](tests/run_all.py) [![Ollama](https://img.shields.io/badge/Ollama-supported-orange)](INSTALL.md)
+[![Suites](https://img.shields.io/badge/suites-13-blue)](suites/) [![Tests](https://img.shields.io/badge/tests-835-green)](tests/run_all.py) [![Ollama](https://img.shields.io/badge/Ollama-supported-orange)](INSTALL.md)
 
 ![EMO-X self-test demo](src/demo.gif)
 
@@ -21,8 +21,10 @@ Real runs, real numbers (DC1 subset, 2026-09-28 UTC):
 ## Quickstart (60 seconds)
 
 > Requires Docker Desktop **running**. First time only, build the sandbox
-> image once: `make sandbox-image` (provides `emox-sandbox:latest` for
+> image once: `make sandbox-image` on a clone (provides `emox-sandbox:latest` for
 > all code execution; without it runs fail closed, never silently).
+> `pip` installs have no Makefile — the `docker build ... -t emox-sandbox:latest`
+> command under Option 2 below is the exact equivalent (same tag, same image).
 
 **Option 1 — Try in Colab (no install):**
 
@@ -47,7 +49,7 @@ git clone https://github.com/SE-Emam/EMO-X.git emo-x
 cd emo-x
 make sandbox-image                   # required once per checkout/image version
 python3 shared/run.py --self-test   # harness check, must end: RESULT: PASS
-python3 tests/run_all.py            # full suite, must end: RESULT: PASS (all 5 suites green)
+python3 tests/run_all.py            # unit-test groups, must end: RESULT: PASS (all 5 test groups green: harness/generators/scoring/golden/backends; 13 benchmark suites live in shared/runner.py:SUITE_DIRS)
 ```
 
 Expected tail (live `main`, `v2.0.0-rc1`):
@@ -84,7 +86,7 @@ Docker missing = fail-closed (`SandboxRuntimeUnavailable`), never silent.
 | vision | UI grounding, Arabic reading, counting | multimodal grounding |
 | issues | IS1–IS15 repair + held-out hidden tests | real-issue repair |
 | realworld | mini-repo fixtures + trajectories | ecological validity |
-| recovery / robustness / calibration / long-horizon / gauntlet | faults, drift, abstention, chains, compounds | deployment behavior |
+| recovery / robustness / calibration / long-horizon / gauntlet | faults, drift, abstention, chains, compounds | deployment behavior (`--suite profile` runs these 5 + code25/dynamic-code = 7-suite SPEC 42 profile) |
 | adapters | opencode / pi / hermes drivers | harness+model honesty |
 
 ## Features
@@ -179,7 +181,7 @@ print(render_comparison(comp))"
 |---|---|---|
 | Test suites | 13 executable (+1 PILOT `computer-use`) | `shared/runner.py:SUITE_DIRS` (badge source); `suites/*/` has 14 dirs incl. PILOT |
 | Task manifests | 98 | `suites/*/manifests/*.json` |
-|  Harness + unit tests | 832 (harness 324, generators 82, scoring 210, golden 30, backends 186) | `tests/run_all.py --count`, all green  |
+|  Harness + unit tests | 835 (harness 327, generators 82, scoring 210, golden 30, backends 186) | `tests/run_all.py --count`, all green  |
 | Self-test checks | 14 | `--self-test`, fail-closed |
 | Issue-style families | 15 (IS1–IS15) | vs SWE-bench Lite (300) = **5.0%** |
 

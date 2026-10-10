@@ -23,8 +23,9 @@ for _p in (ROOT, SHARED):
         sys.path.insert(0, _p)
 
 from backends import reasoning_mode_for  # noqa: E402
+from schemas import VALID_REASONING_MODES  # noqa: E402 (Y-1 closed vocab, single source)
 
-MODES = ("enabled", "disabled", "provider_default", "native")
+MODES = VALID_REASONING_MODES
 
 
 def _load(name, path):

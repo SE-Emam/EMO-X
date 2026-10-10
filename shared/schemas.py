@@ -41,6 +41,8 @@ RUN_MANIFEST_REQUIRED = (
     "trials",
 )
 RUN_MANIFEST_OPTIONAL = (
+    # Documentary only, not enforced: unknown optional fields pass through
+    # (backward-compat). Only reasoning_mode among these is validated.
     "model_sha256",
     "temperature",
     "top_p",
@@ -116,6 +118,12 @@ def validate_attempt(record):
             raise _err("%s must be a non-empty string" % field)
     out = dict(record)
     out["score"] = float(score)
+    # SPEC 37 (Y-1): closed reasoning-mode vocabulary when present.
+    # Producers (Y-5: backends.reasoning_mode_for) must emit one of these;
+    # absent stays absent (older records without the field remain valid).
+    if out.get("reasoning_mode") is not None:
+        if out.get("reasoning_mode") not in VALID_REASONING_MODES:
+            raise _err("bad reasoning_mode: %r" % (out.get("reasoning_mode"),))
     for flag in ELIGIBILITY_FLAGS:
         if flag in out and not isinstance(out[flag], bool):
             raise _err("%s must be bool" % flag)
@@ -142,7 +150,7 @@ def validate_run_manifest(record):
         raise _err("trials must be a positive int")
     if not isinstance(record["seed"], int):
         raise _err("seed must be an int")
-    if "reasoning_mode" in record:
+    if record.get("reasoning_mode") is not None:
         if record["reasoning_mode"] not in VALID_REASONING_MODES:
             raise _err("bad reasoning_mode: %r" % (record["reasoning_mode"],))
     if "backend_capabilities" in record:  # SPEC 36: structural check only

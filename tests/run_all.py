@@ -148,7 +148,7 @@ def main(argv=None):
     if failed:
         print("RESULT: FAIL (%s)" % ", ".join(failed))
         return 1
-    print("RESULT: PASS (all %d suites green)" % len(results))
+    print("RESULT: PASS (all %d test groups green)" % len(results))
     return 0
 
 

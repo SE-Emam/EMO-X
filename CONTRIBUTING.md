@@ -46,7 +46,9 @@ See `docs/adding-a-suite.md`: Task DSL manifest + canonical instances
 
 Bigger threads are labeled `help wanted` (multi-repo AgentLoop,
 hidden-suite rotation, contamination canary expansion). Ask in
-Discussions before large PRs.
+Discussions before large PRs (categories: Q&A, Ideas, Show and tell,
+Baselines under `results/community/`, Troubleshooting — enable via
+Settings → Features → Discussions).
 
 ## Local-only files (never push these)
 

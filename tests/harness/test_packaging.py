@@ -26,7 +26,7 @@ class PackagingTests(unittest.TestCase):
         assert "emo" in data["project"]["scripts"]
 
     def test_version_lock(self):
-        """One version everywhere: pyproject == runner == MCP == skill."""
+        """One version everywhere: pyproject == runner == MCP == skill == CITATION."""
         with open(os.path.join(_ROOT, "pyproject.toml"), "rb") as f:
             pkg_version = tomllib.load(f)["project"]["version"]
         import runner as _runner
@@ -42,6 +42,11 @@ class PackagingTests(unittest.TestCase):
         m = re.search(r"^version:\s*(\S+)", skill, re.M)
         assert m is not None
         assert m.group(1) == pkg_version
+        with open(os.path.join(_ROOT, "CITATION.cff"), encoding="utf-8") as cff_file:
+            cff = cff_file.read()
+        cm = re.search(r"^version:\s*(\S+)", cff, re.M)
+        assert cm is not None
+        assert cm.group(1) == pkg_version
 
     def test_emox_resolves_live_tree(self):
         import emox
@@ -70,11 +75,13 @@ class PackagingTests(unittest.TestCase):
 
         from emox import cli
 
+        with open(os.path.join(_ROOT, "pyproject.toml"), "rb") as f:
+            pkg_version = tomllib.load(f)["project"]["version"]
         buf = io.StringIO()
         with redirect_stdout(buf):
             rc = cli.main(["--version"])
         assert rc == 0
-        assert "2.0.0-rc1" in buf.getvalue()
+        assert pkg_version in buf.getvalue()
 
 
 if __name__ == "__main__":

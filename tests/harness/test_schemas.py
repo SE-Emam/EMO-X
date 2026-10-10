@@ -70,6 +70,25 @@ class TestAttempt(unittest.TestCase):
         out = schemas.validate_attempt(good_attempt())
         self.assertEqual(out["score"], 1.0)
 
+    def test_reasoning_mode_valid(self):
+        for mode in schemas.VALID_REASONING_MODES:
+            rec = good_attempt()
+            rec["reasoning_mode"] = mode
+            out = schemas.validate_attempt(rec)
+            self.assertEqual(out["reasoning_mode"], mode)
+
+    def test_reasoning_mode_absent_ok(self):
+        # Backward-compat: older records without the field remain valid.
+        out = schemas.validate_attempt(good_attempt())
+        self.assertNotIn("reasoning_mode", out)
+
+    def test_reasoning_mode_bad(self):
+        for bad in ("bogus", "", "ENABLED", 0, 123):
+            rec = good_attempt()
+            rec["reasoning_mode"] = bad
+            with self.assertRaises(schemas.SchemaError, msg=repr(bad)):
+                schemas.validate_attempt(rec)
+
     def test_missing_trial_id(self):
         rec = good_attempt()
         del rec["trial_id"]

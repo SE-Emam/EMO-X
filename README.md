@@ -218,7 +218,7 @@ No **official ranked baseline** is published yet. Historical partial results exi
 
 Start with [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and good-first issues, or [`docs/development-readiness.md`](docs/development-readiness.md) for the ordered engineering-readiness plan. Keep pull requests focused and include targeted tests plus CI evidence.
 
-Use these labels precisely: **IMPLEMENTED** means the code path exists; **UNIT-VERIFIED** means named deterministic tests pass; **LIVE-EVALUATED** means a real model/provider run has traceable evidence; **PENDING** means required work or evidence is missing. Unit tests and stub demos do not establish real-model accuracy.
+Use these labels precisely: **IMPLEMENTED** means the code path exists; **UNIT-VERIFIED** means named deterministic tests pass; **LIVE-EVALUATED** means a real model/provider run has traceable evidence; **PENDING** means required work or evidence is missing. Unit tests and stub demos do not establish real-model accuracy. See [the S1–S5 security oracle audit](docs/security-oracle-audit.md) for current deterministic coverage and known limitations.
 
 ## Methodology in one paragraph
 

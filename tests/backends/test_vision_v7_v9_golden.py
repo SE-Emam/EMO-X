@@ -64,16 +64,12 @@ class V7DiffGoldenTests(unittest.TestCase):
         self.assertTrue(j["pass"])
 
     def test_negative_target_keywords_with_explicit_negation(self):
-        j = VB.judge_diff(
-            "The middle square did not turn red", ["middle", "square", "red"]
-        )
+        j = VB.judge_diff("The middle square did not turn red", ["middle", "square", "red"])
         self.assertFalse(j["pass"])
         self.assertTrue(j["negated"])
 
     def test_negative_target_keywords_with_contradictory_color(self):
-        j = VB.judge_diff(
-            "The middle square turned blue, not red", ["middle", "square", "red"]
-        )
+        j = VB.judge_diff("The middle square turned blue, not red", ["middle", "square", "red"])
         self.assertFalse(j["pass"])
         self.assertTrue(j["competing_color"])
 

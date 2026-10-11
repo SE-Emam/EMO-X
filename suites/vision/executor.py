@@ -184,6 +184,28 @@ def _void_attempt(family, run_id, model_id, trial_id, reason):
     )
 
 
+def _error_attempt(family, run_id, model_id, trial_id, variant, reason):
+    return validate_attempt(
+        {
+            "run_id": run_id,
+            "model_id": model_id,
+            "task_family_id": family,
+            "instance_id": "%s-%s-001" % (family, variant),
+            "variant_class": variant,
+            "trial_id": trial_id,
+            "primary_status": "ERROR",
+            "score": 0.0,
+            "eligible_for_task_score": False,
+            "eligible_for_pass_rate": False,
+            "eligible_for_efficiency": False,
+            "eligible_for_calibration": False,
+            "primary_failure": "BACKEND_ERROR",
+            "secondary_failure_tags": [],
+            "error": "vision-execution: %s" % reason[:250],
+        }
+    )
+
+
 def run_family(
     family,
     chat,
@@ -297,6 +319,29 @@ def run_family(
                     "gate": err,
                 }
             raise
+    if rec.get("error"):
+        err = str(rec.get("error"))[:300]
+        if vb.NO_IMAGE_RE.search(err) and not force:
+            attempt = _void_attempt(
+                family, run_id, model_id, trial_id, "endpoint rejects image content: %s" % err
+            )
+            return attempt, {
+                "instance_id": attempt["instance_id"],
+                "trial_id": trial_id,
+                "reply": str(rec.get("sample", ""))[:600],
+                "usage": rec.get("usage") if isinstance(rec.get("usage"), dict) else {},
+                "void": True,
+                "gate": err,
+            }
+        attempt = _error_attempt(family, run_id, model_id, trial_id, v, err)
+        return attempt, {
+            "instance_id": attempt["instance_id"],
+            "trial_id": trial_id,
+            "reply": str(rec.get("sample", ""))[:600],
+            "usage": rec.get("usage") if isinstance(rec.get("usage"), dict) else {},
+            "error": err,
+        }
+
     passed = bool(rec.get("pass"))
     # Sprint 1: INVALID (no parseable int) vs WRONG_RESULT (+off_by_1 tag).
     # Sprint 3: partial_curve=True maps tier/off-by-one scores in

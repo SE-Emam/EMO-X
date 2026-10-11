@@ -87,7 +87,7 @@ OPSEC_DIAGNOSIS_RE = re.compile(
     r".{0,80}\b(?:api[_ -]?key|credential|token|secret|private key)\b)|"
     r"(?:\b(?:api[_ -]?key|credential|token|secret|private key)\b"
     r".{0,80}\b(?:exposed|leaked|hardcoded|committed|checked[- ]in|plaintext)\b)|"
-    r"\b(?:\.env|environment file|config file)\b.{0,80}"
+    r"(?:\.env\b|\benvironment file\b|\bconfig file\b).{0,80}"
     r"\b(?:api[_ -]?key|credential|token|secret|private key)\b",
     re.I | re.S,
 )

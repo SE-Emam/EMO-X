@@ -118,5 +118,6 @@ class SecurityJudgeRegressionTests(unittest.TestCase):
         self.assertTrue(details["diagnosis"])
         self.assertFalse(details["echoed_full_key"])
 
+
 if __name__ == "__main__":
     unittest.main()

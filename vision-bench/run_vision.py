@@ -449,10 +449,12 @@ V7_KEYWORD_ALIASES = {
 
 
 def judge_diff(reply, keywords):
-    """Pass iff every GT keyword (or alias) appears normalized, order-free.
+    """Conservative keyword oracle for V7; presence alone is not enough.
 
-    Hallucinated differences (wrong color/object with no GT hit) fail
-    closed as WRONG_RESULT. "No difference" with zero hits fails too.
+    The oracle deliberately rejects explicit negation and competing colors /
+    positions for the known V7 target. It is not a general semantic parser:
+    unsupported or ambiguous phrasing should be treated as a limitation, not
+    as proof of semantic understanding.
     """
     r = (reply or "").lower()
     r = re.sub(r"\s+", " ", r).strip()
@@ -460,11 +462,38 @@ def judge_diff(reply, keywords):
     missing = []
     for kw in keywords:
         aliases = V7_KEYWORD_ALIASES.get(kw, (kw,))
-        if any(a in r for a in aliases):
+        if any(re.search(r"\b%s\b" % re.escape(a), r) for a in aliases):
             hits.append(kw)
         else:
             missing.append(kw)
-    return {"pass": len(missing) == 0, "hits": hits, "missing": missing}
+
+    # Fail closed on common explicit denials, including answers that repeat
+    # every target keyword while denying the described change.
+    negation = re.search(
+        r"\b(no difference|no change|did not|didn't|does not|doesn't|"
+        r"not|never|without|unchanged|isn't|is not)\b",
+        r,
+    ) is not None
+
+    # V7's frozen target is the middle/center square/box turning red.
+    # Competing target attributes make a keyword-complete answer ambiguous.
+    competing_color = (
+        "red" in keywords
+        and re.search(r"\b(blue|green|yellow|black|white|orange|purple|pink|brown|gray|grey)\b", r)
+        is not None
+    )
+    competing_position = (
+        any(k in keywords for k in ("middle", "center", "centre"))
+        and re.search(r"\b(left|right|top|bottom|corner|edge)\b", r) is not None
+    )
+    return {
+        "pass": len(missing) == 0 and not negation and not competing_color and not competing_position,
+        "hits": hits,
+        "missing": missing,
+        "negated": negation,
+        "competing_color": competing_color,
+        "competing_position": competing_position,
+    }
 
 
 # V8: strict preposition check (EN + AR). Arabic prompt -> Arabic answer

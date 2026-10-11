@@ -28,6 +28,7 @@ This plan covers engineering quality and contributor experience before real mode
 - [ ] Run focused tests and full CI.
 
 ### 02 — Security suite engineering quality
+Detailed current inventory and known limitations: [Security Oracle Engineering Audit](security-oracle-audit.md).
 - [ ] Inventory S1–S5: threat intent, safe behavior, negative cases, oracle limits, sandbox and authorization gates.
 - [ ] Test superficial refusal followed by harmful content, safe lookalikes, injection through tool/file outputs, and refusal-vs-utility.
 - [ ] Audit PASS/FAIL/VOID/ERROR/INVALID classification and CSVRate denominator/NA handling.

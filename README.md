@@ -1,11 +1,15 @@
 # EMO-X
 
+**Execution · Measurement · Observability**
+
+EMO-X is an open-source, execution-based evaluation harness for AI models and agents. It records reproducible task outcomes, failure causes, recovery behavior, and measurement uncertainty. It complements other benchmarks; it does not replace real-world evaluation.
+
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="src/emo-x-banner-light.png" />
   <img alt="EMO-X banner — Execution · Measurement · Observability" src="src/emo-x-banner.png" />
 </picture>
 
-> HumanEval is dead. EMO-X tests what agents **DO**, not what they **SAY**.
+> Evaluate what an agent accomplishes, how it fails, and whether the result is reproducible.
 
 [![CI](https://github.com/SE-Emam/EMO-X/actions/workflows/ci.yml/badge.svg)](https://github.com/SE-Emam/EMO-X/actions/workflows/ci.yml) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/SE-Emam/EMO-X/blob/main/notebooks/emo_x_quickstart.ipynb) [![GitHub stars](https://img.shields.io/github/stars/SE-Emam/EMO-X)](https://github.com/SE-Emam/EMO-X/stargazers) [![pip install](https://img.shields.io/badge/pip_install-emo--x--eval-blue)](https://pypi.org/project/emo-x-eval/) [![Dataset on HF](https://img.shields.io/badge/🤗_Dataset-EMO--X--Core-yellow)](https://huggingface.co/datasets/SE-Emam/EMO-X-Core) [![PyPI](https://img.shields.io/pypi/v/emo-x-eval)](https://pypi.org/project/emo-x-eval/) [![License](https://img.shields.io/badge/License-Apache_2.0-blue)](LICENSE)
 [![Suites](https://img.shields.io/badge/suites-13-blue)](suites/) [![Tests](https://img.shields.io/badge/tests-835-green)](tests/run_all.py) [![Ollama](https://img.shields.io/badge/Ollama-supported-orange)](INSTALL.md)
@@ -18,7 +22,7 @@ Real runs, real numbers (DC1 subset, 2026-09-28 UTC):
 
 ![muse-spark-1.3 across two providers](src/demo-run.gif)
 
-## Quickstart (60 seconds)
+## Quickstart
 
 > Requires Docker Desktop **running**. First time only, build the sandbox
 > image once: `make sandbox-image` on a clone (provides `emox-sandbox:latest` for
@@ -30,7 +34,7 @@ Real runs, real numbers (DC1 subset, 2026-09-28 UTC):
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/SE-Emam/EMO-X/blob/main/notebooks/emo_x_quickstart.ipynb)
 
-Runs the frozen `code25` stub suite + chart in ~3 minutes, free, no API key.
+**Demo mode only:** runs the frozen `code25` stub suite and chart in about 3 minutes, free, without an API key. This demonstrates the workflow; it is not a live model evaluation and must not be interpreted as a model score.
 
 **Option 2 — pip (benchmark users):**
 
@@ -120,12 +124,9 @@ EMOX_ALLOW_LOCAL=1 python3 shared/run.py --backend openai-generic \
 Any OpenAI-compatible endpoint works the same way (`--base-url` +
 `--model` + key). No install path: open the Colab badge above.
 
-## Open leaderboard — no official baseline yet
+## Community results — official baseline pending
 
-> **Be the first to submit one.** Run any model with 3 trials on the
-> frozen suites, keep the sealed raw bundle, and open a PR adding it
-> under `results/community/` — the board ranks only COMPARABLE runs
-> (identical prompt/harness/manifest hashes), so no one can game it.
+There is not yet an eligible official ranked baseline. The repository contains historical partial Code25 bundles for the earlier 25-family set; those results do **not** cover all 36 current Code25 families and must not be presented as results for the current suite. New submissions must follow [`results/community/README.md`](results/community/README.md). Only runs with matching prompt, harness, and manifest hashes are comparable.
 
 ## Full quickstart
 
@@ -196,9 +197,7 @@ Comparison with SWE-bench (verified 2026 from swebench.com):
 | Cost | Docker-heavy | stdlib only, local, minutes |
 | Scope | Code repair (+ multilingual/multimodal) | Repair + security + calibration + recovery + vision + long-horizon |
 
-Honest reading: SWE-bench leads on ecological validity and adoption;
-EMO-X leads on measurement science and cost. They answer different
-questions — use both.
+Interpretation: SWE-bench has a larger real-issue task set and established adoption. EMO-X emphasizes multi-dimensional execution traces, deterministic checks, and uncertainty reporting. The suites measure different things; neither table establishes overall superiority. Use them as complementary evidence.
 
 ## Roadmap
 
@@ -210,8 +209,13 @@ questions — use both.
 | v2.0 | First sealed 3-trial OFFICIAL baseline (R3) | Pending baseline |
 | Next | 15→30 issue families; vision out of PILOT; first 3-trial public baseline with CI | Planned; see `SPEC.md` and `CONTRIBUTING.md` for public methodology and contribution guidance |
 
-No model scores are published in this repo: any number without a sealed
-`results/raw/RUN-ID/` bundle is inadmissible here.
+No **official ranked baseline** is published yet. Historical partial results exist under `results/community/`; they are not eligible for an official ranking unless they pass the current comparability and validity gates. Any new claim must link to a sealed, schema-valid bundle and state its suite/harness scope.
+
+## Contribution and status vocabulary
+
+Start with [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and good-first issues, or [`docs/development-readiness.md`](docs/development-readiness.md) for the ordered engineering-readiness plan. Keep pull requests focused and include targeted tests plus CI evidence.
+
+Use these labels precisely: **IMPLEMENTED** means the code path exists; **UNIT-VERIFIED** means named deterministic tests pass; **LIVE-EVALUATED** means a real model/provider run has traceable evidence; **PENDING** means required work or evidence is missing. Unit tests and stub demos do not establish real-model accuracy.
 
 ## Methodology in one paragraph
 

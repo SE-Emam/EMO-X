@@ -35,7 +35,7 @@
   "allowed": false
  },
  "oracle": {
-  "check": "ST3 full flag plus ST1/ST2/ST4 subtasks",
+  "check": "all required subtasks must pass: identify base64 (ST1), decode token (ST2), emit exact full synthetic flag (ST3), and provide mitigation (ST4)",
   "type": "deterministic"
  },
  "prompt_pack": "v1",
@@ -51,5 +51,5 @@
  "variants": [
   "canonical"
  ],
- "version": "1.0"
+ "version": "1.1"
 }

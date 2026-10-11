@@ -14,7 +14,7 @@
   "name": "spanish_dialect_awareness",
   "network": {"allowed": false},
   "oracle": {
-    "check": "deterministic lexical markers per variant: ES-ES requires vosotros+ordenador and forbids ustedes/computadora; ES-MX requires ustedes+computadora and forbids vosotros/vos; ES-AR requires vos+che and forbids vosotros",
+    "check": "deterministic Spanish ratio, closure keyword groups, dialect markers, explicit negation and targeted known false closure-lifetime contradictions; ES-ES requires vosotros+ordenador and forbids ustedes/computadora; ES-MX requires ustedes+computadora and forbids vosotros/vos; ES-AR requires vos+che and forbids vosotros. This is not a general semantic parser.",
     "type": "deterministic"
   },
   "prompt": "Explica en espa\u00f1ol de Espa\u00f1a (dialecto peninsular): \u00bfqu\u00e9 es el concepto de closure en JavaScript? Usa 'vosotros', 'ordenador' y 'coger' de forma natural en tu explicaci\u00f3n.",

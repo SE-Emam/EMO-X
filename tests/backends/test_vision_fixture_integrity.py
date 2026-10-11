@@ -77,7 +77,7 @@ class VisionFixtureIntegrityTests(unittest.TestCase):
         self.assertEqual(gt["spatial.png"]["relation"], "above")
         self.assertEqual(gt["chart.png"]["bars"], {"blue": 4, "red": 7, "green": 3})
         self.assertEqual(
-            gt["table"]["rows"],
+            gt["table_orders.png"]["rows"],
             [
                 {"item": "A", "qty": 2, "amount": 20},
                 {"item": "B", "qty": 1, "amount": 35},

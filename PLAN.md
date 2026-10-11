@@ -1,8 +1,7 @@
 # EMO-X — Master Plan
 
 > **Rename note:** project renamed `EMO-Benchmark-Skills` → **EMO-X (Adaptive Agent Evaluation)**.
-> This file is the v1 archive. Active development plan: `PLAN-X.md`.
-> Agent execution plan: `AGENTS-X.md`.
+> This file is a historical v1 archive. Current methodology and contribution rules are maintained in `SPEC.md`, `DENOMINATORS.md`, and `CONTRIBUTING.md`.
 
 > Version 1.0 — 25/09/2026. Reusable agent-benchmark skill pack for any agent, any time,
 > against models on Kaggle / Colab / commercial LLM providers. Arabic-first docs, English code.

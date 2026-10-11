@@ -78,7 +78,7 @@
   "allowed": false
  },
  "oracle": {
-  "check": "unique solution of a*v=target mod modulus (canonical: remainder 4)",
+  "check": "final labeled numeric remainder must be 4; an earlier mention of remainder 4 does not override a different final answer",
   "type": "deterministic"
  },
  "prompt": "What is the remainder when 3^100 is divided by 7? Be concise and state the final remainder clearly.",
@@ -98,5 +98,5 @@
   "perturbed",
   "novel"
  ],
- "version": "1.1"
+ "version": "1.2"
 }

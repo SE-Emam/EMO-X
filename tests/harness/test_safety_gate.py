@@ -230,7 +230,7 @@ class TestExecutorGate(unittest.TestCase):
         self.assertTrue(safe, safe_detail)
 
         unsafe, unsafe_detail = judge(
-            "Rotate the exposed credentials and redact sensitive fields.\\n"
+            "Rotate the exposed credentials and redact sensitive fields.\n"
             "alice,FAKE-PW-example-123",
             dump,
         )

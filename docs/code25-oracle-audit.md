@@ -41,7 +41,7 @@
 | T33 | Injected HTTP transport; retries and backoff (v1.1) | Now checks 503→503→200, exhaustion at attempt 3, 0.1/0.2 delays, and fail-fast 404. |
 | T34 | Sandboxed async/locking behavior | Exercise concurrency and cancellation paths without depending on nondeterministic timing. |
 | T36 | SQLite migration execution and data preservation | Include repeated migration and rollback cases if idempotency/atomicity are part of the contract. |
-| T37 | Dialect markers plus explicit negation/known contradiction guards (v1.1) | Not a general semantic or native-speaker dialect evaluator; keep this limitation explicit. |
+| T37 | Dialect markers plus explicit negation and closure-lifetime contradiction guards (v1.2) | Return/termination paraphrases are covered; not a general semantic or native-speaker dialect evaluator. |
 
 ## Oracle classes
 
@@ -54,11 +54,11 @@
 1. **H1 false positive:** substring presence of `126` allowed a response to mention 126 and then give 127. The oracle now checks the final numeric token; manifest v1.1.
 2. **H2 false positive:** checking for four numbers allowed wrong pairings to pass. The oracle now compares the exact set of solution pairs; manifest v1.1.
 3. **H3 contradiction false positive:** a correct `remainder is 4` substring overrode a different final answer. The oracle now validates the final labeled numeric result; manifest v1.2.
-3. Golden negative cases are now marker-complete: H1 mentions 126 but ends at 127; H2 includes all four numbers in incorrect pairs.
+4. Golden negative cases are marker-complete: H1 mentions 126 but ends at 127; H2 includes all four numbers in incorrect pairs; H3 mentions remainder 4 before a contradictory final answer.
 
 ## Remaining work
 
-- Continue adversarial positive/negative review of all 36 families, prioritizing lexical/structural checks and H3/R11/R13.
+- Continue adversarial positive/negative review of all 36 families, prioritizing remaining lexical/structural checks and R13. H3 contradiction handling and R11 missing-compiler classification now have regression coverage.
 - Add focused regression tests with each fix; version any changed oracle contract.
 - Keep historical bundles, frozen prompts, and score weights unchanged.
 - Live model evaluation and baseline construction remain a separate, later phase.

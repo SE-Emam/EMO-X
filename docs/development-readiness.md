@@ -17,10 +17,10 @@ This plan covers engineering quality and contributor experience before real mode
 | Area | Status | Evidence / remaining gate |
 |---|---|---|
 | T37 Spanish oracle | UNIT-VERIFIED | PR #29 merged; manifest v1.2; full Python 3.10/3.11/3.12 CI passed. |
-| Security S1–S5 | IMPLEMENTED / UNIT-VERIFIED, final gate pending | Gate/backend regressions, unsafe-follow-through and poisoned-tool-output tests, S2 safe-warning regression, and S5C/S5D specificity tests merged. Keep issue #20 open until combined-main CI is green and an independent reviewer reconciles remaining lexical-oracle limits. |
+| Security S1–S5 | IMPLEMENTED / UNIT-VERIFIED, final gate pending | Gate/backend regressions, unsafe-follow-through and poisoned-tool-output tests, S2 safe-warning regression, and S5C/S5D specificity tests merged. Combined-main CI is green on SHA c5fb9f51a5b5f2a0699c5aba4101287f5618c8c2; keep issue #20 open for independent review of remaining lexical-oracle limits. |
 | Code25 36-family audit | UNIT-VERIFIED | Issue #21 closed; family map, manifest truth checks, and targeted family regressions merged. This does not establish live model quality. |
 | Vision V1–V12 | PARTIAL / UNIT-VERIFIED | Frozen fixture hashes and structural ground-truth contracts are checked programmatically, with boundary and infrastructure-status tests. **Independent visual review of every frozen fixture against its annotations is still pending**; code consistency cannot prove pixel-level ground-truth correctness. |
-| README / contributor experience | PARTIAL | Demo/live-run distinction and historical partial-baseline caveat are documented. PR #36 synchronizes the test count after PR #42 and must be merged only after combined-main CI confirms the measured total and category counts. |
+| README / contributor experience | PARTIAL | Demo/live-run distinction and historical partial-baseline caveat are documented. PR #44 synchronizes the test count to 867 (326/87/210/30/214) from green combined-main CI run 38133545023; merge only after the PR's own CI passes. |
 | Main branch protection | BLOCKED / UNVERIFIED | The connected GitHub integration could not read or configure branch protection (403). Repository owner must configure and verify required PR and Python 3.10/3.11/3.12 checks in GitHub Settings. |
 | Official model baseline | DEFERRED by design | No live-model accuracy or official ranking claim is authorized in this development phase. Historical bundles remain unchanged. |
 
@@ -45,7 +45,7 @@ Detailed current inventory and known limitations: [Security Oracle Engineering A
 - [x] Added deterministic regressions for refusal-plus-unsafe follow-through, direct defensive warnings, poisoned note/tool output, secret echoes, and S5C/S5D specificity.
 - [x] Documented emitted security statuses, scoring eligibility, and CSVRate zero-denominator/critical-violation behavior; provider failures and denied gates are VOID and ineligible.
 - [x] S3–S5 scope/fixture gate regressions prove fail-closed VOID behavior and zero provider calls; no live gated trials were run.
-- [ ] Final combined-main CI and independent security-oracle review still required before closing issue #20.
+- [ ] Combined-main CI passed (run 38133545023, Python 3.10/3.11/3.12); independent security-oracle review remains before closing issue #20.
 
 ### 03 — Code25 audit (36 current families)
 Initial family map and known oracle limitations: [Code25 Oracle Audit](code25-oracle-audit.md).
@@ -61,7 +61,7 @@ Current V1–V12 strategy, limits, and fixture-integrity checks: [Vision Oracle 
 - [x] Added deterministic boundary coverage for IoU tiers, counting, Arabic OCR normalization, spatial relations, V7 contradictions, chart/table values, and V12 exact-output format.
 - [x] V7 regression accepts unrelated alternate-color/position mentions while rejecting target-clause contradictions.
 - [x] Vision regressions classify unsupported image capability and provider failure as infrastructure ERROR, not model FAIL.
-- [x] Vision deterministic tests and CI passed on Python 3.10/3.11/3.12 in the completed Vision PRs; main CI is being rerun after the latest combined merges. Real-model accuracy remains deferred.
+- [x] Vision deterministic tests and CI passed on Python 3.10/3.11/3.12 in the completed Vision PRs; combined-main CI run 38133545023 also passed after the latest merges. Real-model accuracy remains deferred.
 
 ### 05 — README and contributor experience
 - [ ] State the project scope plainly; remove combative or unsupported superiority claims.

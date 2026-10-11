@@ -1,6 +1,7 @@
 """Tests for the real vision executor (gate + oracles + hashes)."""
 
 import importlib.util
+import json
 import os
 import sys
 import unittest
@@ -236,7 +237,7 @@ class VisionOracleTests(unittest.TestCase):
             ("V2", {"x_min": 75, "y_min": 87, "x_max": 225, "y_max": 163}),
         ):
             with self.subTest(family=family):
-                chat = _vision_chat_factory(__import__("json").dumps(box))
+                chat = _vision_chat_factory(json.dumps(box))
                 rec, _ = EXEC.run_family(
                     family,
                     chat,

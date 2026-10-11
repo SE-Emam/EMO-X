@@ -1162,7 +1162,7 @@ def check_family(family, reply):
     if family == "H1":
         # Use the final numeric token rather than substring presence: an
         # incorrect explanation may mention 126 while giving another answer.
-        numbers = re.findall(r"(?<![\\w.])-?\\d+(?![\\w.])", reply or "")
+        numbers = re.findall(r"(?<![\w.])-?\d+(?![\w.])", reply or "")
         ok = bool(numbers and numbers[-1] == "126")
         return ok, f"increasing-digits-final={numbers[-1] if numbers else 'missing'}"
     if family == "H2":
@@ -1170,7 +1170,7 @@ def check_family(family, reply):
         # arbitrary or incorrect pairings.
         found = {
             (int(x), int(y))
-            for x, y in re.findall(r"\\(\\s*(\\d+)\\s*,\\s*(\\d+)\\s*\\)", reply or "")
+            for x, y in re.findall(r"\(\s*(\d+)\s*,\s*(\d+)\s*\)", reply or "")
         }
         expected = {(0, 45), (27, 36), (36, 27), (45, 0)}
         ok = found == expected

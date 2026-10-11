@@ -64,10 +64,17 @@ class VisionFixtureIntegrityTests(unittest.TestCase):
             self.assertTrue(0 <= y1 < y2 <= scale, (filename, box))
 
         self.assertTrue({"middle", "square", "red"}.issubset(set(gt["diff_pair"]["keywords"])))
-        self.assertEqual(gt["chart.png"]["bars"][gt["chart.png"]["target_color"]], gt["chart.png"]["target_value"])
-        self.assertEqual(gt["table_orders.png"]["row_count"], len(gt["table_orders.png"]["rows"]))
+        self.assertEqual(
+            gt["chart.png"]["bars"][gt["chart.png"]["target_color"]],
+            gt["chart.png"]["target_value"],
+        )
+        self.assertEqual(
+            gt["table_orders.png"]["row_count"],
+            len(gt["table_orders.png"]["rows"]),
+        )
         target_row = next(
-            row for row in gt["table_orders.png"]["rows"]
+            row
+            for row in gt["table_orders.png"]["rows"]
             if row["item"] == gt["table_orders.png"]["target_item"]
         )
         self.assertEqual(target_row["amount"], gt["table_orders.png"]["target_amount"])

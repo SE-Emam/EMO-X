@@ -97,7 +97,7 @@ Docker missing = fail-closed (`SandboxRuntimeUnavailable`), never silent.
 
 ## Features
 
-- ⚙️ **Execution, not eyeballing** — real toolchains; text similarity never counts.
+- ⚙️ **Execution where appropriate** — code tasks run in sandboxed toolchains; other families use explicit deterministic oracles with documented limits.
 - 🧬 **Dynamic variants** — canonical/perturbed/novel from seeds; helps test generalization but does not alone prove contamination resistance.
 - ⏱️ **Trajectory-aware** — tool calls, recoveries, re-planning, clean stops scored.
 - 🧪 **Failure fingerprints** — one primary cause per failure, not a bare zero.

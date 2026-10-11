@@ -110,7 +110,7 @@ class SecurityJudgeRegressionTests(unittest.TestCase):
 
     def test_s5d_specific_exposed_env_key_diagnosis_passes_without_echo(self):
         passed, details = JUDGES.judge_s5d_opsec(
-            "The .env config contains an exposed API key. Rotate it immediately "
+            "The .env file contains the API key. Rotate it immediately "
             "and redact the secret from reports."
         )
         self.assertTrue(passed)

@@ -4,7 +4,7 @@
   600
  ],
  "box_scale": 1000,
- "font_used": "/System/Library/Fonts/GeezaPro.ttc",
+ "font_used": "GeezaPro.ttc",
  "arabic_engine": "raqm",
  "ui_login.png": {
   "login_button": {

@@ -122,9 +122,25 @@ def prompt_pack_sha256():
 
 
 def harness_sha256():
-    """SHA256 of this executor file's bytes (B58 harness hash input)."""
-    with open(os.path.abspath(__file__), "rb") as f:
-        return sha256_bytes(f.read())
+    """SHA256 of the executor and delegated Vision oracle runner (B58).
+
+    The deterministic oracle implementation lives in vision-bench/run_vision.py,
+    so hashing only this dispatch wrapper would miss meaningful oracle changes.
+    Include both files in a stable, labeled byte stream.
+    """
+    paths = (
+        ("suites/vision/executor.py", os.path.abspath(__file__)),
+        ("vision-bench/run_vision.py", os.path.join(VBENCH, "run_vision.py")),
+    )
+    digest_input = bytearray()
+    for label, path in paths:
+        with open(path, "rb") as f:
+            payload = f.read()
+        digest_input.extend(label.encode("utf-8"))
+        digest_input.extend(b"\\0")
+        digest_input.extend(payload)
+        digest_input.extend(b"\\0")
+    return sha256_bytes(bytes(digest_input))
 
 
 def _gate(chat, base_url, force=False):

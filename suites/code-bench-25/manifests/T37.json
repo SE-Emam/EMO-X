@@ -23,5 +23,5 @@
   "suite": "code-bench-25",
   "timeouts": {"execution_seconds": 30, "generation_seconds": 120},
   "variants": ["canonical", "perturbed", "novel"],
-  "version": "1.0"
+  "version": "1.1"
 }

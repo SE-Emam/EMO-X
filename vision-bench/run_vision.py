@@ -449,15 +449,14 @@ V7_KEYWORD_ALIASES = {
 
 
 def judge_diff(reply, keywords):
-    """Conservative keyword oracle for V7; presence alone is not enough.
+    """Conservative V7 oracle scoped to the target-object clause.
 
-    The oracle deliberately rejects explicit negation and competing colors /
-    positions for the known V7 target. It is not a general semantic parser:
-    unsupported or ambiguous phrasing should be treated as a limitation, not
-    as proof of semantic understanding.
+    The oracle rejects explicit negation and competing attributes attached to
+    the target middle/center square/box. Unrelated colors or positions about
+    other objects should not invalidate an otherwise correct target statement.
+    This remains a deterministic heuristic, not a general semantic parser.
     """
-    r = (reply or "").lower()
-    r = re.sub(r"\s+", " ", r).strip()
+    r = re.sub(r"\s+", " ", (reply or "").lower()).strip()
     hits = []
     missing = []
     for kw in keywords:
@@ -467,27 +466,43 @@ def judge_diff(reply, keywords):
         else:
             missing.append(kw)
 
-    # Fail closed on common explicit denials, including answers that repeat
-    # every target keyword while denying the described change.
+    # Split only at clear sentence/phrase boundaries, including a comma before
+    # a new subject. Keep "not red"/"not blue" with its target clause.
+    clauses = [
+        part.strip()
+        for part in re.split(
+            r"[;.!?\n]+|,\s*(?=(?:the|a|an|another|left|right|top|bottom)\b)",
+            r,
+        )
+        if part.strip()
+    ]
+    target_clauses = [
+        part
+        for part in clauses
+        if re.search(r"\b(middle|center|centre)\b", part)
+        and re.search(r"\b(square|box|rectangle)\b", part)
+    ]
+    target_text = " ".join(target_clauses) if target_clauses else r
+
     negation = (
         re.search(
             r"\b(no difference|no change|did not|didn't|does not|doesn't|"
             r"not|never|without|unchanged|isn't|is not)\b",
-            r,
+            target_text,
         )
         is not None
     )
-
-    # V7's frozen target is the middle/center square/box turning red.
-    # Competing target attributes make a keyword-complete answer ambiguous.
     competing_color = (
         "red" in keywords
-        and re.search(r"\b(blue|green|yellow|black|white|orange|purple|pink|brown|gray|grey)\b", r)
+        and re.search(
+            r"\b(blue|green|yellow|black|white|orange|purple|pink|brown|gray|grey)\b",
+            target_text,
+        )
         is not None
     )
     competing_position = (
         any(k in keywords for k in ("middle", "center", "centre"))
-        and re.search(r"\b(left|right|top|bottom|corner|edge)\b", r) is not None
+        and re.search(r"\b(left|right|top|bottom|corner|edge)\b", target_text) is not None
     )
     return {
         "pass": (
@@ -498,6 +513,7 @@ def judge_diff(reply, keywords):
         "negated": negation,
         "competing_color": competing_color,
         "competing_position": competing_position,
+        "target_text": target_text,
     }
 
 

@@ -9,7 +9,7 @@
 | A16 | Executable Python/async checks | Ensure source-shape markers cannot replace the awaited concurrent behavior; keep runtime assertions authoritative. |
 | H1 | Final numeric token must be 126 (v1.1) | Fixed substring false positive: mentioning 126 while giving 127 no longer passes. |
 | H2 | Exact set of four nonnegative solution pairs (v1.1) | Fixed number-only false positive: wrong pairings containing 0, 27, 36, 45 no longer pass. |
-| H3 | Deterministic extraction of final remainder | Test explanations that mention 4 before a contradictory final answer. |
+| H3 | Final labeled numeric remainder (v1.2) | Fixed substring false positive: mentioning remainder 4 before a contradictory final answer no longer passes. |
 | H4 | Sandboxed Python execution on palindrome edge cases | Add more Unicode and long-input cases only if they remain in the task contract. |
 | H5 | Sandboxed token-bucket timing/capacity checks | Timing tolerance and flaky wall-clock boundaries need careful review. |
 | H6 | Sandboxed first-occurrence search checks | Include duplicate, absent, and boundary indices in positive/negative coverage. |
@@ -23,7 +23,7 @@
 | R8 | Conventional-commit format and required authorization term | Lexical checks may accept a correctly shaped but semantically unrelated message. |
 | R9 | HTML/CSS structural markers | Static markup checks do not establish browser rendering or accessibility. |
 | R10 | React hook/event/export markers | Static checks do not establish a compilable or correctly functioning component. |
-| R11 | Strict TypeScript compilation or documented static fallback | The fallback is weaker than compilation; review whether missing compiler should be reported as VOID/ERROR instead of equivalent success. |
+| R11 | Strict TypeScript compilation in the sandbox | If `tsc` is missing, the current path reports a failed task rather than explicitly classifying infrastructure unavailability as VOID/ERROR. Review status classification. |
 | R12 | PostgreSQL query execution and result assertions | Unavailable PostgreSQL must remain an infrastructure status; add NULL/empty-row cases where required. |
 | R13 | Parsed Dockerfile instruction/ordering checks | Structural validation is not a real Docker build or image security scan. |
 | T2 | Sandboxed Fibonacci implementation tests | Check base cases, invalid inputs, and large values against the task contract. |
@@ -53,6 +53,7 @@
 
 1. **H1 false positive:** substring presence of `126` allowed a response to mention 126 and then give 127. The oracle now checks the final numeric token; manifest v1.1.
 2. **H2 false positive:** checking for four numbers allowed wrong pairings to pass. The oracle now compares the exact set of solution pairs; manifest v1.1.
+3. **H3 contradiction false positive:** a correct `remainder is 4` substring overrode a different final answer. The oracle now validates the final labeled numeric result; manifest v1.2.
 3. Golden negative cases are now marker-complete: H1 mentions 126 but ends at 127; H2 includes all four numbers in incorrect pairs.
 
 ## Remaining work

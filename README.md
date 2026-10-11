@@ -7,7 +7,7 @@
 
 > HumanEval is dead. EMO-X tests what agents **DO**, not what they **SAY**.
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/SE-Emam/EMO-X/blob/main/notebooks/emo_x_quickstart.ipynb) [![GitHub stars](https://img.shields.io/github/stars/SE-Emam/EMO-X)](https://github.com/SE-Emam/EMO-X/stargazers) [![pip install](https://img.shields.io/badge/pip_install-emo--x--eval-blue)](https://pypi.org/project/emo-x-eval/) [![Dataset on HF](https://img.shields.io/badge/🤗_Dataset-EMO--X--Core-yellow)](https://huggingface.co/datasets/SE-Emam/EMO-X-Core) [![PyPI](https://img.shields.io/pypi/v/emo-x-eval)](https://pypi.org/project/emo-x-eval/) [![License](https://img.shields.io/badge/License-Apache_2.0-blue)](LICENSE)
+[![CI](https://github.com/SE-Emam/EMO-X/actions/workflows/ci.yml/badge.svg)](https://github.com/SE-Emam/EMO-X/actions/workflows/ci.yml) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/SE-Emam/EMO-X/blob/main/notebooks/emo_x_quickstart.ipynb) [![GitHub stars](https://img.shields.io/github/stars/SE-Emam/EMO-X)](https://github.com/SE-Emam/EMO-X/stargazers) [![pip install](https://img.shields.io/badge/pip_install-emo--x--eval-blue)](https://pypi.org/project/emo-x-eval/) [![Dataset on HF](https://img.shields.io/badge/🤗_Dataset-EMO--X--Core-yellow)](https://huggingface.co/datasets/SE-Emam/EMO-X-Core) [![PyPI](https://img.shields.io/pypi/v/emo-x-eval)](https://pypi.org/project/emo-x-eval/) [![License](https://img.shields.io/badge/License-Apache_2.0-blue)](LICENSE)
 [![Suites](https://img.shields.io/badge/suites-13-blue)](suites/) [![Tests](https://img.shields.io/badge/tests-835-green)](tests/run_all.py) [![Ollama](https://img.shields.io/badge/Ollama-supported-orange)](INSTALL.md)
 
 ![EMO-X self-test demo](src/demo.gif)
@@ -92,7 +92,7 @@ Docker missing = fail-closed (`SandboxRuntimeUnavailable`), never silent.
 ## Features
 
 - ⚙️ **Execution, not eyeballing** — real toolchains; text similarity never counts.
-- 🧬 **Dynamic variants** — canonical/perturbed/novel from seeds; contamination-resistant.
+- 🧬 **Dynamic variants** — canonical/perturbed/novel from seeds; helps test generalization but does not alone prove contamination resistance.
 - ⏱️ **Trajectory-aware** — tool calls, recoveries, re-planning, clean stops scored.
 - 🧪 **Failure fingerprints** — one primary cause per failure, not a bare zero.
 - 📊 **Statistical honesty** — bootstrap 95% CIs (SPEC §B54); no winner without an interval.
@@ -191,7 +191,7 @@ Comparison with SWE-bench (verified 2026 from swebench.com):
 |---|---|---|
 | Task realism | 2,294 real GitHub issues | 15 issue-style + 3 mini-real fixtures (synthetic, documented) |
 | Headline metric | % Resolved (one number) | Capability profile (9 dims + fingerprint + CI) |
-| Contamination defense | Static set (known exposure) | Dynamic variants + hidden suite + rotating seeds |
+| Contamination defense | Static set (known exposure) | Dynamic variants + rotating seeds; strong held-out claims require cases/seeds kept outside the public repository |
 | Statistics | Point estimates | Paired bootstrap 95% CI; no fixed gap rules |
 | Cost | Docker-heavy | stdlib only, local, minutes |
 | Scope | Code repair (+ multilingual/multimodal) | Repair + security + calibration + recovery + vision + long-horizon |
@@ -208,7 +208,7 @@ questions — use both.
 | v2.0-beta | Recovery, drift, tool discipline, calibration, health | Done (suites + `health/`) |
 | **v2.0.0-rc1** (current) | Gauntlet, long-horizon, adaptive difficulty, scoring conformance | Code done; **no published OFFICIAL baseline yet** |
 | v2.0 | First sealed 3-trial OFFICIAL baseline (R3) | Pending baseline |
-| Next | 15→30 issue families; vision out of PILOT; first 3-trial public baseline with CI | Planned (`PLAN-X.md` WP12–WP15) |
+| Next | 15→30 issue families; vision out of PILOT; first 3-trial public baseline with CI | Planned; see `SPEC.md` and `CONTRIBUTING.md` for public methodology and contribution guidance |
 
 No model scores are published in this repo: any number without a sealed
 `results/raw/RUN-ID/` bundle is inadmissible here.

@@ -707,7 +707,8 @@ def main(argv=None):
         print("font: %s (raqm=%s)" % (font_path, raqm))
 
     gt_all = {"image_size": [W, H], "box_scale": SCALE,
-              "font_used": font_path or "PIL-default (DEGRADED)",
+              # Store only the portable font filename, never a host-specific absolute path.
+              "font_used": os.path.basename(font_path) if font_path else "PIL-default (DEGRADED)",
               "arabic_engine": ("raqm" if raqm else "fallback-shaper")
                                if font_path else "none-degraded"}
 

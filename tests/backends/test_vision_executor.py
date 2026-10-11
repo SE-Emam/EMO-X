@@ -230,7 +230,6 @@ class VisionOracleTests(unittest.TestCase):
         hh = EXEC.harness_sha256()
         self.assertEqual(len(hh), 64)
 
-
     def test_v1_v2_exact_ground_truth_boxes_pass(self):
         for family, box in (
             ("V1", {"x_min": 175, "y_min": 633, "x_max": 425, "y_max": 717}),
@@ -251,9 +250,7 @@ class VisionOracleTests(unittest.TestCase):
                 self.assertEqual(rec["score"], 1.0)
 
     def test_v1_wrong_grounding_box_is_model_failure(self):
-        chat = _vision_chat_factory(
-            '{"x_min": 0, "y_min": 0, "x_max": 100, "y_max": 100}'
-        )
+        chat = _vision_chat_factory('{"x_min": 0, "y_min": 0, "x_max": 100, "y_max": 100}')
         rec, _ = EXEC.run_family(
             "V1",
             chat,
@@ -300,6 +297,7 @@ class VisionOracleTests(unittest.TestCase):
         self.assertFalse(rec["eligible_for_task_score"])
         self.assertFalse(rec["eligible_for_pass_rate"])
         self.assertIn("unsupported", response["error"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -23,7 +23,7 @@
 | R8 | Conventional-commit format and required authorization term | Lexical checks may accept a correctly shaped but semantically unrelated message. |
 | R9 | HTML/CSS structural markers | Static markup checks do not establish browser rendering or accessibility. |
 | R10 | React hook/event/export markers | Static checks do not establish a compilable or correctly functioning component. |
-| R11 | Strict TypeScript compilation in the sandbox | If `tsc` is missing, the current path reports a failed task rather than explicitly classifying infrastructure unavailability as VOID/ERROR. Review status classification. |
+| R11 | Strict TypeScript compilation in the sandbox | Missing `tsc` now maps to `ERROR` infrastructure status (not a model failure); compiler diagnostics remain task failures. A regression test covers this distinction. |
 | R12 | PostgreSQL query execution and result assertions | Unavailable PostgreSQL must remain an infrastructure status; add NULL/empty-row cases where required. |
 | R13 | Parsed Dockerfile instruction/ordering checks | Structural validation is not a real Docker build or image security scan. |
 | T2 | Sandboxed Fibonacci implementation tests | Check base cases, invalid inputs, and large values against the task contract. |

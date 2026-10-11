@@ -1122,6 +1122,12 @@ def check_family(family, reply):
             rc, output = sandbox.run_in_sandbox(
                 ["tsc", "--noEmit", "--strict", "t.ts"], sandbox_dir=root, timeout=120
             )
+            if rc != 0 and re.search(
+                r"(?:tsc:\s*(?:not found|command not found)|command not found.*\btsc\b|executable file not found.*\btsc\b)",
+                output,
+                re.I,
+            ):
+                raise _MissingTool("TypeScript compiler (tsc) unavailable in sandbox")
             return rc == 0, output[-400:] or "tsc-clean"
         finally:
             sandbox.destroy_sandbox(root)

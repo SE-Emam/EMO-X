@@ -524,6 +524,30 @@ class AllFamiliesGoldenTests(unittest.TestCase):
                 passed, log = executor.check_family("T31", source)
                 self.assertFalse(passed, log)
 
+    def test_r11_missing_tsc_is_infrastructure_error(self):
+        executor = _load_executor()
+        reply = (
+            "```typescript\n"
+            "export function greet(user: { name: string; age: number }): string { "
+            "return user.name; }\n"
+            "```"
+        )
+
+        def chat(_messages, **_opts):
+            return reply, 0.01, {}
+
+        with mock.patch.object(
+            executor.sandbox,
+            "run_in_sandbox",
+            return_value=(127, "sh: 1: tsc: not found"),
+        ):
+            attempt, _ = executor.run_family("R11", chat, run_id="unit", model_id="fixture")
+
+        self.assertEqual(attempt["primary_status"], "ERROR")
+        self.assertEqual(attempt["primary_failure"], "HARNESS_ERROR")
+        self.assertFalse(attempt["eligible_for_task_score"])
+        self.assertFalse(attempt["eligible_for_pass_rate"])
+
     def test_t32(self):
         executor = _load_executor()
         passed, log = executor.check_family("T32", PYTHON_GOLDENS["T32"])

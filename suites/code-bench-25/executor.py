@@ -599,6 +599,23 @@ T37_NEGATED_CLAIM_RE = re.compile(
     r"(?:is not|isn't)\s+(?:a\s+)?(?:closure|function))\b"
 )
 
+# Targeted contradiction guard: a closure retains its lexical environment after
+# the outer function returns. This catches a common marker-complete false
+# positive without claiming to parse arbitrary semantics.
+T37_EXPIRED_ENV_CLAIM_RE = re.compile(
+    r"\b(?:cuando|despues de que|una vez que)\s+(?:la\s+)?funcion\s+"
+    r"(?:externa|padre)\s+(?:termina|finaliza|acaba)\b.{0,120}\b"
+    r"(?:pierde|no tiene|ya no tiene|deja de tener)\b.{0,60}\b"
+    r"(?:acceso|alcance|entorno)\b|"
+    r"\bsolo mientras\s+(?:la\s+)?funcion\s+(?:externa|padre)\s+"
+    r"(?:esta|sigue)\s+activa\b|"
+    r"\b(?:after|once|when)\s+(?:the\s+)?outer\s+function\s+"
+    r"(?:returns?|ends?|finishes?)\b.{0,120}\b"
+    r"(?:loses|no longer has|cannot access|can't access)\b.{0,60}\b"
+    r"(?:access|scope|environment)\b",
+    re.I | re.S,
+)
+
 
 def _has_word(folded, word):
     """True iff `word` appears as a standalone word in folded text."""
@@ -629,11 +646,20 @@ def check_t37(reply, variant="canonical"):
     sem = _all_groups_hit(reply, T37_SEMANTIC_GROUPS)
     required_ok, forbidden_hit, detail = _t37_dialect_detail(folded, variant)
     negated_claim = T37_NEGATED_CLAIM_RE.search(folded) is not None
-    ok = bool(ratio > 0.10 and all(sem) and required_ok and not forbidden_hit and not negated_claim)
+    expired_environment_claim = T37_EXPIRED_ENV_CLAIM_RE.search(folded) is not None
+    ok = bool(
+        ratio > 0.10
+        and all(sem)
+        and required_ok
+        and not forbidden_hit
+        and not negated_claim
+        and not expired_environment_claim
+    )
     log = (
         f"spanish_ratio={ratio:.3f} sem={sem} {detail} "
         f"required={required_ok} forbidden={forbidden_hit} "
-        f"negated_claim={negated_claim}"
+        f"negated_claim={negated_claim} "
+        f"expired_environment_claim={expired_environment_claim}"
     )
     return ok, log
 

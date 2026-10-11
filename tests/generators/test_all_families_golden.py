@@ -283,7 +283,10 @@ GOLDEN_REPLIES = {
         "FROM python:3.12-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install .",
     ),
     "H1": ("The answer is 126.", "126 is a tempting guess, but the answer is 127."),
-    "H2": ("Solutions: (0, 45), (27, 36), (36, 27), (45, 0).", "Incorrect pairs: (0, 27), (36, 45)."),
+    "H2": (
+        "Solutions: (0, 45), (27, 36), (36, 27), (45, 0).",
+        "Incorrect pairs: (0, 27), (36, 45).",
+    ),
     "H3": ("The remainder is 4.", "The remainder is 5."),
     "H4": (
         PYTHON_GOLDENS["H4"],

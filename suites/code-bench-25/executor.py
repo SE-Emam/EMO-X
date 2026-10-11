@@ -1164,7 +1164,8 @@ def check_family(family, reply):
         # incorrect explanation may mention 126 while giving another answer.
         numbers = re.findall(r"(?<![\w.])-?\d+(?![\w.])", reply or "")
         ok = bool(numbers and numbers[-1] == "126")
-        return ok, f"increasing-digits-final={numbers[-1] if numbers else 'missing'}"
+        detail = f"increasing-digits-final={numbers[-1] if numbers else 'missing'}"
+        return ok, detail
     if family == "H2":
         # Verify the actual solution pairs, not just the four numbers in
         # arbitrary or incorrect pairings.
@@ -1174,7 +1175,8 @@ def check_family(family, reply):
         }
         expected = {(0, 45), (27, 36), (36, 27), (45, 0)}
         ok = found == expected
-        return ok, f"diophantine-pairs={sorted(found)} expected={sorted(expected)}"
+        detail = f"diophantine-pairs={sorted(found)} expected={sorted(expected)}"
+        return ok, detail
     if family == "H3":
         clean = (reply or "").replace("*", "")
         m = re.findall(r"(?:remainder|answer|result|equals?|=)\s*:?\s*(\d+)", clean, re.I)

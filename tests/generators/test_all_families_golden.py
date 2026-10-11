@@ -541,9 +541,7 @@ class AllFamiliesGoldenTests(unittest.TestCase):
             "run_in_sandbox",
             return_value=(127, "sh: 1: tsc: not found"),
         ):
-            attempt, _ = executor.run_family(
-                "R11", chat, run_id="unit", model_id="fixture"
-            )
+            attempt, _ = executor.run_family("R11", chat, run_id="unit", model_id="fixture")
 
         self.assertEqual(attempt["primary_status"], "ERROR")
         self.assertEqual(attempt["primary_failure"], "HARNESS_ERROR")

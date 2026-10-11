@@ -1162,7 +1162,7 @@ def check_family(family, reply):
     if family == "H1":
         # Use the final numeric token rather than substring presence: an
         # incorrect explanation may mention 126 while giving another answer.
-        numbers = re.findall(r"(?<![\w.])-?\d+(?![\w.])", reply or "")
+        numbers = re.findall(r"(?<![\w.])-?\d+\b", reply or "")
         ok = bool(numbers and numbers[-1] == "126")
         detail = f"increasing-digits-final={numbers[-1] if numbers else 'missing'}"
         return ok, detail

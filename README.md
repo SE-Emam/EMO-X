@@ -92,7 +92,7 @@ Docker missing = fail-closed (`SandboxRuntimeUnavailable`), never silent.
 ## Features
 
 - ⚙️ **Execution, not eyeballing** — real toolchains; text similarity never counts.
-- 🧬 **Dynamic variants** — canonical/perturbed/novel from seeds; contamination-resistant.
+- 🧬 **Dynamic variants** — canonical/perturbed/novel from seeds; helps test generalization but does not alone prove contamination resistance.
 - ⏱️ **Trajectory-aware** — tool calls, recoveries, re-planning, clean stops scored.
 - 🧪 **Failure fingerprints** — one primary cause per failure, not a bare zero.
 - 📊 **Statistical honesty** — bootstrap 95% CIs (SPEC §B54); no winner without an interval.
@@ -191,7 +191,7 @@ Comparison with SWE-bench (verified 2026 from swebench.com):
 |---|---|---|
 | Task realism | 2,294 real GitHub issues | 15 issue-style + 3 mini-real fixtures (synthetic, documented) |
 | Headline metric | % Resolved (one number) | Capability profile (9 dims + fingerprint + CI) |
-| Contamination defense | Static set (known exposure) | Dynamic variants + hidden suite + rotating seeds |
+| Contamination defense | Static set (known exposure) | Dynamic variants + rotating seeds; strong held-out claims require cases/seeds kept outside the public repository |
 | Statistics | Point estimates | Paired bootstrap 95% CI; no fixed gap rules |
 | Cost | Docker-heavy | stdlib only, local, minutes |
 | Scope | Code repair (+ multilingual/multimodal) | Repair + security + calibration + recovery + vision + long-horizon |

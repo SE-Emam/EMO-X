@@ -1,6 +1,7 @@
 """Tests for the real vision executor (gate + oracles + hashes)."""
 
 import importlib.util
+import json
 import os
 import sys
 import unittest
@@ -228,6 +229,74 @@ class VisionOracleTests(unittest.TestCase):
         self.assertEqual(len(h1), 64)
         hh = EXEC.harness_sha256()
         self.assertEqual(len(hh), 64)
+
+    def test_v1_v2_exact_ground_truth_boxes_pass(self):
+        for family, box in (
+            ("V1", {"x_min": 175, "y_min": 633, "x_max": 425, "y_max": 717}),
+            ("V2", {"x_min": 75, "y_min": 87, "x_max": 225, "y_max": 163}),
+        ):
+            with self.subTest(family=family):
+                chat = _vision_chat_factory(json.dumps(box))
+                rec, _ = EXEC.run_family(
+                    family,
+                    chat,
+                    run_id="ground-truth",
+                    model_id="fixture",
+                    trial_id=1,
+                    base_url="",
+                    force=True,
+                )
+                self.assertEqual(rec["primary_status"], "PASS")
+                self.assertEqual(rec["score"], 1.0)
+
+    def test_v1_wrong_grounding_box_is_model_failure(self):
+        chat = _vision_chat_factory('{"x_min": 0, "y_min": 0, "x_max": 100, "y_max": 100}')
+        rec, _ = EXEC.run_family(
+            "V1",
+            chat,
+            run_id="wrong-grounding",
+            model_id="fixture",
+            trial_id=1,
+            base_url="",
+            force=True,
+        )
+        self.assertEqual(rec["primary_status"], "FAIL")
+        self.assertEqual(rec["primary_failure"], "WRONG_RESULT")
+
+    def test_forced_provider_failure_is_error_not_model_failure(self):
+        def chat(*_args, **_kwargs):
+            raise RuntimeError("provider timeout")
+
+        rec, response = EXEC.run_family(
+            "V1",
+            chat,
+            run_id="provider-error",
+            model_id="fixture",
+            trial_id=1,
+            base_url="",
+            force=True,
+        )
+        self.assertEqual(rec["primary_status"], "ERROR")
+        self.assertEqual(rec["primary_failure"], "BACKEND_ERROR")
+        self.assertFalse(rec["eligible_for_task_score"])
+        self.assertFalse(rec["eligible_for_pass_rate"])
+        self.assertIn("provider timeout", response["error"])
+
+    def test_forced_unsupported_image_is_error_not_model_failure(self):
+        rec, response = EXEC.run_family(
+            "V1",
+            _no_image_chat,
+            run_id="unsupported-image",
+            model_id="fixture",
+            trial_id=1,
+            base_url="",
+            force=True,
+        )
+        self.assertEqual(rec["primary_status"], "ERROR")
+        self.assertEqual(rec["primary_failure"], "BACKEND_ERROR")
+        self.assertFalse(rec["eligible_for_task_score"])
+        self.assertFalse(rec["eligible_for_pass_rate"])
+        self.assertIn("unsupported", response["error"])
 
 
 if __name__ == "__main__":

@@ -625,9 +625,9 @@ def _has_word(folded, word):
 def _t37_dialect_detail(folded, variant):
     """Return (required_ok, forbidden_hit, detail) for a T37 variant."""
     if variant == "canonical":
-        required_ok = "vosotros" in folded and "ordenador" in folded
+        required_ok = "vosotros" in folded and "ordenador" in folded and _has_word(folded, "coger")
         forbidden_hit = "ustedes" in folded or "computadora" in folded
-        return required_ok, forbidden_hit, "es-es=vosotros+ordenador!ustedes/computadora"
+        return required_ok, forbidden_hit, "es-es=vosotros+ordenador+coger!ustedes/computadora"
     if variant == "perturbed":
         required_ok = "ustedes" in folded and "computadora" in folded
         forbidden_hit = "vosotros" in folded or _has_word(folded, "vos")

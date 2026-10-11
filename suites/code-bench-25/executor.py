@@ -1178,9 +1178,15 @@ def check_family(family, reply):
         return ok, detail
     if family == "H3":
         clean = (reply or "").replace("*", "")
-        m = re.findall(r"(?:remainder|answer|result|equals?|=)\s*:?\s*(\d+)", clean, re.I)
-        ok = (m and m[-1] == "4") or ("remainder is 4" in clean.lower())
-        return bool(ok), "modexp-check"
+        matches = re.findall(
+            r"(?:remainder|answer|result)\s*(?:is|=|:)?\s*(\d+)|=\s*(\d+)",
+            clean,
+            re.I,
+        )
+        values = [first or second for first, second in matches]
+        ok = bool(values and values[-1] == "4")
+        detail = f"modexp-final={values[-1] if values else 'missing'}"
+        return ok, detail
     if family == "H4":
         code = extract_code(reply, "python")
         ok, log = _py_ok(

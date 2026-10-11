@@ -12,60 +12,72 @@ This plan covers engineering quality and contributor experience before real mode
 - Keep S3–S5 authorization gates enforced; no live security trials in this development phase.
 - Use small, focused PRs with targeted tests, full CI evidence, and explicit known limitations.
 
+## Evidence-based status snapshot (2026-10-11)
+
+| Area | Status | Evidence / remaining gate |
+|---|---|---|
+| T37 Spanish oracle | UNIT-VERIFIED | PR #29 merged; manifest v1.2; full Python 3.10/3.11/3.12 CI passed. |
+| Security S1–S5 | IMPLEMENTED / UNIT-VERIFIED | Gate/backend regressions, unsafe-follow-through and poisoned-tool-output tests, S2 safe-warning regression (PR #42), S2 negated-use warning regression with manifest v1.2 (PR #45), and S5C/S5D specificity tests merged. Post-PR #45 combined-main CI run 38134169151 passed on SHA acf65b3134d350b4c7d461300f9e6f419b9f4619 with 868 tests; issue #20 is closed against its acceptance criteria. Broader independent review of lexical-oracle limits remains an explicitly documented follow-up, not a semantic-completeness claim. |
+| Code25 36-family audit | UNIT-VERIFIED | Issue #21 closed; family map, manifest truth checks, and targeted family regressions merged. This does not establish live model quality. |
+| Vision V1–V12 | PARTIAL / UNIT-VERIFIED | Frozen fixture hashes and structural ground-truth contracts are checked programmatically, with boundary and infrastructure-status tests. **Independent visual review of every frozen fixture against its annotations is still pending in issue #47**; code consistency cannot prove pixel-level ground-truth correctness. |
+| README / contributor experience | PARTIAL | Demo/live-run distinction and historical partial-baseline caveat are documented. PR #46 is merged; the README badge/table now report 868 (326/87/210/30/215), confirmed by combined-main CI run 38134169151. A docs-only main CI run follows the README merge. |
+| Main branch protection | BLOCKED / UNVERIFIED | The connected GitHub integration could not read or configure branch protection (403). Repository owner must configure and verify required PR and Python 3.10/3.11/3.12 checks in GitHub Settings. |
+| Official model baseline | DEFERRED by design | No live-model accuracy or official ranking claim is authorized in this development phase. Historical bundles remain unchanged. |
+
 ## Ordered work plan
 
 ### 00 — Governance and contribution workflow
-- [ ] Link all focused issues from the project plan.
-- [ ] Require each issue/PR to state scope, acceptance criteria, tests, changed contracts, and evidence.
+- [x] Link the focused audit work through the T37, security, Code25, and Vision audit docs/issues (#19–#22).
+- [x] Focused implementation PRs document scope, acceptance criteria, tests, contract changes, evidence, and known limits.
 - [ ] Verify main protection and required Python 3.10/3.11/3.12 harness checks. If automation cannot configure repository rules, leave this gate open and record the owner action.
-- [ ] Keep development readiness separate from baseline eligibility.
+- [x] Keep development readiness separate from baseline eligibility; official baseline eligibility is a separate, explicitly deferred phase.
 
 ### 01 — Spanish T37 oracle
-- [ ] Audit implementation and tests against issue #13.
-- [ ] Add marker-complete but semantically incorrect closure responses for ES-ES, ES-MX, and ES-AR.
-- [ ] Cover valid paraphrases, cross-dialect cases, word boundaries, and contradictions.
-- [ ] If deterministic checks cannot prove general semantic correctness, narrow the claim in the manifest and documentation rather than overclaiming.
-- [ ] Run focused tests and full CI.
+- [x] Audited implementation and tests against issue #13; T37 return/termination paraphrase guard merged in PR #29.
+- [x] Added marker-complete incorrect closure responses for ES-ES, ES-MX, and ES-AR (PR #29).
+- [x] Existing valid dialect, cross-dialect, word-boundary, explicit-negation, and contradiction goldens remain in the suite.
+- [x] Narrowed the T37 contract to targeted deterministic guards; manifest version 1.2 explicitly avoids a general semantic-understanding claim.
+- [x] Focused regressions and full CI passed on Python 3.10, 3.11, and 3.12 for PR #29.
 
 ### 02 — Security suite engineering quality
 Detailed current inventory and known limitations: [Security Oracle Engineering Audit](security-oracle-audit.md).
-- [ ] Inventory S1–S5: threat intent, safe behavior, negative cases, oracle limits, sandbox and authorization gates.
-- [ ] Test superficial refusal followed by harmful content, safe lookalikes, injection through tool/file outputs, and refusal-vs-utility.
-- [ ] Audit PASS/FAIL/VOID/ERROR/INVALID classification and CSVRate denominator/NA handling.
-- [ ] Verify S3–S5 authorization is enforced in code; do not run live gated trials in this phase.
-- [ ] Run deterministic tests and full CI.
+- [x] Documented S1–S5 intent, safe/unsafe examples, known oracle limits, status behavior, and authorization boundaries in security-oracle-audit.md.
+- [x] Added deterministic regressions for refusal-plus-unsafe follow-through, direct defensive warnings, poisoned note/tool output, secret echoes, and S5C/S5D specificity.
+- [x] Documented emitted security statuses, scoring eligibility, and CSVRate zero-denominator/critical-violation behavior; provider failures and denied gates are VOID and ineligible.
+- [x] S3–S5 scope/fixture gate regressions prove fail-closed VOID behavior and zero provider calls; no live gated trials were run.
+- [x] Combined-main CI passed on Python 3.10/3.11/3.12 (run 38134169151); issue #20 is closed against its acceptance criteria. Broader independent adversarial review remains a documented follow-up.
 
 ### 03 — Code25 audit (36 current families)
 Initial family map and known oracle limitations: [Code25 Oracle Audit](code25-oracle-audit.md).
-- [ ] Build a family-by-family audit table covering contract, fixture, positive/negative tests, oracle type, execution, sandbox, manifest, and limitations.
-- [ ] Prioritize T30, T33, T36, R13, A16, T37, plus lexical/structural-only oracles.
-- [ ] Add false-positive and edge-case tests; use executable checks where the contract requires execution.
-- [ ] Verify every manifest maps to a real family and source prompt. Count parity alone is not quality proof.
-- [ ] Document unresolved limitations explicitly.
+- [x] Added the 36-family Code25 oracle map, including verification paths and known limitations.
+- [x] Prioritized T30, T33, T36, R13, A16, T37 and documented lexical/structural-only limitations.
+- [x] Added targeted regressions for T30, T33, T36, R13, A16, T37, H1/H2/H3, R11, plus targeted executable/runtime cases.
+- [x] Manifest/source-prompt identity and 36-family inventory are checked by manifest-truth tests; the audit explicitly rejects count parity as proof of quality.
+- [x] Remaining risks and the distinction between UNIT-VERIFIED and LIVE-EVALUATED are documented in the Code25 audit map.
 
 ### 04 — Vision engineering quality (V1–V12)
 Current V1–V12 strategy, limits, and fixture-integrity checks: [Vision Oracle Audit](vision-oracle-audit.md).
-- [ ] Validate fixtures against ground truth: boxes, labels, colors, counts, Arabic text, chart/table values, and diff pairs.
-- [ ] Add positive/negative boundary tests for IoU, counting, OCR normalization, spatial relations, diff contradictions, charts, and tables.
-- [ ] Review V7 false positives and false negatives; do not reject a correct answer solely because it mentions an unrelated alternate color.
-- [ ] Verify image-capability and infrastructure failures classify as VOID/ERROR rather than model failures.
-- [ ] Run focused tests and full CI. Real-model accuracy trials are deferred.
+- [ ] Validate fixtures against ground truth: boxes, labels, colors, counts, Arabic text, chart/table values, and diff pairs. Programmatic hashes and structural contracts pass; independent visual inspection of every frozen image is tracked in #47 and remains pending.
+- [x] Added deterministic boundary coverage for IoU tiers, counting, Arabic OCR normalization, spatial relations, V7 contradictions, chart/table values, and V12 exact-output format.
+- [x] V7 regression accepts unrelated alternate-color/position mentions while rejecting target-clause contradictions.
+- [x] Vision regressions classify unsupported image capability and provider failure as infrastructure ERROR, not model FAIL.
+- [x] Vision deterministic tests and CI passed on Python 3.10/3.11/3.12 in the completed Vision PRs; combined-main CI run 38133545023 also passed after the latest merges. Real-model accuracy remains deferred.
 
 ### 05 — README and contributor experience
-- [ ] State the project scope plainly; remove combative or unsupported superiority claims.
-- [ ] Separate stub demo, deterministic self-test, and live model evaluation.
-- [ ] Reconcile badges and counts against source-of-truth files.
-- [ ] Explain that historical partial Code25 bundles cover the earlier 25-family set, not all current 36 families.
-- [ ] Add concise paths for Try demo, Run your model, and Contribute.
-- [ ] Define status terms: IMPLEMENTED, UNIT-VERIFIED, LIVE-EVALUATED, PENDING.
+- [x] State the project scope plainly and avoid unsupported superiority claims.
+- [x] Separate the stub demo, deterministic self-test, and live model evaluation; README explicitly says the stub is not a model score.
+- [x] Reconcile badges and counts against source-of-truth files; README test badge/table match green CI run 38134169151 (868 total).
+- [x] Explain that historical partial Code25 bundles cover the earlier 25-family set, not all current 36 families.
+- [x] Add concise paths for Try demo, Run your model, and Contribute.
+- [x] Define status terms: IMPLEMENTED, UNIT-VERIFIED, LIVE-EVALUATED, PENDING.
 
 ### 06 — Development readiness gate
-- [ ] `python shared/run.py --self-test`
-- [ ] `python tests/run_all.py`
-- [ ] CI passes on Python 3.10, 3.11, and 3.12.
-- [ ] Static checks, dependency audit, secrets/dangerous-pattern guards, coverage, manifest, and golden checks pass.
-- [ ] Review every touched file and confirm historical evidence was not changed.
-- [ ] Publish an evidence-based readiness summary with remaining limitations.
+- [x] `python shared/run.py --self-test` (RESULT: PASS in main CI run 38134169151)
+- [x] `python tests/run_all.py` (all 5 groups green; 868 tests in main CI run 38134169151)
+- [x] CI passes on Python 3.10, 3.11, and 3.12 (main run 38134169151).
+- [x] Static checks, dependency audit, secrets/dangerous-pattern guards, coverage, manifest, and golden checks pass in main run 38134169151.
+- [x] Reviewed changed-file scopes and PR patches; no historical evidence, `results/raw/`, sealed bundles, frozen prompts, or score weights were changed.
+- [x] Publish this evidence-based status snapshot with remaining limitations and owner-blocked gates.
 
 ### 07 — Deferred: live trials and official baseline
 - [ ] Only after maintainer approval, run real provider/model trials, satisfy security authorization, produce new sealed bundles, and evaluate official baseline eligibility.

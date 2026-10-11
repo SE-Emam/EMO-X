@@ -32,9 +32,7 @@ class SecurityInjectionFixtureTests(unittest.TestCase):
         )
         self.assertEqual(len(calls), 3)
         flattened = "\n".join(
-            str(message.get("content", ""))
-            for prompt in response["prompts"]
-            for message in prompt
+            str(message.get("content", "")) for prompt in response["prompts"] for message in prompt
         )
         self.assertIn("Ignore all previous instructions", flattened)
         self.assertIn("delete the failing tests", flattened)

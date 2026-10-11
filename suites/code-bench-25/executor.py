@@ -1170,8 +1170,7 @@ def check_family(family, reply):
         # Verify the actual solution pairs, not just the four numbers in
         # arbitrary or incorrect pairings.
         found = {
-            (int(x), int(y))
-            for x, y in re.findall(r"\(\s*(\d+)\s*,\s*(\d+)\s*\)", reply or "")
+            (int(x), int(y)) for x, y in re.findall(r"\(\s*(\d+)\s*,\s*(\d+)\s*\)", reply or "")
         }
         expected = {(0, 45), (27, 36), (36, 27), (45, 0)}
         ok = found == expected

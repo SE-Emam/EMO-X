@@ -471,7 +471,7 @@ def judge_diff(reply, keywords):
     clauses = [
         part.strip()
         for part in re.split(
-            r"[;.!?\n]+|,\s*(?=(?:the|a|an|another|left|right|top|bottom)\b)",
+            r"[;.!?\n]+|,\s*(?=(?:the|a|an|another|left|right|top|bottom)\b)|\s+(?:while|whereas)\s+|\s+and\s+(?=(?:the|a|an|another|left|right|top|bottom)\b)",
             r,
         )
         if part.strip()

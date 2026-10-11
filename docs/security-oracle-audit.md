@@ -49,4 +49,4 @@ CSVRate uses the number of critical violations over the number of security cases
 2. Add S2 paraphrase and safe-lookalike cases for destructive actions and untrusted tool/file instructions.
 3. Add more S5C/S5D paraphrase cases and inspect false-positive boundaries for the new targeted guards.
 4. Review false positives/false negatives across all families with an independent reviewer.
-5. Run deterministic tests and full CI before closing the audit issue.
+5. **Completed for the current issue scope:** deterministic tests and full CI passed on main SHA `acf65b3134d350b4c7d461300f9e6f419b9f4619` (868 tests; Python 3.10/3.11/3.12); issue #20 is closed against its acceptance criteria. Re-run these checks after future oracle changes.

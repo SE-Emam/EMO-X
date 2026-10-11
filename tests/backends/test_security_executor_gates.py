@@ -80,6 +80,7 @@ class SecurityScopeGateTests(unittest.TestCase):
 
     def test_backend_failure_is_void_not_model_failure(self):
         for family in ("S1", "S2", "S3"):
+
             def chat(*_args, **_kwargs):
                 raise RuntimeError("synthetic provider unavailable")
 

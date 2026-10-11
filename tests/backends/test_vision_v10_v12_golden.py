@@ -216,6 +216,11 @@ class V12TableGoldenTests(unittest.TestCase):
         self.assertFalse(j["pass"])
         self.assertTrue(j["off_by_one"])
 
+    def test_extra_integer_is_invalid_format(self):
+        j = VB.judge_table("rows 3 amount 15 and 4 columns", 3, 15)
+        self.assertFalse(j["pass"])
+        self.assertTrue(j["invalid"])
+
     def test_negative_invalid(self):
         j = VB.judge_table("no numbers here", 3, 15)
         self.assertFalse(j["pass"])

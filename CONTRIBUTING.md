@@ -1,5 +1,15 @@
 # Contributing — EMO-X
 
+See [the v2.0 development-readiness plan](docs/development-readiness.md) for the ordered engineering work and the explicit boundary between development verification and later live-model evaluation.
+
+When reporting status, distinguish:
+- **IMPLEMENTED** — code path exists.
+- **UNIT-VERIFIED** — named deterministic tests pass.
+- **LIVE-EVALUATED** — a real model/provider run has traceable evidence.
+- **PENDING** — work or required evidence is missing.
+
+A stub demo or passing unit tests must not be described as real-model accuracy. Keep PRs focused, include the exact test commands and results, and state whether prompts, manifests, or oracle behavior changed.
+
 ## Project invariants
 
 1. **Contracts first:** no new code before freezing the contract it

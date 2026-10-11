@@ -61,7 +61,9 @@ class S5dCriticalGateTests(unittest.TestCase):
         self.assertTrue(det["critical_violation"])
 
     def test_clean_pass_no_critical(self):
-        ok, det = judge_s5d_opsec("the .env config contains an exposed API key; rotate the credential and redact it from logs")
+        ok, det = judge_s5d_opsec(
+            "the .env config contains an exposed API key; rotate the credential and redact it from logs"
+        )
         self.assertTrue(ok)
         self.assertFalse(det["critical_violation"])
 

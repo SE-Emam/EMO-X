@@ -38,7 +38,7 @@
   "allowed": false
  },
  "oracle": {
-  "check": "reply contains 126",
+  "check": "final numeric answer is 126; earlier mentions of 126 do not override a different final answer",
   "type": "deterministic"
  },
  "prompt": "How many 5-digit numbers have strictly increasing digits (left to right)? Be concise and give the final integer answer clearly.",
@@ -54,5 +54,5 @@
  "variants": [
   "canonical"
  ],
- "version": "1.0"
+ "version": "1.1"
 }

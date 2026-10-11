@@ -63,6 +63,20 @@ class V7DiffGoldenTests(unittest.TestCase):
         j = VB.judge_diff("The center box turned red", ["middle", "square", "red"])
         self.assertTrue(j["pass"])
 
+    def test_negative_target_keywords_with_explicit_negation(self):
+        j = VB.judge_diff("The middle square did not turn red", ["middle", "square", "red"])
+        self.assertFalse(j["pass"])
+        self.assertTrue(j["negated"])
+
+    def test_negative_target_keywords_with_contradictory_color(self):
+        j = VB.judge_diff("The middle square turned blue, not red", ["middle", "square", "red"])
+        self.assertFalse(j["pass"])
+        self.assertTrue(j["competing_color"])
+
+    def test_negative_target_keywords_with_wrong_position(self):
+        j = VB.judge_diff("The left square turned red; the middle square did not change", ["middle", "square", "red"])
+        self.assertFalse(j["pass"])
+
     def test_executor_v7_pass(self):
         chat = _vision_chat_factory("The middle square turned red")
         rec, _ = EXEC.run_family(

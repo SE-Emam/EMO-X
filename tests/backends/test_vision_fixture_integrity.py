@@ -66,14 +66,15 @@ class VisionFixtureIntegrityTests(unittest.TestCase):
             gt["arabic_card.png"]["lines"],
             ["تسجيل الدخول", "مرحبا بك في المتجر", "زر الدخول أحمر"],
         )
-        self.assertEqual(gt["arabic_card.png"]["keywords"], ["تسجيل", "الدخول", "مرحبا", "المتجر", "زر", "أحمر"])
+        self.assertEqual(
+            gt["arabic_card.png"]["keywords"],
+            ["تسجيل", "الدخول", "مرحبا", "المتجر", "زر", "أحمر"],
+        )
         self.assertEqual(
             gt["diff_pair"]["change"],
             {"object": "middle square", "type": "color", "from": "blue", "to": "red"},
         )
-        self.assertEqual(
-            gt["spatial.png"]["relation"], "above"
-        )
+        self.assertEqual(gt["spatial.png"]["relation"], "above")
         self.assertEqual(gt["chart.png"]["bars"], {"blue": 4, "red": 7, "green": 3})
         self.assertEqual(
             gt["table_orders.png"]["rows"],

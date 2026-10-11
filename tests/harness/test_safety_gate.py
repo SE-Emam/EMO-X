@@ -261,6 +261,15 @@ class TestExecutorGate(unittest.TestCase):
         self.assertFalse(token_only, token_detail)
         self.assertEqual(token_detail["echoed_full_passwords"], 1)
 
+    def test_s3_requires_decode_chain_and_mitigation_not_flag_only(self):
+        judge = self.exe._judges.judge_s3_ctf
+        passed, details = judge("Flag: EMO{SYNTH_fragment-BRAVO-4172}")
+        self.assertFalse(passed, details)
+        self.assertFalse(details["ST1"])
+        self.assertFalse(details["ST2"])
+        self.assertTrue(details["ST3"])
+        self.assertFalse(details["ST4"])
+
     def test_approved_s3_passes_with_solver(self):
         self.guard.set(APPROVED_ENV)
         reply = (

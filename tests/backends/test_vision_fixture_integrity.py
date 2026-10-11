@@ -25,6 +25,66 @@ _GT_PATH = os.path.join(_FIX_DIR, "ground_truth.json")
 
 
 class VisionFixtureIntegrityTests(unittest.TestCase):
+    def test_ground_truth_matches_frozen_scene_contracts(self):
+        with open(_GT_PATH, encoding="utf-8") as handle:
+            gt = json.load(handle)
+
+        expected_boxes = {
+            ("ui_login.png", "login_button"): [175, 633, 425, 717],
+            ("ui_login.png", "cancel_button"): [450, 633, 700, 717],
+            ("ui_login.png", "help_button"): [175, 767, 300, 825],
+            ("ui_login.png", "search_box"): [650, 117, 850, 167],
+            ("ui_login.png", "username_field"): [175, 317, 700, 383],
+            ("ui_toolbar.png", "save_button"): [75, 87, 225, 163],
+            ("ui_toolbar.png", "settings_button"): [250, 87, 425, 163],
+            ("ui_toolbar.png", "delete_button"): [450, 87, 612, 163],
+            ("ui_toolbar.png", "toolbar_search"): [638, 87, 925, 163],
+            ("ui_login_noisy.png", "login_button"): [175, 633, 425, 717],
+        }
+        expected_labels_colors = {
+            ("ui_login.png", "login_button"): ("red LOGIN button", "red"),
+            ("ui_login.png", "cancel_button"): ("green Cancel button", "green"),
+            ("ui_login.png", "help_button"): ("blue Help button", "blue"),
+            ("ui_toolbar.png", "save_button"): ("blue SAVE button", "blue"),
+            ("ui_toolbar.png", "settings_button"): ("gray Settings button", "gray"),
+            ("ui_toolbar.png", "delete_button"): ("red Delete button", "red"),
+        }
+        for (filename, key), expected_box in expected_boxes.items():
+            with self.subTest(fixture=filename, target=key):
+                self.assertEqual(gt[filename][key]["box"], expected_box)
+        for (filename, key), (label, color) in expected_labels_colors.items():
+            with self.subTest(fixture=filename, target=key):
+                self.assertEqual(gt[filename][key]["label"], label)
+                self.assertEqual(gt[filename][key]["color"], color)
+
+        self.assertEqual(gt["grid_count.png"]["blue_circles"], 7)
+        self.assertEqual(gt["grid_count.png"]["red_squares"], 4)
+        self.assertEqual(gt["grid_count.png"]["total_shapes"], 11)
+        self.assertEqual(gt["grid_count_perturbed.png"]["blue_circles"], 7)
+        self.assertEqual(gt["grid_count_perturbed.png"]["red_squares"], 4)
+        self.assertEqual(
+            gt["arabic_card.png"]["lines"],
+            ["تسجيل الدخول", "مرحبا بك في المتجر", "زر الدخول أحمر"],
+        )
+        self.assertEqual(
+            gt["arabic_card.png"]["keywords"],
+            ["تسجيل", "الدخول", "مرحبا", "المتجر", "زر", "أحمر"],
+        )
+        self.assertEqual(
+            gt["diff_pair"]["change"],
+            {"object": "middle square", "type": "color", "from": "blue", "to": "red"},
+        )
+        self.assertEqual(gt["spatial.png"]["relation"], "above")
+        self.assertEqual(gt["chart.png"]["bars"], {"blue": 4, "red": 7, "green": 3})
+        self.assertEqual(
+            gt["table_orders.png"]["rows"],
+            [
+                {"item": "A", "qty": 2, "amount": 20},
+                {"item": "B", "qty": 1, "amount": 35},
+                {"item": "C", "qty": 4, "amount": 15},
+            ],
+        )
+
     def test_frozen_fixture_hashes_and_ground_truth_contracts(self):
         with open(_GT_PATH, encoding="utf-8") as handle:
             gt = json.load(handle)

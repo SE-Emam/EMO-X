@@ -67,6 +67,8 @@ class V7DiffGoldenTests(unittest.TestCase):
         for reply in (
             "The middle square turned red; the left circle stayed blue.",
             "The middle square turned red, the left circle stayed blue.",
+            "The middle square turned red and the left circle stayed blue.",
+            "The middle square turned red while the left circle stayed blue.",
             "The middle square turned red; the left square did not change.",
         ):
             with self.subTest(reply=reply):

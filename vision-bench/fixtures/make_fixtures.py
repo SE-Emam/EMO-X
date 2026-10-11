@@ -53,23 +53,55 @@ def norm(box):
 
 # ---------------- fonts ----------------
 
-# Candidate Arabic-capable system fonts (first hit wins; no downloads).
-FONT_CANDIDATES = [
-    "/System/Library/Fonts/GeezaPro.ttc",          # macOS Arabic
-    "/System/Library/Fonts/SFArabic.ttf",          # macOS Arabic
+# Keep Arabic and Latin font selection independent: an Arabic-only font may
+# render English labels as tofu even when Pillow successfully loads the font.
+ARABIC_FONT_CANDIDATES = [
+    "/System/Library/Fonts/GeezaPro.ttc",
+    "/System/Library/Fonts/SFArabic.ttf",
     "/usr/share/fonts/truetype/noto/NotoNaskhArabic-Regular.ttf",
     "/usr/share/fonts/truetype/noto/NotoSansArabic-Regular.ttf",
     "/usr/share/fonts/opentype/noto/NotoNaskhArabic-Regular.ttf",
     "C:\\Windows\\Fonts\\arial.ttf",
     "C:\\Windows\\Fonts\\tahoma.ttf",
 ]
+LATIN_FONT_CANDIDATES = [
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    "/System/Library/Fonts/Supplemental/Arial.ttf",
+    "/System/Library/Fonts/Helvetica.ttc",
+    "C:\\Windows\\Fonts\\arial.ttf",
+    "C:\\Windows\\Fonts\\tahoma.ttf",
+]
+
+
+def _first_existing_font(candidates):
+    for path in candidates:
+        if os.path.isfile(path):
+            return path
+    return None
+
+
+def find_arabic_font():
+    return _first_existing_font(ARABIC_FONT_CANDIDATES)
+
+
+def find_latin_font():
+    path = _first_existing_font(LATIN_FONT_CANDIDATES)
+    if path is None:
+        raise RuntimeError(
+            "No Latin-capable font found; refusing to generate UI fixtures "
+            "with potentially missing/tofu English glyphs. Install DejaVu Sans "
+            "or Liberation Sans and rerun the fixture generator."
+        )
+    # Fail closed if the selected font cannot be loaded by Pillow.
+    ImageFont.truetype(path, 18)
+    return path
 
 
 def find_font():
-    for p in FONT_CANDIDATES:
-        if os.path.isfile(p):
-            return p
-    return None
+    """Backward-compatible alias for the original Arabic font selector."""
+    return find_arabic_font()
 
 
 def load_font(path, size):
@@ -696,25 +728,28 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     os.makedirs(args.out, exist_ok=True)
-    font_path = find_font()
+    latin_font_path = find_latin_font()
+    arabic_font_path = find_arabic_font()
     raqm = has_raqm()
-    degraded = font_path is None
+    degraded = arabic_font_path is None
     if degraded:
         print("WARNING: no Arabic-capable system font found; "
               "Arabic card will render with the PIL default font (tofu). "
               "V3 verdicts from this fixture are non-admissible.", file=sys.stderr)
     else:
-        print("font: %s (raqm=%s)" % (font_path, raqm))
+        print("Arabic font: %s (raqm=%s)" % (arabic_font_path, raqm))
+    print("Latin UI font: %s" % latin_font_path)
 
     gt_all = {"image_size": [W, H], "box_scale": SCALE,
-              # Store only the portable font filename, never a host-specific absolute path.
-              "font_used": os.path.basename(font_path) if font_path else "PIL-default (DEGRADED)",
+              # Store portable font filenames, never host-specific absolute paths.
+              "font_used": os.path.basename(arabic_font_path) if arabic_font_path else "PIL-default (DEGRADED)",
+              "latin_font_used": os.path.basename(latin_font_path),
               "arabic_engine": ("raqm" if raqm else "fallback-shaper")
-                               if font_path else "none-degraded"}
+                               if arabic_font_path else "none-degraded"}
 
-    makers = [("ui_login.png", lambda: make_login(font_path)),
-              ("ui_toolbar.png", lambda: make_toolbar(font_path)),
-              ("arabic_card.png", lambda: make_arabic_card(font_path, raqm and not degraded)),
+    makers = [("ui_login.png", lambda: make_login(latin_font_path)),
+              ("ui_toolbar.png", lambda: make_toolbar(latin_font_path)),
+              ("arabic_card.png", lambda: make_arabic_card(arabic_font_path, raqm and not degraded)),
               ("grid_count.png", make_grid)]
     import hashlib
     fixture_sha256 = {}
@@ -729,7 +764,7 @@ def main(argv=None):
     # Sprint 1 perturbed variants (deterministic, counts unchanged).
     perturbed_makers = [
         ("grid_count_perturbed.png", make_grid_perturbed),
-        ("ui_toolbar_perturbed.png", lambda: make_toolbar_perturbed(font_path)),
+        ("ui_toolbar_perturbed.png", lambda: make_toolbar_perturbed(latin_font_path)),
     ]
     for fname, fn in perturbed_makers:
         img, gt = fn()
@@ -765,7 +800,7 @@ def main(argv=None):
     print("wrote chart.png sha=%s (sprint2-V9)" % fixture_sha256["chart.png"][:16])
 
     # Sprint 3 new families (deterministic; seeds 25610-25612).
-    img_noisy, gt_noisy = make_login_noisy(font_path)
+    img_noisy, gt_noisy = make_login_noisy(latin_font_path)
     img_noisy.save(os.path.join(args.out, "ui_login_noisy.png"))
     with open(os.path.join(args.out, "ui_login_noisy.png"), "rb") as f:
         fixture_sha256["ui_login_noisy.png"] = hashlib.sha256(f.read()).hexdigest()

@@ -629,13 +629,7 @@ def check_t37(reply, variant="canonical"):
     sem = _all_groups_hit(reply, T37_SEMANTIC_GROUPS)
     required_ok, forbidden_hit, detail = _t37_dialect_detail(folded, variant)
     negated_claim = T37_NEGATED_CLAIM_RE.search(folded) is not None
-    ok = bool(
-        ratio > 0.10
-        and all(sem)
-        and required_ok
-        and not forbidden_hit
-        and not negated_claim
-    )
+    ok = bool(ratio > 0.10 and all(sem) and required_ok and not forbidden_hit and not negated_claim)
     log = (
         f"spanish_ratio={ratio:.3f} sem={sem} {detail} "
         f"required={required_ok} forbidden={forbidden_hit} "

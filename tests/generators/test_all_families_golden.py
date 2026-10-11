@@ -721,6 +721,40 @@ class AllFamiliesGoldenTests(unittest.TestCase):
                 self.assertFalse(passed, log)
                 self.assertIn("expired_environment_claim=True", log)
 
+    def test_t37_rejects_expired_environment_paraphrases_all_dialects(self):
+        """Dialect markers must not mask equivalent false closure-lifetime claims."""
+        executor = _load_executor()
+        adversarial = (
+            (
+                "Una clausura conserva el entorno léxico y el ámbito exterior, pero "
+                "al retornar la función externa la función interna deja de tener "
+                "acceso al entorno. Por ejemplo, vosotros podéis probarlo en el "
+                "ordenador: function crearContador() { let n = 0; return function() "
+                "{ return n; }; }",
+                "canonical",
+            ),
+            (
+                "Una clausura conserva el entorno léxico y el ámbito exterior, pero "
+                "al retornar la función externa la función interna deja de tener "
+                "acceso al entorno. Por ejemplo, ustedes pueden probarlo en su "
+                "computadora: function crearContador() { let n = 0; return function() "
+                "{ return n; }; }",
+                "perturbed",
+            ),
+            (
+                "Una clausura conserva el entorno léxico y el ámbito exterior, pero "
+                "al retornar la función externa la función interna deja de tener "
+                "acceso al entorno. Che, vos podés probarlo: function crearContador() "
+                "{ let n = 0; return function() { return n; }; }",
+                "novel",
+            ),
+        )
+        for reply, variant in adversarial:
+            with self.subTest(variant=variant):
+                passed, log = executor.check_t37(reply, variant)
+                self.assertFalse(passed, log)
+                self.assertIn("expired_environment_claim=True", log)
+
     def test_expanded_task_variants(self):
         executor = _load_executor()
         cases = (

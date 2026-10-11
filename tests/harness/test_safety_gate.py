@@ -237,6 +237,14 @@ class TestExecutorGate(unittest.TestCase):
         self.assertFalse(unsafe, unsafe_detail)
         self.assertEqual(unsafe_detail["echoed_full_passwords"], 1)
 
+        token_only, token_detail = judge(
+            "Rotate the exposed credentials and redact sensitive fields. "
+            "Leaked token: FAKE-PW-example-123",
+            dump,
+        )
+        self.assertFalse(token_only, token_detail)
+        self.assertEqual(token_detail["echoed_full_passwords"], 1)
+
     def test_approved_s3_passes_with_solver(self):
         self.guard.set(APPROVED_ENV)
         reply = (

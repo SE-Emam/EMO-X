@@ -38,7 +38,7 @@
   "allowed": false
  },
  "oracle": {
-  "check": "reply contains 27, 36, 45 and 0",
+  "check": "exact set of nonnegative solution pairs is {(0,45),(27,36),(36,27),(45,0)}",
   "type": "deterministic"
  },
  "prompt": "Find all integer pairs (x, y) with x >= 0, y >= 0 satisfying x^2 + y^2 = 2025. Be concise and list every solution.",
@@ -54,5 +54,5 @@
  "variants": [
   "canonical"
  ],
- "version": "1.0"
+ "version": "1.1"
 }

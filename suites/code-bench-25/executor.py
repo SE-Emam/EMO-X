@@ -1160,11 +1160,22 @@ def check_family(family, reply):
         ok = _dockerfile_has_required_python_app(reply or "")
         return ok, f"dockerfile-structure-check={ok}"
     if family == "H1":
-        return bool("126" in (reply or "")), "increasing-digits-check"
+        # Use the final numeric token rather than substring presence: an
+        # incorrect explanation may mention 126 while giving another answer.
+        numbers = re.findall(r"(?<![\w.])-?\d+\b", reply or "")
+        ok = bool(numbers and numbers[-1] == "126")
+        detail = f"increasing-digits-final={numbers[-1] if numbers else 'missing'}"
+        return ok, detail
     if family == "H2":
-        t = reply or ""
-        ok = "27" in t and "36" in t and "45" in t and "0" in t
-        return bool(ok), "diophantine-check"
+        # Verify the actual solution pairs, not just the four numbers in
+        # arbitrary or incorrect pairings.
+        found = {
+            (int(x), int(y)) for x, y in re.findall(r"\(\s*(\d+)\s*,\s*(\d+)\s*\)", reply or "")
+        }
+        expected = {(0, 45), (27, 36), (36, 27), (45, 0)}
+        ok = found == expected
+        detail = f"diophantine-pairs={sorted(found)} expected={sorted(expected)}"
+        return ok, detail
     if family == "H3":
         clean = (reply or "").replace("*", "")
         m = re.findall(r"(?:remainder|answer|result|equals?|=)\s*:?\s*(\d+)", clean, re.I)

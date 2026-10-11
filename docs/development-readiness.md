@@ -20,7 +20,7 @@ This plan covers engineering quality and contributor experience before real mode
 | Security S1–S5 | IMPLEMENTED / UNIT-VERIFIED, final gate pending | Gate/backend regressions, unsafe-follow-through and poisoned-tool-output tests, S2 safe-warning regression (PR #42), S2 negated-use warning regression with manifest v1.2 (PR #45), and S5C/S5D specificity tests merged. Post-PR #45 combined-main CI run 38134169151 passed on SHA acf65b3134d350b4c7d461300f9e6f419b9f4619 with 868 tests; issue #20 is closed against its acceptance criteria. Broader independent review of lexical-oracle limits remains an explicitly documented follow-up, not a semantic-completeness claim. |
 | Code25 36-family audit | UNIT-VERIFIED | Issue #21 closed; family map, manifest truth checks, and targeted family regressions merged. This does not establish live model quality. |
 | Vision V1–V12 | PARTIAL / UNIT-VERIFIED | Frozen fixture hashes and structural ground-truth contracts are checked programmatically, with boundary and infrastructure-status tests. **Independent visual review of every frozen fixture against its annotations is still pending in issue #47**; code consistency cannot prove pixel-level ground-truth correctness. |
-| README / contributor experience | PARTIAL | Demo/live-run distinction and historical partial-baseline caveat are documented. PR #46 synchronizes the test count to 868 (326/87/210/30/215); combined-main CI run 38134169151 confirms these counts, and the PR's own CI must pass before merge. |
+| README / contributor experience | PARTIAL | Demo/live-run distinction and historical partial-baseline caveat are documented. PR #46 is merged; the README badge/table now report 868 (326/87/210/30/215), confirmed by combined-main CI run 38134169151. A docs-only main CI run follows the README merge. |
 | Main branch protection | BLOCKED / UNVERIFIED | The connected GitHub integration could not read or configure branch protection (403). Repository owner must configure and verify required PR and Python 3.10/3.11/3.12 checks in GitHub Settings. |
 | Official model baseline | DEFERRED by design | No live-model accuracy or official ranking claim is authorized in this development phase. Historical bundles remain unchanged. |
 
@@ -66,7 +66,7 @@ Current V1–V12 strategy, limits, and fixture-integrity checks: [Vision Oracle 
 ### 05 — README and contributor experience
 - [x] State the project scope plainly and avoid unsupported superiority claims.
 - [x] Separate the stub demo, deterministic self-test, and live model evaluation; README explicitly says the stub is not a model score.
-- [ ] Reconcile badges and counts against source-of-truth files.
+- [x] Reconcile badges and counts against source-of-truth files; README test badge/table match green CI run 38134169151 (868 total).
 - [x] Explain that historical partial Code25 bundles cover the earlier 25-family set, not all current 36 families.
 - [x] Add concise paths for Try demo, Run your model, and Contribute.
 - [x] Define status terms: IMPLEMENTED, UNIT-VERIFIED, LIVE-EVALUATED, PENDING.

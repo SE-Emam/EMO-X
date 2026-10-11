@@ -469,27 +469,25 @@ def judge_diff(reply, keywords):
 
     # Fail closed on common explicit denials, including answers that repeat
     # every target keyword while denying the described change.
-    negation = re.search(
-        r"\b(no difference|no change|did not|didn't|does not|doesn't|"
-        r"not|never|without|unchanged|isn't|is not)\b",
-        r,
-    ) is not None
+    negation = (
+        re.search(
+            r"\b(no difference|no change|did not|didn't|does not|doesn't|"
+            r"not|never|without|unchanged|isn't|is not)\b",
+            r,
+        )
+        is not None
+    )
 
     # V7's frozen target is the middle/center square/box turning red.
     # Competing target attributes make a keyword-complete answer ambiguous.
     competing_color = (
         "red" in keywords
-        and re.search(
-            r"\b(blue|green|yellow|black|white|orange|purple|pink|brown|gray|grey)\b", r
-        )
+        and re.search(r"\b(blue|green|yellow|black|white|orange|purple|pink|brown|gray|grey)\b", r)
         is not None
     )
     competing_position = (
         any(k in keywords for k in ("middle", "center", "centre"))
-        and re.search(
-            r"\b(left|right|top|bottom|corner|edge)\b", r
-        )
-        is not None
+        and re.search(r"\b(left|right|top|bottom|corner|edge)\b", r) is not None
     )
     return {
         "pass": (

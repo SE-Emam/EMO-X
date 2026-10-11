@@ -2,6 +2,16 @@
 
 **Scope:** implementation/oracle review before real-model trials. The current suite contains 36 family manifests. This map records the primary verification mechanism and the next engineering risk to review; it does not claim every family has passed a full adversarial audit.
 
+## Evidence inventory and limits
+
+**Current status: UNIT-VERIFIED for the listed deterministic tests; not LIVE-EVALUATED.**
+
+- `tests/generators/test_all_families_golden.py::test_every_family_has_canonical_golden_pass_and_fail` checks that the 36 `GOLDEN_REPLIES` IDs match the executor's 36 family IDs, and that every canonical positive/negative golden produces the expected result. Its `GoldenBackend` patches sandbox execution, so this is not proof that every real Docker/compiler/database runtime is available or works end-to-end.
+- `tests/backends/test_manifest_truth.py` checks the 36-family inventory, prompt byte identity, manifest oracle/timeouts/forbidden-path metadata, and manifest IDs versus filenames.
+- Family-specific deterministic tests strengthen the generic goldens where risk warrants it: R4/R13 semantic/configuration negatives; T30 SQL injection and table preservation; T33 retry/backoff/exhaustion/permanent errors; T36 migration and data preservation; T37 dialect and contradiction guards. H1/H2/H3 and R11 have dedicated regressions for known false-positive/infrastructure-classification defects.
+- The family map below records known limits and next risks; a row is not marked "fully audited" just because the generic golden passes. Static/lexical checks remain limited by their stated contracts.
+- Real model/provider runs and official baseline construction are intentionally deferred. Historical Code25 bundles cover the earlier 25-family set only and are not evidence for all 36 current families.
+
 ## Family-by-family map
 
 | Family | Primary verification path | Main risk / next review |

@@ -486,10 +486,15 @@ def judge_diff(reply, keywords):
     )
     competing_position = (
         any(k in keywords for k in ("middle", "center", "centre"))
-        and re.search(r"\b(left|right|top|bottom|corner|edge)\b", r) is not None
+        and re.search(
+            r"\b(left|right|top|bottom|corner|edge)\b", r
+        )
+        is not None
     )
     return {
-        "pass": len(missing) == 0 and not negation and not competing_color and not competing_position,
+        "pass": (
+            len(missing) == 0 and not negation and not competing_color and not competing_position
+        ),
         "hits": hits,
         "missing": missing,
         "negated": negation,

@@ -605,6 +605,9 @@ class AllFamiliesGoldenTests(unittest.TestCase):
         self.assertTrue(executor.check_family("T37", es_es)[0])
         self.assertTrue(executor.check_variant("T37", "perturbed", es_mx)[0])
         self.assertTrue(executor.check_variant("T37", "novel", es_ar)[0])
+        # The ES-ES prompt explicitly requires the standalone marker "coger".
+        without_coger = es_es.replace("para coger la idea", "para entender la idea")
+        self.assertFalse(executor.check_t37(without_coger, "canonical")[0])
         # Cross-fail: mixing dialects must fail (wrong markers / forbidden hits).
         self.assertFalse(executor.check_t37(es_es, "perturbed")[0])
         self.assertFalse(executor.check_t37(es_es, "novel")[0])

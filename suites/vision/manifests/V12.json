@@ -34,7 +34,7 @@
   "allowed": false
  },
  "oracle": {
-  "check": "two exact ints rows,amount (3,15); BOTH must match; single total-error 1 logged as WRONG_RESULT (off_by_1), fewer than 2 ints as INVALID_NO_INT",
+  "check": "exactly two parseable integers rows,amount (3,15); both must match; fewer or more than two integers are INVALID format; single total-error 1 with exactly two integers is WRONG_RESULT (off_by_1)",
   "tolerance": "count_tolerance off_by_1 logged (total absolute error == 1)",
   "type": "deterministic"
  },
@@ -50,5 +50,5 @@
  "variants": [
   "canonical"
  ],
- "version": "1.0"
+ "version": "1.1"
 }

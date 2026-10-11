@@ -604,14 +604,14 @@ def judge_table(reply, expected_rows, expected_amount):
 
     P_TABLE asks for "rows,amount" (e.g. "3,15"). Pass iff BOTH match.
     off_by_one iff total absolute error == 1 (single off-by-one).
-    Fewer than 2 parseable ints -> INVALID (incomplete, not FAIL).
+    Anything other than exactly 2 parseable ints -> INVALID (format violation).
     """
     ints = _extract_all_ints(reply)
-    if len(ints) < 2:
+    if len(ints) != 2:
         return {
             "pass": False,
-            "got_rows": (ints[0] if len(ints) == 1 else None),
-            "got_amount": None,
+            "got_rows": (ints[0] if ints else None),
+            "got_amount": (ints[1] if len(ints) > 1 else None),
             "expected_rows": expected_rows,
             "expected_amount": expected_amount,
             "invalid": True,

@@ -44,6 +44,7 @@ Initial family map and known oracle limitations: [Code25 Oracle Audit](code25-or
 - [ ] Document unresolved limitations explicitly.
 
 ### 04 — Vision engineering quality (V1–V12)
+Current V1–V12 strategy, limits, and fixture-integrity checks: [Vision Oracle Audit](vision-oracle-audit.md).
 - [ ] Validate fixtures against ground truth: boxes, labels, colors, counts, Arabic text, chart/table values, and diff pairs.
 - [ ] Add positive/negative boundary tests for IoU, counting, OCR normalization, spatial relations, diff contradictions, charts, and tables.
 - [ ] Review V7 false positives and false negatives; do not reject a correct answer solely because it mentions an unrelated alternate color.

@@ -17,10 +17,10 @@ This plan covers engineering quality and contributor experience before real mode
 | Area | Status | Evidence / remaining gate |
 |---|---|---|
 | T37 Spanish oracle | UNIT-VERIFIED | PR #29 merged; manifest v1.2; full Python 3.10/3.11/3.12 CI passed. |
-| Security S1–S5 | IMPLEMENTED / UNIT-VERIFIED, final gate pending | Gate/backend regressions, unsafe-follow-through and poisoned-tool-output tests, S2 safe-warning regression, and S5C/S5D specificity tests merged. Combined-main CI is green on SHA c5fb9f51a5b5f2a0699c5aba4101287f5618c8c2; keep issue #20 open for independent review of remaining lexical-oracle limits. |
+| Security S1–S5 | IMPLEMENTED / UNIT-VERIFIED, final gate pending | Gate/backend regressions, unsafe-follow-through and poisoned-tool-output tests, S2 safe-warning regression (PR #42), S2 negated-use warning regression with manifest v1.2 (PR #45), and S5C/S5D specificity tests merged. Post-PR #45 combined-main CI run 38134169151 is pending; issue #20 stays open until it passes. Broader independent review of lexical-oracle limits remains an explicitly documented follow-up. |
 | Code25 36-family audit | UNIT-VERIFIED | Issue #21 closed; family map, manifest truth checks, and targeted family regressions merged. This does not establish live model quality. |
 | Vision V1–V12 | PARTIAL / UNIT-VERIFIED | Frozen fixture hashes and structural ground-truth contracts are checked programmatically, with boundary and infrastructure-status tests. **Independent visual review of every frozen fixture against its annotations is still pending**; code consistency cannot prove pixel-level ground-truth correctness. |
-| README / contributor experience | PARTIAL | Demo/live-run distinction and historical partial-baseline caveat are documented. PR #44 synchronizes the test count to 867 (326/87/210/30/214) from green combined-main CI run 38133545023; merge only after the PR's own CI passes. |
+| README / contributor experience | PARTIAL | Demo/live-run distinction and historical partial-baseline caveat are documented. PR #46 synchronizes the test count to 868 (326/87/210/30/215) after PR #45; merge only after combined-main CI confirms the measured counts and the PR's own CI passes. |
 | Main branch protection | BLOCKED / UNVERIFIED | The connected GitHub integration could not read or configure branch protection (403). Repository owner must configure and verify required PR and Python 3.10/3.11/3.12 checks in GitHub Settings. |
 | Official model baseline | DEFERRED by design | No live-model accuracy or official ranking claim is authorized in this development phase. Historical bundles remain unchanged. |
 
@@ -30,7 +30,7 @@ This plan covers engineering quality and contributor experience before real mode
 - [x] Link the focused audit work through the T37, security, Code25, and Vision audit docs/issues (#19–#22).
 - [x] Focused implementation PRs document scope, acceptance criteria, tests, contract changes, evidence, and known limits.
 - [ ] Verify main protection and required Python 3.10/3.11/3.12 harness checks. If automation cannot configure repository rules, leave this gate open and record the owner action.
-- [ ] Keep development readiness separate from baseline eligibility.
+- [x] Keep development readiness separate from baseline eligibility; official baseline eligibility is a separate, explicitly deferred phase.
 
 ### 01 — Spanish T37 oracle
 - [x] Audited implementation and tests against issue #13; T37 return/termination paraphrase guard merged in PR #29.
@@ -64,12 +64,12 @@ Current V1–V12 strategy, limits, and fixture-integrity checks: [Vision Oracle 
 - [x] Vision deterministic tests and CI passed on Python 3.10/3.11/3.12 in the completed Vision PRs; combined-main CI run 38133545023 also passed after the latest merges. Real-model accuracy remains deferred.
 
 ### 05 — README and contributor experience
-- [ ] State the project scope plainly; remove combative or unsupported superiority claims.
-- [ ] Separate stub demo, deterministic self-test, and live model evaluation.
+- [x] State the project scope plainly and avoid unsupported superiority claims.
+- [x] Separate the stub demo, deterministic self-test, and live model evaluation; README explicitly says the stub is not a model score.
 - [ ] Reconcile badges and counts against source-of-truth files.
-- [ ] Explain that historical partial Code25 bundles cover the earlier 25-family set, not all current 36 families.
-- [ ] Add concise paths for Try demo, Run your model, and Contribute.
-- [ ] Define status terms: IMPLEMENTED, UNIT-VERIFIED, LIVE-EVALUATED, PENDING.
+- [x] Explain that historical partial Code25 bundles cover the earlier 25-family set, not all current 36 families.
+- [x] Add concise paths for Try demo, Run your model, and Contribute.
+- [x] Define status terms: IMPLEMENTED, UNIT-VERIFIED, LIVE-EVALUATED, PENDING.
 
 ### 06 — Development readiness gate
 - [ ] `python shared/run.py --self-test`

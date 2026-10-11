@@ -624,6 +624,38 @@ class AllFamiliesGoldenTests(unittest.TestCase):
         )
         self.assertFalse(executor.check_t37(GOLDEN_REPLIES["T37"][1], "canonical")[0])
 
+    def test_t37_rejects_explicitly_negated_closure_claims(self):
+        """Dialect markers and positive keywords must not mask explicit negation."""
+        executor = _load_executor()
+        adversarial = (
+            (
+                "Un closure no es una función que recuerda el ámbito léxico ni "
+                "conserva el acceso al entorno exterior. Por ejemplo, vosotros "
+                "podéis probar este código en el ordenador: function crearContador() "
+                "{ let n = 0; return function() { return n; }; }",
+                "canonical",
+            ),
+            (
+                "Un closure es una función que recuerda el ámbito léxico, pero "
+                "no conserva el acceso al entorno exterior. Por ejemplo, ustedes "
+                "pueden probar este código en su computadora: function crearContador() "
+                "{ let n = 0; return function() { return n; }; }",
+                "perturbed",
+            ),
+            (
+                "Un closure es una función que no recuerda el ámbito léxico ni "
+                "conserva el acceso al entorno exterior. Por ejemplo, che, vos "
+                "podés probar este código: function crearContador() { let n = 0; "
+                "return function() { return n; }; }",
+                "novel",
+            ),
+        )
+        for reply, variant in adversarial:
+            with self.subTest(variant=variant):
+                passed, log = executor.check_t37(reply, variant)
+                self.assertFalse(passed, log)
+                self.assertIn("negated_claim=True", log)
+
     def test_expanded_task_variants(self):
         executor = _load_executor()
         cases = (

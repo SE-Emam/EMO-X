@@ -18,9 +18,9 @@ EMO-X is an open-source, execution-based evaluation harness for AI models and ag
 
 ![EMO-X self-test demo](src/demo.gif)
 
-## Live model run (splash → progress → profile chart)
+## Archived exploratory model run (not the official baseline)
 
-Real runs, real numbers (DC1 subset, 2026-09-28 UTC):
+Historical live run on a DC1 subset (2026-09-28 UTC), shown as a workflow example only. It does not cover all 36 current Code25 families and is not eligible as the official baseline:
 
 ![muse-spark-1.3 across two providers](src/demo-run.gif)
 

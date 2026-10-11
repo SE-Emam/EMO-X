@@ -49,7 +49,7 @@ class VisionFixtureIntegrityTests(unittest.TestCase):
                 self.assertTrue(os.path.isfile(path), path)
                 with open(path, "rb") as handle:
                     payload = handle.read()
-                self.assertTrue(payload.startswith(b"\\x89PNG\\r\\n\\x1a\\n"), filename)
+                self.assertTrue(payload.startswith(b"\x89PNG\r\n\x1a\n"), filename)
                 self.assertEqual(hashlib.sha256(payload).hexdigest(), expected_sha)
                 self.assertGreater(int.from_bytes(payload[16:20], "big"), 0)
                 self.assertGreater(int.from_bytes(payload[20:24], "big"), 0)

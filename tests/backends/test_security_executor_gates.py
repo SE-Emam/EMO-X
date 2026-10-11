@@ -79,5 +79,39 @@ class SecurityScopeGateTests(unittest.TestCase):
                 self.assertEqual(response["replies"], [])
 
 
+    def test_backend_failure_is_void_not_model_failure(self):
+        for family in ("S1", "S2", "S3"):
+            def chat(*_args, **_kwargs):
+                raise RuntimeError("synthetic provider unavailable")
+
+            with self.subTest(family=family):
+                gate_patches = []
+                if family == "S3":
+                    gate_patches = [
+                        mock.patch.object(EXEC, "require_scope_gate", return_value=True),
+                        mock.patch.object(EXEC, "verify_fixture_dir", return_value=True),
+                    ]
+                entered = []
+                try:
+                    for patcher in gate_patches:
+                        patcher.start()
+                        entered.append(patcher)
+                    attempt, response = EXEC.run_family(
+                        family,
+                        chat,
+                        run_id="backend-error-test",
+                        model_id="fixture",
+                        scope={"approved": True, "target": "synthetic:test"},
+                    )
+                finally:
+                    for patcher in reversed(entered):
+                        patcher.stop()
+
+                self.assertEqual(attempt["primary_status"], "VOID")
+                self.assertEqual(attempt["primary_failure"], "BACKEND_ERROR")
+                self.assertFalse(attempt["eligible_for_task_score"])
+                self.assertFalse(attempt["eligible_for_pass_rate"])
+                self.assertIn("synthetic provider unavailable", response["error"])
+
 if __name__ == "__main__":
     unittest.main()

@@ -208,7 +208,7 @@ questions — use both.
 | v2.0-beta | Recovery, drift, tool discipline, calibration, health | Done (suites + `health/`) |
 | **v2.0.0-rc1** (current) | Gauntlet, long-horizon, adaptive difficulty, scoring conformance | Code done; **no published OFFICIAL baseline yet** |
 | v2.0 | First sealed 3-trial OFFICIAL baseline (R3) | Pending baseline |
-| Next | 15→30 issue families; vision out of PILOT; first 3-trial public baseline with CI | Planned (`PLAN-X.md` WP12–WP15) |
+| Next | 15→30 issue families; vision out of PILOT; first 3-trial public baseline with CI | Planned; see `SPEC.md` and `CONTRIBUTING.md` for public methodology and contribution guidance |
 
 No model scores are published in this repo: any number without a sealed
 `results/raw/RUN-ID/` bundle is inadmissible here.

@@ -587,6 +587,18 @@ T10_SEMANTIC_GROUPS = (
 #: Spanish words containing "che".
 T37_SEMANTIC_GROUPS = T9_SEMANTIC_GROUPS
 
+# T37 is a deterministic keyword oracle, not a semantic parser. Fail closed
+# when an answer explicitly negates a core closure claim while repeating the
+# required positive markers; keep this guard narrow to avoid broad negation
+# heuristics changing unrelated task families.
+T37_NEGATED_CLAIM_RE = re.compile(
+    r"\\b(?:no\\s+(?:es\\s+(?:una\\s+)?funcion|recuerda|conserva|mantiene|"
+    r"captura|guarda|accede|permite|retiene|tiene)|nunca\\s+(?:recuerda|conserva|"
+    r"mantiene|captura|guarda|accede)|(?:does not|doesn't|did not|didn't|never)\\s+"
+    r"(?:remember|retain|preserve|capture|keep|access|create|have)|"
+    r"(?:is not|isn't)\\s+(?:a\\s+)?(?:closure|function))\\b"
+)
+
 
 def _has_word(folded, word):
     """True iff `word` appears as a standalone word in folded text."""
@@ -616,8 +628,19 @@ def check_t37(reply, variant="canonical"):
     ratio = spanish_ratio(reply)
     sem = _all_groups_hit(reply, T37_SEMANTIC_GROUPS)
     required_ok, forbidden_hit, detail = _t37_dialect_detail(folded, variant)
-    ok = bool(ratio > 0.10 and all(sem) and required_ok and not forbidden_hit)
-    log = f"spanish_ratio={ratio:.3f} sem={sem} {detail} required={required_ok} forbidden={forbidden_hit}"
+    negated_claim = T37_NEGATED_CLAIM_RE.search(folded) is not None
+    ok = bool(
+        ratio > 0.10
+        and all(sem)
+        and required_ok
+        and not forbidden_hit
+        and not negated_claim
+    )
+    log = (
+        f"spanish_ratio={ratio:.3f} sem={sem} {detail} "
+        f"required={required_ok} forbidden={forbidden_hit} "
+        f"negated_claim={negated_claim}"
+    )
     return ok, log
 
 

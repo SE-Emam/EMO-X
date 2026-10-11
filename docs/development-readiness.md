@@ -17,10 +17,10 @@ This plan covers engineering quality and contributor experience before real mode
 | Area | Status | Evidence / remaining gate |
 |---|---|---|
 | T37 Spanish oracle | UNIT-VERIFIED | PR #29 merged; manifest v1.2; full Python 3.10/3.11/3.12 CI passed. |
-| Security S1–S5 | IMPLEMENTED / UNIT-VERIFIED, final gate pending | Gate/backend regressions, unsafe-follow-through and poisoned-tool-output tests, S2 safe-warning regression (PR #42), S2 negated-use warning regression with manifest v1.2 (PR #45), and S5C/S5D specificity tests merged. Post-PR #45 combined-main CI run 38134169151 is pending; issue #20 stays open until it passes. Broader independent review of lexical-oracle limits remains an explicitly documented follow-up. |
+| Security S1–S5 | IMPLEMENTED / UNIT-VERIFIED, final gate pending | Gate/backend regressions, unsafe-follow-through and poisoned-tool-output tests, S2 safe-warning regression (PR #42), S2 negated-use warning regression with manifest v1.2 (PR #45), and S5C/S5D specificity tests merged. Post-PR #45 combined-main CI run 38134169151 passed on SHA acf65b3134d350b4c7d461300f9e6f419b9f4619 with 868 tests; issue #20 is closed against its acceptance criteria. Broader independent review of lexical-oracle limits remains an explicitly documented follow-up, not a semantic-completeness claim. |
 | Code25 36-family audit | UNIT-VERIFIED | Issue #21 closed; family map, manifest truth checks, and targeted family regressions merged. This does not establish live model quality. |
 | Vision V1–V12 | PARTIAL / UNIT-VERIFIED | Frozen fixture hashes and structural ground-truth contracts are checked programmatically, with boundary and infrastructure-status tests. **Independent visual review of every frozen fixture against its annotations is still pending**; code consistency cannot prove pixel-level ground-truth correctness. |
-| README / contributor experience | PARTIAL | Demo/live-run distinction and historical partial-baseline caveat are documented. PR #46 synchronizes the test count to 868 (326/87/210/30/215) after PR #45; merge only after combined-main CI confirms the measured counts and the PR's own CI passes. |
+| README / contributor experience | PARTIAL | Demo/live-run distinction and historical partial-baseline caveat are documented. PR #46 synchronizes the test count to 868 (326/87/210/30/215); combined-main CI run 38134169151 confirms these counts, and the PR's own CI must pass before merge. |
 | Main branch protection | BLOCKED / UNVERIFIED | The connected GitHub integration could not read or configure branch protection (403). Repository owner must configure and verify required PR and Python 3.10/3.11/3.12 checks in GitHub Settings. |
 | Official model baseline | DEFERRED by design | No live-model accuracy or official ranking claim is authorized in this development phase. Historical bundles remain unchanged. |
 
@@ -45,7 +45,7 @@ Detailed current inventory and known limitations: [Security Oracle Engineering A
 - [x] Added deterministic regressions for refusal-plus-unsafe follow-through, direct defensive warnings, poisoned note/tool output, secret echoes, and S5C/S5D specificity.
 - [x] Documented emitted security statuses, scoring eligibility, and CSVRate zero-denominator/critical-violation behavior; provider failures and denied gates are VOID and ineligible.
 - [x] S3–S5 scope/fixture gate regressions prove fail-closed VOID behavior and zero provider calls; no live gated trials were run.
-- [ ] Combined-main CI passed (run 38133545023, Python 3.10/3.11/3.12); independent security-oracle review remains before closing issue #20.
+- [x] Combined-main CI passed on Python 3.10/3.11/3.12 (run 38134169151); issue #20 is closed against its acceptance criteria. Broader independent adversarial review remains a documented follow-up.
 
 ### 03 — Code25 audit (36 current families)
 Initial family map and known oracle limitations: [Code25 Oracle Audit](code25-oracle-audit.md).
@@ -72,12 +72,12 @@ Current V1–V12 strategy, limits, and fixture-integrity checks: [Vision Oracle 
 - [x] Define status terms: IMPLEMENTED, UNIT-VERIFIED, LIVE-EVALUATED, PENDING.
 
 ### 06 — Development readiness gate
-- [ ] `python shared/run.py --self-test`
-- [ ] `python tests/run_all.py`
-- [ ] CI passes on Python 3.10, 3.11, and 3.12.
-- [ ] Static checks, dependency audit, secrets/dangerous-pattern guards, coverage, manifest, and golden checks pass.
-- [ ] Review every touched file and confirm historical evidence was not changed.
-- [ ] Publish an evidence-based readiness summary with remaining limitations.
+- [x] `python shared/run.py --self-test` (RESULT: PASS in main CI run 38134169151)
+- [x] `python tests/run_all.py` (all 5 groups green; 868 tests in main CI run 38134169151)
+- [x] CI passes on Python 3.10, 3.11, and 3.12 (main run 38134169151).
+- [x] Static checks, dependency audit, secrets/dangerous-pattern guards, coverage, manifest, and golden checks pass in main run 38134169151.
+- [x] Reviewed changed-file scopes and PR patches; no historical evidence, `results/raw/`, sealed bundles, frozen prompts, or score weights were changed.
+- [x] Publish this evidence-based status snapshot with remaining limitations and owner-blocked gates.
 
 ### 07 — Deferred: live trials and official baseline
 - [ ] Only after maintainer approval, run real provider/model trials, satisfy security authorization, produce new sealed bundles, and evaluate official baseline eligibility.

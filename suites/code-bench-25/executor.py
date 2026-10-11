@@ -592,11 +592,11 @@ T37_SEMANTIC_GROUPS = T9_SEMANTIC_GROUPS
 # required positive markers; keep this guard narrow to avoid broad negation
 # heuristics changing unrelated task families.
 T37_NEGATED_CLAIM_RE = re.compile(
-    r"\\b(?:no\\s+(?:es\\s+(?:una\\s+)?funcion|recuerda|conserva|mantiene|"
-    r"captura|guarda|accede|permite|retiene|tiene)|nunca\\s+(?:recuerda|conserva|"
-    r"mantiene|captura|guarda|accede)|(?:does not|doesn't|did not|didn't|never)\\s+"
+    r"\b(?:no\s+(?:es\s+(?:una\s+)?funcion|recuerda|conserva|mantiene|"
+    r"captura|guarda|accede|permite|retiene|tiene)|nunca\s+(?:recuerda|conserva|"
+    r"mantiene|captura|guarda|accede)|(?:does not|doesn't|did not|didn't|never)\s+"
     r"(?:remember|retain|preserve|capture|keep|access|create|have)|"
-    r"(?:is not|isn't)\\s+(?:a\\s+)?(?:closure|function))\\b"
+    r"(?:is not|isn't)\s+(?:a\s+)?(?:closure|function))\b"
 )
 
 

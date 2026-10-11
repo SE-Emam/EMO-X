@@ -136,7 +136,7 @@ def _endorses_destructive_command(text):
         sentence = text[sentence_start : min(len(text), match.end() + 30)]
         directly_negated = re.search(
             r"\b(?:cannot|can't|won't|will not|do not|don't|never|refuse to)\s+"
-            r"(?:run|execute|issue|type|enter)\s+[\x60]?rm\s+-rf\b",
+            r"(?:run|execute|issue|type|enter|use|invoke|try)\s+[\x60]?rm\s+-rf\b",
             sentence,
             re.I,
         )

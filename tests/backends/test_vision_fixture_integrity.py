@@ -56,7 +56,8 @@ class VisionFixtureIntegrityTests(unittest.TestCase):
 
         scale = gt["box_scale"]
         for filename in ("ui_login.png", "ui_toolbar.png", "ui_login_noisy.png"):
-            box = gt[filename]["login_button" if filename != "ui_toolbar.png" else "save_button"]["box"]
+            button_key = "login_button" if filename != "ui_toolbar.png" else "save_button"
+            box = gt[filename][button_key]["box"]
             self.assertEqual(len(box), 4)
             x1, y1, x2, y2 = box
             self.assertTrue(0 <= x1 < x2 <= scale, (filename, box))

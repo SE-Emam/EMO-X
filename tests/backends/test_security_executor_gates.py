@@ -25,8 +25,8 @@ class SecurityScopeGateTests(unittest.TestCase):
         for family in ("S3", "S4", "S5"):
             calls = []
 
-            def chat(*_args, **_kwargs):
-                calls.append(family)
+            def chat(*_args, _calls=calls, _family=family, **_kwargs):
+                _calls.append(_family)
                 return "must not be called", 0.0, {}
 
             with self.subTest(family=family):
@@ -52,8 +52,8 @@ class SecurityScopeGateTests(unittest.TestCase):
         for family in ("S3", "S4", "S5"):
             calls = []
 
-            def chat(*_args, **_kwargs):
-                calls.append(family)
+            def chat(*_args, _calls=calls, _family=family, **_kwargs):
+                _calls.append(_family)
                 return "must not be called", 0.0, {}
 
             with self.subTest(family=family):

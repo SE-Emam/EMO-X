@@ -8,7 +8,7 @@
 
 - `tests/generators/test_all_families_golden.py::test_every_family_has_canonical_golden_pass_and_fail` checks that the 36 `GOLDEN_REPLIES` IDs match the executor's 36 family IDs, and that every canonical positive/negative golden produces the expected result. Its `GoldenBackend` patches sandbox execution, so this is not proof that every real Docker/compiler/database runtime is available or works end-to-end.
 - `tests/backends/test_manifest_truth.py` checks the 36-family inventory, prompt byte identity, manifest oracle/timeouts/forbidden-path metadata, and manifest IDs versus filenames.
-- Family-specific deterministic tests strengthen the generic goldens where risk warrants it: R4/R13 semantic/configuration negatives; T30 SQL injection and table preservation; T33 retry/backoff/exhaustion/permanent errors; T36 migration and data preservation; T37 dialect and contradiction guards. H1/H2/H3 and R11 have dedicated regressions for known false-positive/infrastructure-classification defects.
+- Family-specific deterministic tests strengthen the generic goldens where risk warrants it: A16 marker-complete wrong-runtime rejection; R4/R13 semantic/configuration negatives; T30 SQL injection and table preservation; T33 retry/backoff/exhaustion/permanent errors; T36 migration and data preservation; T37 dialect and contradiction guards. H1/H2/H3 and R11 have dedicated regressions for known false-positive/infrastructure-classification defects.
 - The family map below records known limits and next risks; a row is not marked "fully audited" just because the generic golden passes. Static/lexical checks remain limited by their stated contracts.
 - Real model/provider runs and official baseline construction are intentionally deferred. Historical Code25 bundles cover the earlier 25-family set only and are not evidence for all 36 current families.
 
@@ -16,7 +16,7 @@
 
 | Family | Primary verification path | Main risk / next review |
 |---|---|---|
-| A16 | Executable Python/async checks | Ensure source-shape markers cannot replace the awaited concurrent behavior; keep runtime assertions authoritative. |
+| A16 | Executable Python/async checks | Marker-complete wrong-runtime negative now proves that gather/fetch markers cannot replace the required [2, 4] runtime result; cancellation/error paths remain outside the current task contract. |
 | H1 | Final numeric token must be 126 (v1.1) | Fixed substring false positive: mentioning 126 while giving 127 no longer passes. |
 | H2 | Exact set of four nonnegative solution pairs (v1.1) | Fixed number-only false positive: wrong pairings containing 0, 27, 36, 45 no longer pass. |
 | H3 | Final labeled numeric remainder (v1.2) | Fixed substring false positive: mentioning remainder 4 before a contradictory final answer no longer passes. |

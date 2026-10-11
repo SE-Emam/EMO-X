@@ -599,6 +599,23 @@ T37_NEGATED_CLAIM_RE = re.compile(
     r"(?:is not|isn't)\s+(?:a\s+)?(?:closure|function))\b"
 )
 
+# Targeted contradiction guard: a closure retains its lexical environment after
+# the outer function returns. This catches a common marker-complete false
+# positive without claiming to parse arbitrary semantics.
+T37_EXPIRED_ENV_CLAIM_RE = re.compile(
+    r"\b(?:cuando|despues de que|una vez que)\s+(?:la\s+)?funcion\s+"
+    r"(?:externa|padre)\s+(?:termina|finaliza|acaba)\b.{0,120}\b"
+    r"(?:pierde|no tiene|ya no tiene|deja de tener)\b.{0,60}\b"
+    r"(?:acceso|alcance|entorno)\b|"
+    r"\bsolo mientras\s+(?:la\s+)?funcion\s+(?:externa|padre)\s+"
+    r"(?:esta|sigue)\s+activa\b|"
+    r"\b(?:after|once|when)\s+(?:the\s+)?outer\s+function\s+"
+    r"(?:returns?|ends?|finishes?)\b.{0,120}\b"
+    r"(?:loses|no longer has|cannot access|can't access)\b.{0,60}\b"
+    r"(?:access|scope|environment)\b",
+    re.I | re.S,
+)
+
 
 def _has_word(folded, word):
     """True iff `word` appears as a standalone word in folded text."""
@@ -608,9 +625,9 @@ def _has_word(folded, word):
 def _t37_dialect_detail(folded, variant):
     """Return (required_ok, forbidden_hit, detail) for a T37 variant."""
     if variant == "canonical":
-        required_ok = "vosotros" in folded and "ordenador" in folded
+        required_ok = "vosotros" in folded and "ordenador" in folded and _has_word(folded, "coger")
         forbidden_hit = "ustedes" in folded or "computadora" in folded
-        return required_ok, forbidden_hit, "es-es=vosotros+ordenador!ustedes/computadora"
+        return required_ok, forbidden_hit, "es-es=vosotros+ordenador+coger!ustedes/computadora"
     if variant == "perturbed":
         required_ok = "ustedes" in folded and "computadora" in folded
         forbidden_hit = "vosotros" in folded or _has_word(folded, "vos")
@@ -629,11 +646,20 @@ def check_t37(reply, variant="canonical"):
     sem = _all_groups_hit(reply, T37_SEMANTIC_GROUPS)
     required_ok, forbidden_hit, detail = _t37_dialect_detail(folded, variant)
     negated_claim = T37_NEGATED_CLAIM_RE.search(folded) is not None
-    ok = bool(ratio > 0.10 and all(sem) and required_ok and not forbidden_hit and not negated_claim)
+    expired_environment_claim = T37_EXPIRED_ENV_CLAIM_RE.search(folded) is not None
+    ok = bool(
+        ratio > 0.10
+        and all(sem)
+        and required_ok
+        and not forbidden_hit
+        and not negated_claim
+        and not expired_environment_claim
+    )
     log = (
         f"spanish_ratio={ratio:.3f} sem={sem} {detail} "
         f"required={required_ok} forbidden={forbidden_hit} "
-        f"negated_claim={negated_claim}"
+        f"negated_claim={negated_claim} "
+        f"expired_environment_claim={expired_environment_claim}"
     )
     return ok, log
 
@@ -817,12 +843,18 @@ def check_family(family, reply):
             "    def __init__(self,responses): self.responses=iter(responses); self.calls=[]\n"
             "    def get(self,url): self.calls.append(url); return next(self.responses)\n"
             "delays=[]\n"
-            "transport=_Transport([_Response(503),_Response(200,{'value':7})])\n"
+            "transport=_Transport([_Response(503),_Response(503),_Response(200,{'value':7})])\n"
             "result=fetch_json('https://mock.invalid/data',transport,delays.append)\n"
-            "assert result == {'ok':True,'data':{'value':7},'attempt_count':2,"
+            "assert result == {'ok':True,'data':{'value':7},'attempt_count':3,"
             "'last_error':None}, result\n"
-            "assert transport.calls == ['https://mock.invalid/data']*2\n"
-            "assert delays == [0.1], delays\n"
+            "assert transport.calls == ['https://mock.invalid/data']*3\n"
+            "assert delays == [0.1,0.2], delays\n"
+            "exhausted=_Transport([_Response(503),_Response(503),_Response(503)])\n"
+            "delays=[]\n"
+            "result=fetch_json('https://mock.invalid/unavailable',exhausted,delays.append)\n"
+            "assert result == {'ok':False,'data':None,'attempt_count':3,"
+            "'last_error':'HTTP 503'}, result\n"
+            "assert len(exhausted.calls)==3 and delays==[0.1,0.2]\n"
             "permanent=_Transport([_Response(404)])\n"
             "delays=[]\n"
             "result=fetch_json('https://mock.invalid/missing',permanent,delays.append)\n"

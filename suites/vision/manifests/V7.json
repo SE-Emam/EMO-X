@@ -43,7 +43,7 @@
   "allowed": false
  },
  "oracle": {
-  "check": "normalized keyword match middle+square+red (aliases: center/box/rectangle); missing or hallucinated difference is WRONG_RESULT",
+  "check": "normalized keyword match middle+square+red plus target-clause negation/competing-attribute guards; unrelated colors/positions about other objects do not invalidate the target claim; deterministic heuristic, not general semantic parsing",
   "tolerance": "none: exact keyword set",
   "type": "deterministic"
  },
@@ -59,5 +59,5 @@
  "variants": [
   "canonical"
  ],
- "version": "1.0"
+ "version": "1.1"
 }

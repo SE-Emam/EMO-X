@@ -605,6 +605,9 @@ class AllFamiliesGoldenTests(unittest.TestCase):
         self.assertTrue(executor.check_family("T37", es_es)[0])
         self.assertTrue(executor.check_variant("T37", "perturbed", es_mx)[0])
         self.assertTrue(executor.check_variant("T37", "novel", es_ar)[0])
+        # The ES-ES prompt explicitly requires the standalone marker "coger".
+        without_coger = es_es.replace("para coger la idea", "para entender la idea")
+        self.assertFalse(executor.check_t37(without_coger, "canonical")[0])
         # Cross-fail: mixing dialects must fail (wrong markers / forbidden hits).
         self.assertFalse(executor.check_t37(es_es, "perturbed")[0])
         self.assertFalse(executor.check_t37(es_es, "novel")[0])
@@ -655,6 +658,41 @@ class AllFamiliesGoldenTests(unittest.TestCase):
                 passed, log = executor.check_t37(reply, variant)
                 self.assertFalse(passed, log)
                 self.assertIn("negated_claim=True", log)
+
+    def test_t37_rejects_marker_complete_expired_closure_environment_claims(self):
+        """Required dialect markers must not mask a false closure-lifetime claim."""
+        executor = _load_executor()
+        adversarial = (
+            (
+                "Un closure es una función que conserva el entorno léxico únicamente "
+                "mientras la función externa sigue activa; cuando la función externa "
+                "termina, la función interna pierde el acceso al entorno. Por ejemplo, "
+                "vosotros podéis probar este código en el ordenador: function crearContador() "
+                "{ let n = 0; return function() { return n; }; }",
+                "canonical",
+            ),
+            (
+                "Un closure es una función que conserva el entorno léxico únicamente "
+                "mientras la función externa sigue activa; cuando la función externa "
+                "termina, la función interna pierde el acceso al entorno. Por ejemplo, "
+                "ustedes pueden probar este código en su computadora: function crearContador() "
+                "{ let n = 0; return function() { return n; }; }",
+                "perturbed",
+            ),
+            (
+                "Un closure es una función que conserva el entorno léxico únicamente "
+                "mientras la función externa sigue activa; cuando la función externa "
+                "termina, la función interna pierde el acceso al entorno. Che, vos podés "
+                "probar este código: function crearContador() { let n = 0; "
+                "return function() { return n; }; }",
+                "novel",
+            ),
+        )
+        for reply, variant in adversarial:
+            with self.subTest(variant=variant):
+                passed, log = executor.check_t37(reply, variant)
+                self.assertFalse(passed, log)
+                self.assertIn("expired_environment_claim=True", log)
 
     def test_expanded_task_variants(self):
         executor = _load_executor()

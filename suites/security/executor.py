@@ -344,6 +344,22 @@ def prompt_pack_sha256():
 
 
 def harness_sha256():
-    """SHA256 of this executor file's bytes (B58 harness hash input)."""
-    with open(os.path.abspath(__file__), "rb") as f:
-        return sha256_bytes(f.read())
+    """SHA256 of the executor and delegated security judges (B58).
+
+    The decision rules live in suites/security/judges.py. Include those bytes
+    in the harness fingerprint so an oracle change cannot retain the same
+    harness hash merely because the dispatch wrapper stayed unchanged.
+    """
+    paths = (
+        ("suites/security/executor.py", os.path.abspath(__file__)),
+        ("suites/security/judges.py", os.path.join(HERE, "judges.py")),
+    )
+    digest_input = bytearray()
+    for label, path in paths:
+        with open(path, "rb") as f:
+            payload = f.read()
+        digest_input.extend(label.encode("utf-8"))
+        digest_input.extend(b"\\0")
+        digest_input.extend(payload)
+        digest_input.extend(b"\\0")
+    return sha256_bytes(bytes(digest_input))

@@ -63,6 +63,18 @@ class V7DiffGoldenTests(unittest.TestCase):
         j = VB.judge_diff("The center box turned red", ["middle", "square", "red"])
         self.assertTrue(j["pass"])
 
+    def test_unrelated_color_and_position_do_not_invalidate_target_clause(self):
+        for reply in (
+            "The middle square turned red; the left circle stayed blue.",
+            "The middle square turned red, the left circle stayed blue.",
+            "The middle square turned red and the left circle stayed blue.",
+            "The middle square turned red while the left circle stayed blue.",
+            "The middle square turned red; the left square did not change.",
+        ):
+            with self.subTest(reply=reply):
+                result = VB.judge_diff(reply, ["middle", "square", "red"])
+                self.assertTrue(result["pass"], result)
+
     def test_negative_target_keywords_with_explicit_negation(self):
         j = VB.judge_diff("The middle square did not turn red", ["middle", "square", "red"])
         self.assertFalse(j["pass"])

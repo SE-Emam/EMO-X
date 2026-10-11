@@ -287,7 +287,7 @@ GOLDEN_REPLIES = {
         "Solutions: (0, 45), (27, 36), (36, 27), (45, 0).",
         "Incorrect pairs: (0, 27), (36, 45).",
     ),
-    "H3": ("The remainder is 4.", "The remainder is 5."),
+    "H3": ("The remainder is 4.", "The remainder is 4, but the final answer is 5."),
     "H4": (
         PYTHON_GOLDENS["H4"],
         "def longest_pal(s):\n    return s",

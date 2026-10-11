@@ -579,6 +579,20 @@ class AllFamiliesGoldenTests(unittest.TestCase):
                 passed, log = executor.check_family("T34", source)
                 self.assertFalse(passed, log)
 
+    def test_a16_rejects_gather_with_wrong_runtime_values(self):
+        executor = _load_executor()
+        source = (
+            "import asyncio\n"
+            "async def fetch(x):\n"
+            "    return x\n"
+            "async def fetch_all():\n"
+            "    return await asyncio.gather(fetch(1), fetch(2))\n"
+        )
+        passed, log = executor.check_family("A16", source)
+        self.assertFalse(passed, log)
+        self.assertIn("gather=True", log)
+        self.assertIn("calls=True", log)
+
     def test_t30(self):
         executor = _load_executor()
         passed, log = executor.check_family("T30", PYTHON_GOLDENS["T30"])

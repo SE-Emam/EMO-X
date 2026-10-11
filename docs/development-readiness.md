@@ -36,6 +36,7 @@ Detailed current inventory and known limitations: [Security Oracle Engineering A
 - [ ] Run deterministic tests and full CI.
 
 ### 03 — Code25 audit (36 current families)
+Initial family map and known oracle limitations: [Code25 Oracle Audit](code25-oracle-audit.md).
 - [ ] Build a family-by-family audit table covering contract, fixture, positive/negative tests, oracle type, execution, sandbox, manifest, and limitations.
 - [ ] Prioritize T30, T33, T36, R13, A16, T37, plus lexical/structural-only oracles.
 - [ ] Add false-positive and edge-case tests; use executable checks where the contract requires execution.

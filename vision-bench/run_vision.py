@@ -479,7 +479,9 @@ def judge_diff(reply, keywords):
     # Competing target attributes make a keyword-complete answer ambiguous.
     competing_color = (
         "red" in keywords
-        and re.search(r"\b(blue|green|yellow|black|white|orange|purple|pink|brown|gray|grey)\b", r)
+        and re.search(
+            r"\b(blue|green|yellow|black|white|orange|purple|pink|brown|gray|grey)\b", r
+        )
         is not None
     )
     competing_position = (

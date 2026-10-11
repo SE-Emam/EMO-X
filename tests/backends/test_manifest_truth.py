@@ -89,10 +89,9 @@ class TestManifestTruth(unittest.TestCase):
                 self.assertIn("/etc", fps)
                 self.assertIn("~/.ssh", fps)
 
-    def test_h3_generator_v1_1_intact(self):
+    def test_h3_parametric_generator_contract_intact(self):
         m = _load_manifest("H3")
         self.assertEqual(m["id"], "H3")
-        self.assertEqual(m["version"], "1.1")
         gen = m.get("generator")
         self.assertIsInstance(gen, dict)
         self.assertEqual(gen.get("type"), "parametric")

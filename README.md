@@ -185,7 +185,7 @@ print(render_comparison(comp))"
 |---|---|---|
 | Test suites | 13 executable (+1 PILOT `computer-use`) | `shared/runner.py:SUITE_DIRS` (badge source); `suites/*/` has 14 dirs incl. PILOT |
 | Task manifests | 98 | `suites/*/manifests/*.json` |
-|  Harness + unit tests | 868 (harness 326, generators 87, scoring 210, golden 30, backends 215) | `tests/run_all.py --count`; latest main CI run pending after S2 v1.2 merge |
+|  Harness + unit tests | 868 (harness 326, generators 87, scoring 210, golden 30, backends 215) | `tests/run_all.py --count`; 868 confirmed by green main CI run 38134169151 on SHA acf65b3134d350b4c7d461300f9e6f419b9f4619; latest docs-only main CI run 38134477848 also passed |
 | Self-test checks | 14 | `--self-test`, fail-closed |
 | Issue-style families | 15 (IS1–IS15) | vs SWE-bench Lite (300) = **5.0%** |
 

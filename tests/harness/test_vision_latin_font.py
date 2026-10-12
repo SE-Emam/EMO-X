@@ -30,7 +30,7 @@ class _FakeFont:
         self.space_advance = space_advance
 
     def getmask(self, char):
-        if char == "\U0010FFFF" or char in self.missing:
+        if char == "\U0010ffff" or char in self.missing:
             return _Mask(b"\x00")
         return _Mask(bytes([(ord(char) % 254) + 1]))
 

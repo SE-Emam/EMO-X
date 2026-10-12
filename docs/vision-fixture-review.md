@@ -6,6 +6,12 @@
 
 **Guardrails:** do not edit fixture pixels, annotations, hashes, or manifests as part of this review. Any correction needs a separate reviewed change, rationale, updated SHA-256, and provenance/version update.
 
+## Latest fixture generation — 2026-10-12
+
+PR [#55](https://github.com/SE-Emam/EMO-X/pull/55) regenerated `ui_login.png`, `ui_login_noisy.png`, `ui_toolbar.png`, and `ui_toolbar_perturbed.png` with a separately selected Latin UI font (`DejaVuSans.ttf`). The corresponding SHA-256 values and `latin_font_used` metadata are recorded in `ground_truth.json`; `fixture-provenance.json` records the generator commit, workflow run, runtime versions, changed hashes, and the required review status.
+
+**Review status is still PENDING for all fixtures.** Regeneration and automated GT/hash checks do not satisfy the independent human pixel-level review. The four links below point to the corrected images and must be reviewed along with the other frozen fixtures before any row is marked PASS.
+
 ## Review summary
 
 | Fixture | Ground-truth properties to verify | Status |

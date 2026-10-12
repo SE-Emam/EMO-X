@@ -8,12 +8,6 @@ on:
       - ".github/workflows/vision-fixture-regeneration.yml"
       - "vision-bench/fixtures/make_fixtures.py"
   workflow_dispatch:
-    inputs:
-      emit_base64:
-        description: "Emit generated fixture payloads in job logs for maintainer-side commit"
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -43,7 +37,6 @@ jobs:
         env:
           EMOX_OUTPUT: ${{ runner.temp }}/vision-fixture-package
           EMOX_GENERATED: ${{ runner.temp }}/vision-fixture-generated
-          EMOX_EMIT_BASE64: ${{ inputs.emit_base64 || false }}
           EMOX_SOURCE_SHA: ${{ github.sha }}
           EMOX_RUN_ID: ${{ github.run_id }}
         run: |
@@ -51,7 +44,6 @@ jobs:
           mkdir -p "$EMOX_OUTPUT"
           python vision-bench/fixtures/make_fixtures.py --out "$EMOX_GENERATED"
           python - <<'PY'
-          import base64
           import hashlib
           import json
           import os
@@ -137,13 +129,6 @@ jobs:
           print("LATIN_FONT=" + merged_gt["latin_font_used"])
           print("PILLOW_VERSION=" + PIL.__version__)
           print("TARGET_HASHES=" + json.dumps(hashes, sort_keys=True))
-          if os.environ.get("EMOX_EMIT_BASE64", "").lower() == "true":
-              for path in sorted(output_dir.iterdir()):
-                  encoded = base64.b64encode(path.read_bytes()).decode("ascii")
-                  print("@@EMOX_BEGIN:" + path.name + "@@")
-                  for start in range(0, len(encoded), 30000):
-                      print("B64:" + encoded[start:start + 30000])
-                  print("@@EMOX_END:" + path.name + "@@")
           PY
 
       - name: Upload generated fixtures for visual review

@@ -2,6 +2,7 @@ name: vision-fixture-regeneration
 on:
   push:
     branches:
+      - main
       - fix/vision-latin-font-selection
     paths:
       - ".github/workflows/vision-fixture-regeneration.yml"
@@ -42,7 +43,7 @@ jobs:
         env:
           EMOX_OUTPUT: ${{ runner.temp }}/vision-fixture-package
           EMOX_GENERATED: ${{ runner.temp }}/vision-fixture-generated
-          EMOX_EMIT_BASE64: ${{ (github.event_name == 'push' && github.ref_name == 'fix/vision-latin-font-selection') || inputs.emit_base64 }}
+          EMOX_EMIT_BASE64: ${{ inputs.emit_base64 || false }}
           EMOX_SOURCE_SHA: ${{ github.sha }}
           EMOX_RUN_ID: ${{ github.run_id }}
         run: |

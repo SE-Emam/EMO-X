@@ -1,8 +1,11 @@
-## PR #55 — Latin UI fixture font integrity (in progress)
+## PR #55 — Latin UI fixture font integrity (implemented; final CI and human review tracked separately)
 
-- The PR adds a regression in `tests/harness/test_vision_latin_font.py` and hardens `make_fixtures.py` to reject fonts missing printable ASCII glyphs used by synthetic UI fixtures.
-- Expected test count after the added harness test: **869** (327 harness, 87 generators, 210 scoring, 30 golden, 215 backends). The prior green 868-test runs remain historical evidence; the PR's new count is not considered verified until CI passes on the latest head.
-- This change does not regenerate or replace frozen PNGs, update `ground_truth.json`, or close the independent visual-review gate. Those remain pending until generated artifacts and human-reviewed visual evidence are available.
+- `make_fixtures.py` now checks required printable-ASCII glyph coverage before selecting a Latin UI font; a regression test covers candidate fallback and fail-closed behavior without requiring Pillow in the harness suite.
+- Expected/current suite count: **869** (327 harness, 87 generators, 210 scoring, 30 golden, 215 backends). Run [38220287994](https://github.com/SE-Emam/EMO-X/actions/runs/38220287994) passed all three Python jobs on the code/test head before fixture binaries were committed.
+- Regeneration workflow [38221430295](https://github.com/SE-Emam/EMO-X/actions/runs/38221430295) passed with Python 3.12.15 and Pillow 11.3.0. It selected `DejaVuSans.ttf` for Latin UI text while retaining `GeezaPro.ttc` and RAQM for Arabic. Only `ui_login.png`, `ui_login_noisy.png`, `ui_toolbar.png`, and `ui_toolbar_perturbed.png` were regenerated. Their stored GT annotation objects were asserted equal to the prior versions; only their SHA-256 values and the `latin_font_used` metadata were updated.
+- `vision-bench/fixtures/fixture-provenance.json` records the source/generator commits, generation run, runtime versions, selected font, changed hashes, and the explicit pending human-review status. Historical bundles and `results/raw/` were not modified.
+- Full CI for the commit containing regenerated images is tracked by [run 38221922137](https://github.com/SE-Emam/EMO-X/actions/runs/38221922137); do not treat that final asset revision as CI-verified until it completes successfully.
+- **Human visual review remains OPEN** in issue #47. Regeneration/structural equality is not an independent pixel-level review. No live model/provider trial was run or authorized.
 
 # EMO-X v2.0 Development Readiness Plan
 

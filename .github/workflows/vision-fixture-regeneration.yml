@@ -1,0 +1,140 @@
+name: vision-fixture-regeneration
+on:
+  push:
+    branches:
+      - main
+      - fix/vision-latin-font-selection
+    paths:
+      - ".github/workflows/vision-fixture-regeneration.yml"
+      - "vision-bench/fixtures/make_fixtures.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regenerate:
+    name: Regenerate affected Vision fixtures
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pinned fixture dependency
+        run: python -m pip install --disable-pip-version-check "Pillow==11.3.0"
+
+      - name: Regenerate and validate scoped outputs
+        env:
+          EMOX_OUTPUT: ${{ runner.temp }}/vision-fixture-package
+          EMOX_GENERATED: ${{ runner.temp }}/vision-fixture-generated
+          EMOX_SOURCE_SHA: ${{ github.sha }}
+          EMOX_RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$EMOX_OUTPUT"
+          python vision-bench/fixtures/make_fixtures.py --out "$EMOX_GENERATED"
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import platform
+          import shutil
+          import subprocess
+          import sys
+          from datetime import datetime, timezone
+          from pathlib import Path
+          import PIL
+
+          root = Path.cwd()
+          generated_dir = Path(os.environ["EMOX_GENERATED"])
+          output_dir = Path(os.environ["EMOX_OUTPUT"])
+          fixture_dir = root / "vision-bench" / "fixtures"
+          gt_path = fixture_dir / "ground_truth.json"
+          target_names = (
+              "ui_login.png",
+              "ui_login_noisy.png",
+              "ui_toolbar.png",
+              "ui_toolbar_perturbed.png",
+          )
+
+          original_gt = json.loads(gt_path.read_text(encoding="utf-8"))
+          generated_gt = json.loads((generated_dir / "ground_truth.json").read_text(encoding="utf-8"))
+
+          # A font-only correction must not alter frozen target boxes, labels,
+          # counts, or any fixture contract fields.
+          for name in target_names:
+              if original_gt.get(name) != generated_gt.get(name):
+                  raise SystemExit("FAIL: ground-truth semantics changed for " + name)
+              generated_bytes = (generated_dir / name).read_bytes()
+              actual_hash = hashlib.sha256(generated_bytes).hexdigest()
+              if generated_gt["fixture_sha256"].get(name) != actual_hash:
+                  raise SystemExit("FAIL: generated hash mismatch for " + name)
+
+          # Preserve all existing non-target ground-truth entries and hashes.
+          merged_gt = dict(original_gt)
+          merged_hashes = dict(original_gt["fixture_sha256"])
+          for name in target_names:
+              merged_hashes[name] = generated_gt["fixture_sha256"][name]
+          merged_gt["fixture_sha256"] = merged_hashes
+          merged_gt["latin_font_used"] = generated_gt.get("latin_font_used")
+          if not merged_gt["latin_font_used"]:
+              raise SystemExit("FAIL: generated ground truth lacks latin_font_used")
+          (output_dir / "ground_truth.json").write_text(
+              json.dumps(merged_gt, ensure_ascii=False, indent=1),
+              encoding="utf-8",
+          )
+
+          hashes = {}
+          for name in target_names:
+              shutil.copyfile(generated_dir / name, output_dir / name)
+              hashes[name] = hashlib.sha256((output_dir / name).read_bytes()).hexdigest()
+
+          generator_commit = subprocess.check_output(
+              ["git", "log", "-1", "--format=%H", "--", "vision-bench/fixtures/make_fixtures.py"],
+              text=True,
+          ).strip()
+          provenance = {
+              "fixture_contract": "vision-v1 (unchanged)",
+              "change_id": "issue-54-latin-font-repair",
+              "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+              "source_commit": os.environ["EMOX_SOURCE_SHA"],
+              "generator_commit": generator_commit,
+              "generation_run_id": os.environ["EMOX_RUN_ID"],
+              "python_version": platform.python_version(),
+              "pillow_version": PIL.__version__,
+              "latin_font_used": merged_gt["latin_font_used"],
+              "affected_fixtures": list(target_names),
+              "sha256": hashes,
+              "ground_truth_geometry_and_semantics": "UNCHANGED; checked against prior GT before packaging",
+              "historical_results_and_sealed_bundles": "NOT MODIFIED",
+              "human_pixel_review": "PENDING; issue #47; no AI-assisted pass claimed",
+              "live_model_trials": "NOT RUN; not authorized by this workflow",
+          }
+          (output_dir / "fixture-provenance.json").write_text(
+              json.dumps(provenance, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+
+          print("FIXTURE_VALIDATION=PASS")
+          print("LATIN_FONT=" + merged_gt["latin_font_used"])
+          print("PILLOW_VERSION=" + PIL.__version__)
+          print("TARGET_HASHES=" + json.dumps(hashes, sort_keys=True))
+          PY
+
+      - name: Upload generated fixtures for visual review
+        uses: actions/upload-artifact@v4
+        with:
+          name: vision-fixtures-${{ github.sha }}
+          path: ${{ runner.temp }}/vision-fixture-package/
+          if-no-files-found: error
+          retention-days: 7

@@ -37,3 +37,12 @@ The test verifies that fixture files exist, are valid PNGs, match their recorded
 2. Add adversarial positives/negatives to V3, V7, V8, and V12 where output format or keyword presence can mislead the oracle.
 3. Review IoU thresholds and invalid/VOID classification for unsupported image input and payload-size failures.
 4. After development gates close, run approved live-model trials and report per-family accuracy, false positives/negatives, and repeatability. These experiments are intentionally deferred.
+
+
+## Latin UI fixture rendering repair (Issue #54)
+
+- **Implementation:** the fixture generator selects Arabic and Latin fonts independently. Latin font candidates must successfully load and render every printable ASCII character in the fixture contract; a missing glyph or unusable space advance rejects that candidate. The regression test is stdlib-only and does not make Pillow a harness dependency.
+- **Regeneration evidence:** workflow run [38221430295](https://github.com/SE-Emam/EMO-X/actions/runs/38221430295) completed successfully with Python 3.12.15 and Pillow 11.3.0, selecting `DejaVuSans.ttf` for Latin UI text while retaining `GeezaPro.ttc` and RAQM for Arabic text.
+- **Scoped artifact change:** only `ui_login.png`, `ui_login_noisy.png`, `ui_toolbar.png`, and `ui_toolbar_perturbed.png` were regenerated. Their per-image ground-truth geometry and semantic annotations were checked against the prior ground truth before packaging. `ground_truth.json` now records `latin_font_used` and updated SHA-256 values for these four files; `fixture-provenance.json` records generator/runtime provenance and every changed image hash.
+- **Preserved:** no prompt-pack changes, scoring changes, historical result bundles, sealed bundles, or `results/raw/` data were modified.
+- **Human gate remains OPEN:** this generation check is not an independent human pixel review. Issue #47 stays pending until a reviewer/date/evidence record is added for every fixture. No live provider/model trial was run.

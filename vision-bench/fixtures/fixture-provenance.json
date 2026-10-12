@@ -1,0 +1,27 @@
+{
+  "fixture_contract": "vision-v1 (unchanged)",
+  "change_id": "issue-54-latin-font-repair",
+  "generated_at_utc": "2026-10-12T08:05:07.460924+00:00",
+  "source_commit": "53a198c00afe6fd097dab463e2f93977c0b88002",
+  "generator_commit": "ae84f9387860868b38aa20b1195d1e3372c7eebe",
+  "generation_run_id": "38221430295",
+  "python_version": "3.12.15",
+  "pillow_version": "11.3.0",
+  "latin_font_used": "DejaVuSans.ttf",
+  "affected_fixtures": [
+    "ui_login.png",
+    "ui_login_noisy.png",
+    "ui_toolbar.png",
+    "ui_toolbar_perturbed.png"
+  ],
+  "sha256": {
+    "ui_login.png": "1e929672fe1e97c833269c269f451d8296c9c5fa3669197b9fdc28c8ecab14d4",
+    "ui_login_noisy.png": "b5e9ba4d5b86271e969f496201ae3c2ab0d99e568e405131c7b74bd5ef9786c1",
+    "ui_toolbar.png": "54496da243f0920ded1d25963f1802ca66089aab4b1209eb04f7d05637f383f1",
+    "ui_toolbar_perturbed.png": "fff3193bbbc7a5b5c27e90daebd75044df3c670c091e808edb9fa90af3007937"
+  },
+  "ground_truth_geometry_and_semantics": "UNCHANGED; checked against prior GT before packaging",
+  "historical_results_and_sealed_bundles": "NOT MODIFIED",
+  "human_pixel_review": "PENDING; issue #47; no AI-assisted pass claimed",
+  "live_model_trials": "NOT RUN; not authorized by this workflow"
+}

@@ -1,3 +1,9 @@
+## PR #55 — Latin UI fixture font integrity (in progress)
+
+- The PR adds a regression in `tests/harness/test_vision_latin_font.py` and hardens `make_fixtures.py` to reject fonts missing printable ASCII glyphs used by synthetic UI fixtures.
+- Expected test count after the added harness test: **869** (327 harness, 87 generators, 210 scoring, 30 golden, 215 backends). The prior green 868-test runs remain historical evidence; the PR's new count is not considered verified until CI passes on the latest head.
+- This change does not regenerate or replace frozen PNGs, update `ground_truth.json`, or close the independent visual-review gate. Those remain pending until generated artifacts and human-reviewed visual evidence are available.
+
 # EMO-X v2.0 Development Readiness Plan
 
 ## Scope and phase boundary

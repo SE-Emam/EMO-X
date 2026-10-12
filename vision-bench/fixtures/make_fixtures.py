@@ -86,17 +86,51 @@ def find_arabic_font():
     return _first_existing_font(ARABIC_FONT_CANDIDATES)
 
 
+# Verify the glyphs used by Latin UI fixtures, not merely that a font file
+# exists or can be opened. U+10FFFF is a Unicode noncharacter and serves as a
+# missing-glyph sentinel in FreeType/Pillow; an unsupported code point resolves
+# to the same .notdef glyph. Restrict this contract to printable ASCII because
+# those are the characters used by the generated English controls/placeholders.
+LATIN_UI_REQUIRED_CHARS = "".join(chr(codepoint) for codepoint in range(0x21, 0x7F))
+_MISSING_GLYPH_SENTINEL = "\U0010FFFF"
+
+
+def _glyph_signature(font, char):
+    mask = font.getmask(char)
+    return (mask.size, bytes(mask))
+
+
+def _font_supports_required_latin_ui(font):
+    missing_signature = _glyph_signature(font, _MISSING_GLYPH_SENTINEL)
+    for char in LATIN_UI_REQUIRED_CHARS:
+        if _glyph_signature(font, char) == missing_signature:
+            return False
+    # Space has no painted pixels; check its advance separately.
+    if not callable(getattr(font, "getlength", None)) or font.getlength(" ") <= 0:
+        return False
+    return True
+
+
 def find_latin_font():
-    path = _first_existing_font(LATIN_FONT_CANDIDATES)
-    if path is None:
-        raise RuntimeError(
-            "No Latin-capable font found; refusing to generate UI fixtures "
-            "with potentially missing/tofu English glyphs. Install DejaVu Sans "
-            "or Liberation Sans and rerun the fixture generator."
-        )
-    # Fail closed if the selected font cannot be loaded by Pillow.
-    ImageFont.truetype(path, 18)
-    return path
+    failures = []
+    for path in LATIN_FONT_CANDIDATES:
+        if not os.path.isfile(path):
+            continue
+        try:
+            font = ImageFont.truetype(path, 18)
+            if _font_supports_required_latin_ui(font):
+                return path
+            failures.append("%s: missing one or more printable ASCII glyphs" % path)
+        except Exception as exc:
+            # Try the next deterministic candidate instead of failing on the
+            # first corrupt, unsupported, or platform-incompatible font file.
+            failures.append("%s: %s" % (path, type(exc).__name__))
+    details = "; ".join(failures) if failures else "no candidate files exist"
+    raise RuntimeError(
+        "No font with the required Latin UI glyph coverage was found; refusing "
+        "to generate unreadable UI fixtures. Install DejaVu Sans or Liberation "
+        "Sans and rerun the generator. Checked candidates: %s" % details
+    )
 
 
 def find_font():

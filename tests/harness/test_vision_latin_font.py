@@ -3,6 +3,7 @@
 The harness test suite is stdlib-only; stub Pillow at import time so these tests
 do not make the optional fixture-generation dependency a harness requirement.
 """
+
 import importlib.util
 import os
 import sys
@@ -11,9 +12,7 @@ import unittest
 from unittest.mock import patch
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", ".."))
-GENERATOR_PATH = os.path.join(
-    ROOT, "vision-bench", "fixtures", "make_fixtures.py"
-)
+GENERATOR_PATH = os.path.join(ROOT, "vision-bench", "fixtures", "make_fixtures.py")
 
 
 class _Mask:

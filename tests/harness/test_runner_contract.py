@@ -142,5 +142,29 @@ class UnsupportedVariantNATests(unittest.TestCase):
         shutil.rmtree(out, ignore_errors=True)
 
 
+class UnsupportedVariantSignalTests(unittest.TestCase):
+    def test_exact_skip_signal_matches(self):
+        for msg in (
+            "variant 'novel' not supported for family 'T5'",
+            "variant 'perturbed' not supported for family 'AG'",
+        ):
+            with self.subTest(msg=msg):
+                self.assertIsNotNone(runner._UNSUPPORTED_VARIANT_RE.match(msg))
+
+    def test_embedded_or_chained_text_is_not_a_skip(self):
+        # An internal TypeError whose chained/nested text merely contains
+        # the phrase must surface as a harness bug (VOID), never as a
+        # silent SKIPPED-NA.
+        for msg in (
+            "inner boom: variant 'novel' not supported for family 'T5'",
+            "variant 'novel' not supported for family 'T5' (extra context)",
+            "Traceback (most recent call last): ... not supported for family ...",
+            "not supported for family",
+            "",
+        ):
+            with self.subTest(msg=msg):
+                self.assertIsNone(runner._UNSUPPORTED_VARIANT_RE.match(msg))
+
+
 if __name__ == "__main__":
     unittest.main()

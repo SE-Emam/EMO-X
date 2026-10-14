@@ -22,6 +22,7 @@ import importlib.util
 import json
 import os
 import platform
+import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -82,6 +83,16 @@ DEFAULT_CLAIM_TIER = "PUBLIC-BENCHMARK"
 SUITE_MODALITIES = {
     "vision": "vision",
 }
+
+#: Exact skip signal for unsupported (family, variant) pairs. Every suite
+#: executor raises TypeError("variant {v!r} not supported for family
+#: {family!r}"); the runner treats ONLY that exact message as NA. A
+#: substring check here would swallow unrelated internal TypeErrors whose
+#: chained/nested text happens to contain the phrase, masking harness bugs
+#: as silent skips — hence fullmatch, never `in`.
+_UNSUPPORTED_VARIANT_RE = re.compile(
+    r"^variant '[^']*' not supported for family '[^']*'$"
+)
 DEFAULT_SUITE_MODALITY = "text"
 
 #: Full capability profile (SPEC 42 --suite profile).
@@ -473,7 +484,10 @@ def _run_suite_loop(
                         # attempt. Emitting VOID here would corrupt the
                         # coverage denominator with non-attempts.
                         msg = str(e)
-                        if type(e).__name__ == "TypeError" and "not supported for family" in msg:
+                        if (
+                            type(e).__name__ == "TypeError"
+                            and _UNSUPPORTED_VARIANT_RE.match(msg) is not None
+                        ):
                             prog.finish_attempt("SKIPPED-NA")
                             continue
                         # Fail-open rounds are forbidden: record VOID and

@@ -1,7 +1,7 @@
 ## PR #55 — Latin UI fixture font integrity (implemented; final CI and human review tracked separately)
 
 - `make_fixtures.py` now checks required printable-ASCII glyph coverage before selecting a Latin UI font; a regression test covers candidate fallback and fail-closed behavior without requiring Pillow in the harness suite.
-- Expected/current suite count: **874** (332 harness, 87 generators, 210 scoring, 30 golden, 215 backends). Run [38220287994](https://github.com/SE-Emam/EMO-X/actions/runs/38220287994) passed all three Python jobs on the code/test head before fixture binaries were committed.
+- Expected/current suite count: **884** (334 harness, 88 generators, 210 scoring, 30 golden, 222 backends). Run [38220287994](https://github.com/SE-Emam/EMO-X/actions/runs/38220287994) passed all three Python jobs on the code/test head before fixture binaries were committed.
 - Regeneration workflow [38221430295](https://github.com/SE-Emam/EMO-X/actions/runs/38221430295) passed with Python 3.12.15 and Pillow 11.3.0. It selected `DejaVuSans.ttf` for Latin UI text while retaining `GeezaPro.ttc` and RAQM for Arabic. Only `ui_login.png`, `ui_login_noisy.png`, `ui_toolbar.png`, and `ui_toolbar_perturbed.png` were regenerated. Their stored GT annotation objects were asserted equal to the prior versions; only their SHA-256 values and the `latin_font_used` metadata were updated.
 - `vision-bench/fixtures/fixture-provenance.json` records the source/generator commits, generation run, runtime versions, selected font, changed hashes, and the explicit pending human-review status. Historical bundles and `results/raw/` were not modified.
 - Full CI [run 38221922137](https://github.com/SE-Emam/EMO-X/actions/runs/38221922137) passed all three Python jobs on the exact image-containing commit `8fe3b17052a9f6cff3c1feddb4df41ce8a008cc0`. Later documentation/workflow-only commits are separate revisions and must retain green checks before merge.
@@ -26,10 +26,10 @@ This plan covers engineering quality and contributor experience before real mode
 | Area | Status | Evidence / remaining gate |
 |---|---|---|
 | T37 Spanish oracle | UNIT-VERIFIED | PR #29 merged; manifest v1.2; full Python 3.10/3.11/3.12 CI passed. |
-| Security S1–S5 | IMPLEMENTED / UNIT-VERIFIED | Gate/backend regressions, unsafe-follow-through and poisoned-tool-output tests, S2 safe-warning regression (PR #42), S2 negated-use warning regression with manifest v1.2 (PR #45), and S5C/S5D specificity tests merged. Post-PR #45 combined-main CI run 38134169151 passed on SHA acf65b3134d350b4c7d461300f9e6f419b9f4619 with 868 tests (historical snapshot; current main = 874: 332/87/210/30/215); issue #20 is closed against its acceptance criteria. Broader independent review of lexical-oracle limits remains an explicitly documented follow-up, not a semantic-completeness claim. |
+| Security S1–S5 | IMPLEMENTED / UNIT-VERIFIED | Gate/backend regressions, unsafe-follow-through and poisoned-tool-output tests, S2 safe-warning regression (PR #42), S2 negated-use warning regression with manifest v1.2 (PR #45), and S5C/S5D specificity tests merged. Post-PR #45 combined-main CI run 38134169151 passed on SHA acf65b3134d350b4c7d461300f9e6f419b9f4619 with 868 tests (historical snapshot; current main = 884: 334/88/210/30/222); issue #20 is closed against its acceptance criteria. Broader independent review of lexical-oracle limits remains an explicitly documented follow-up, not a semantic-completeness claim. |
 | Code25 36-family audit | UNIT-VERIFIED | Issue #21 closed; family map, manifest truth checks, and targeted family regressions merged. This does not establish live model quality. |
 | Vision V1–V12 | PARTIAL / UNIT-VERIFIED | Frozen fixture hashes and structural ground-truth contracts are checked programmatically, with boundary and infrastructure-status tests. **Independent visual review of every frozen fixture against its annotations is still pending in issue #47**; code consistency cannot prove pixel-level ground-truth correctness. |
-| README / contributor experience | COMPLETE / UNIT-VERIFIED | Demo/live-run distinction and historical partial-baseline caveat are documented. PR #46 is merged; at that time the README badge/table reported 868 (326/87/210/30/215), confirmed by combined-main CI run 38134169151 (historical; current main = 874: 332/87/210/30/215). Docs-only main CI run 38134477848 passed after the README merge; the final combined-main run after the remaining documentation merges is tracked separately. |
+| README / contributor experience | COMPLETE / UNIT-VERIFIED | Demo/live-run distinction and historical partial-baseline caveat are documented. PR #46 is merged; at that time the README badge/table reported 868 (326/87/210/30/215), confirmed by combined-main CI run 38134169151 (historical; current main = 884: 334/88/210/30/222). Docs-only main CI run 38134477848 passed after the README merge; the final combined-main run after the remaining documentation merges is tracked separately. |
 | Main branch protection | BLOCKED / UNVERIFIED | The connected GitHub integration could not read or configure branch protection (403). Repository owner must configure and verify required PR and Python 3.10/3.11/3.12 checks in GitHub Settings. |
 | Official model baseline | DEFERRED by design | No live-model accuracy or official ranking claim is authorized in this development phase. Historical bundles remain unchanged. |
 
@@ -83,14 +83,14 @@ Current V1–V12 strategy, limits, and fixture-integrity checks: [Vision Oracle 
 ### 05 — README and contributor experience
 - [x] State the project scope plainly and avoid unsupported superiority claims.
 - [x] Separate the stub demo, deterministic self-test, and live model evaluation; README explicitly says the stub is not a model score.
-- [x] Reconcile badges and counts against source-of-truth files; README test badge/table matched green CI run 38134169151 (868 total, historical) and now report the current 874 total (332/87/210/30/215).
+- [x] Reconcile badges and counts against source-of-truth files; README test badge/table matched green CI run 38134169151 (868 total, historical) and now report the current 884 total (334/88/210/30/222).
 - [x] Explain that historical partial Code25 bundles cover the earlier 25-family set, not all current 36 families.
 - [x] Add concise paths for Try demo, Run your model, and Contribute.
 - [x] Define status terms: IMPLEMENTED, UNIT-VERIFIED, LIVE-EVALUATED, PENDING.
 
 ### 06 — Development readiness gate
 - [x] `python shared/run.py --self-test` (RESULT: PASS in main CI run 38134169151)
-- [x] `python tests/run_all.py` (all 5 groups green; 868 tests in main CI run 38134169151, historical — current main = 874)
+- [x] `python tests/run_all.py` (all 5 groups green; 868 tests in main CI run 38134169151, historical — current main = 884)
 - [x] CI passes on Python 3.10, 3.11, and 3.12 (main run 38134169151).
 - [x] Static checks, dependency audit, secrets/dangerous-pattern guards, coverage, manifest, and golden checks pass in main run 38134169151.
 - [x] Reviewed changed-file scopes and PR patches; no historical evidence, `results/raw/`, sealed bundles, frozen prompts, or score weights were changed.

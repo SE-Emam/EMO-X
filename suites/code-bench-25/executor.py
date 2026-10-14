@@ -1182,9 +1182,23 @@ def check_family(family, reply):
         return ok, detail
     if family == "H2":
         # Verify the actual solution pairs, not just the four numbers in
-        # arbitrary or incorrect pairings.
+        # arbitrary or incorrect pairings. The manifest requires the exact
+        # solution set but mandates no layout, so accept parenthesized,
+        # bracketed, braced, and bare "x, y" line formats — a correct
+        # answer must not fail on formatting alone. Bare matching is
+        # line-anchored so prose commas cannot create phantom pairs.
+        text = reply or ""
         found = {
-            (int(x), int(y)) for x, y in re.findall(r"\(\s*(\d+)\s*,\s*(\d+)\s*\)", reply or "")
+            (int(x), int(y))
+            for x, y in re.findall(r"[\(\[\{]\s*(\d+)\s*,\s*(\d+)\s*[\)\]\}]", text)
+        }
+        found |= {
+            (int(x), int(y))
+            for x, y in re.findall(
+                r"^\s*(?:[xy]\s*=\s*)?(\d+)\s*,\s*(?:[xy]\s*=\s*)?(\d+)\s*$",
+                text,
+                re.M | re.I,
+            )
         }
         expected = {(0, 45), (27, 36), (36, 27), (45, 0)}
         ok = found == expected

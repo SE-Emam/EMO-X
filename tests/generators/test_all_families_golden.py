@@ -903,6 +903,29 @@ class AllFamiliesGoldenTests(unittest.TestCase):
         passed, log = executor.check_family("R13", dockerfile)
         self.assertTrue(passed, log)
 
+    def test_h2_accepts_bracket_brace_and_bare_pair_layouts(self):
+        executor = _load_executor()
+        valid_layouts = (
+            "Solutions: (0, 45), (27, 36), (36, 27), (45, 0).",
+            "Solutions: [0, 45], [27, 36], [36, 27], [45, 0].",
+            "Solutions: {0, 45}, {27, 36}, {36, 27}, {45, 0}.",
+            "0, 45\n27, 36\n36, 27\n45, 0",
+            "x=0, y=45\nx=27, y=36\nx=36, y=27\nx=45, y=0",
+        )
+        for reply in valid_layouts:
+            with self.subTest(reply=reply):
+                passed, log = executor.check_family("H2", reply)
+                self.assertTrue(passed, log)
+        invalid_replies = (
+            "Incorrect pairs: (0, 27), (36, 45).",
+            "(0, 45), (27, 36), (36, 27).",
+            "In 2026, 10 models tried x^2 + y^2 = 2025 and failed.",
+        )
+        for reply in invalid_replies:
+            with self.subTest(reply=reply):
+                passed, _ = executor.check_family("H2", reply)
+                self.assertFalse(passed)
+
     def test_family_manifests_declare_supported_variants(self):
         for filename in os.listdir(os.path.join(SUITE, "manifests")):
             if not filename.endswith(".json"):

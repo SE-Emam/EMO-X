@@ -12,7 +12,9 @@ EMO-X is an open-source, execution-based evaluation harness for AI models and ag
 > Evaluate what an agent accomplishes, how it fails, and whether the result is reproducible.
 
 [![CI](https://github.com/SE-Emam/EMO-X/actions/workflows/ci.yml/badge.svg)](https://github.com/SE-Emam/EMO-X/actions/workflows/ci.yml) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/SE-Emam/EMO-X/blob/main/notebooks/emo_x_quickstart.ipynb) [![GitHub stars](https://img.shields.io/github/stars/SE-Emam/EMO-X)](https://github.com/SE-Emam/EMO-X/stargazers) [![pip install](https://img.shields.io/badge/pip_install-emo--x--eval-blue)](https://pypi.org/project/emo-x-eval/) [![Dataset on HF](https://img.shields.io/badge/🤗_Dataset-EMO--X--Core-yellow)](https://huggingface.co/datasets/SE-Emam/EMO-X-Core) [![PyPI](https://img.shields.io/pypi/v/emo-x-eval)](https://pypi.org/project/emo-x-eval/) [![License](https://img.shields.io/badge/License-Apache_2.0-blue)](LICENSE)
-[![Suites](https://img.shields.io/badge/suites-13-blue)](suites/) [![Tests](https://img.shields.io/badge/tests-869-green)](tests/run_all.py) [![Ollama](https://img.shields.io/badge/Ollama-supported-orange)](INSTALL.md)
+[![Suites](https://img.shields.io/badge/suites-13-blue)](suites/) [![Tests](https://img.shields.io/badge/tests-874-green)](tests/run_all.py) [![Ollama](https://img.shields.io/badge/Ollama-supported-orange)](INSTALL.md)
+
+> Suites badge = 13 executable suites in `shared/runner.py:SUITE_DIRS`; `suites/` holds a 14th PILOT (`computer-use/`, excluded from scoring by design).
 
 **Start here:** [Try the demo](https://colab.research.google.com/github/SE-Emam/EMO-X/blob/main/notebooks/emo_x_quickstart.ipynb) · [Run a model](#run-your-first-model) · [Contribute](CONTRIBUTING.md) · [Methodology](SPEC.md)
 
@@ -185,7 +187,7 @@ print(render_comparison(comp))"
 |---|---|---|
 | Test suites | 13 executable (+1 PILOT `computer-use`) | `shared/runner.py:SUITE_DIRS` (badge source); `suites/*/` has 14 dirs incl. PILOT |
 | Task manifests | 98 | `suites/*/manifests/*.json` |
-|  Harness + unit tests | 869 (harness 327, generators 87, scoring 210, golden 30, backends 215) | `tests/run_all.py --count`; the prior 868-test count is historical evidence from main CI run 38134169151; the additional Latin-font regression is validated by this PR CI before merge |
+|  Harness + unit tests | 874 (harness 332, generators 87, scoring 210, golden 30, backends 215) | `tests/run_all.py --count` (current); 868 was the historical count at main CI run 38134169151, 869 an intermediate count — both kept as history, not current |
 | Self-test checks | 14 | `--self-test`, fail-closed |
 | Issue-style families | 15 (IS1–IS15) | vs SWE-bench Lite (300) = **5.0%** |
 

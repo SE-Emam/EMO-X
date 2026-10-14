@@ -629,16 +629,20 @@ def _has_word(folded, word):
 def _t37_dialect_detail(folded, variant):
     """Return (required_ok, forbidden_hit, detail) for a T37 variant."""
     if variant == "canonical":
-        required_ok = "vosotros" in folded and "ordenador" in folded and _has_word(folded, "coger")
-        forbidden_hit = "ustedes" in folded or "computadora" in folded
+        required_ok = (
+            _has_word(folded, "vosotros")
+            and _has_word(folded, "ordenador")
+            and _has_word(folded, "coger")
+        )
+        forbidden_hit = _has_word(folded, "ustedes") or _has_word(folded, "computadora")
         return required_ok, forbidden_hit, "es-es=vosotros+ordenador+coger!ustedes/computadora"
     if variant == "perturbed":
-        required_ok = "ustedes" in folded and "computadora" in folded
-        forbidden_hit = "vosotros" in folded or _has_word(folded, "vos")
+        required_ok = _has_word(folded, "ustedes") and _has_word(folded, "computadora")
+        forbidden_hit = _has_word(folded, "vosotros") or _has_word(folded, "vos")
         return required_ok, forbidden_hit, "es-mx=ustedes+computadora!vosotros/vos"
     if variant == "novel":
         required_ok = _has_word(folded, "vos") and _has_word(folded, "che")
-        forbidden_hit = "vosotros" in folded
+        forbidden_hit = _has_word(folded, "vosotros")
         return required_ok, forbidden_hit, "es-ar=vos+che!vosotros"
     raise KeyError(f"unknown T37 variant: {variant!r}")
 
@@ -1188,14 +1192,15 @@ def check_family(family, reply):
         return ok, detail
     if family == "H3":
         clean = (reply or "").replace("*", "")
+        # Require a labeled keyword immediately preceding the number to avoid
+        # matching bare assignments like "x = 5" or intermediate steps.
         matches = re.findall(
-            r"(?:remainder|answer|result)\s*(?:is|=|:)?\s*(\d+)|=\s*(\d+)",
+            r"\b(?:remainder|answer|result)\s*(?:is|=|:)?\s*(\d+)",
             clean,
             re.I,
         )
-        values = [first or second for first, second in matches]
-        ok = bool(values and values[-1] == "4")
-        detail = f"modexp-final={values[-1] if values else 'missing'}"
+        ok = bool(matches and matches[-1] == "4")
+        detail = f"modexp-final={matches[-1] if matches else 'missing'}"
         return ok, detail
     if family == "H4":
         code = extract_code(reply, "python")

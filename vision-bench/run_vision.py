@@ -406,7 +406,7 @@ def normalize_int(text):
             return _EN_WORD_NUMS[word]
     norm = normalize_arabic(s_ascii)
     for word in sorted(_AR_WORD_NUMS, key=len, reverse=True):
-        if word in norm:
+        if re.search(r"\b%s\b" % re.escape(word), norm):
             return _AR_WORD_NUMS[word]
     return None
 

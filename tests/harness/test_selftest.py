@@ -15,6 +15,7 @@ SHARED = os.path.normpath(os.path.join(HERE, "..", "..", "shared"))
 if SHARED not in sys.path:
     sys.path.insert(0, SHARED)
 
+import sandbox
 import selftest
 
 EXPECTED_NAMES = (
@@ -75,6 +76,47 @@ class TestSelftest(unittest.TestCase):
         assert not detail.startswith("SKIP: ")
         assert ok == all(p for _, p, _ in rows)
         assert ok  # the pinned container toolchain is authoritative
+
+    def test_no_docker_fails_closed_by_default(self):
+        real_run = sandbox.run_in_sandbox
+
+        def no_docker(*args, **kwargs):
+            raise sandbox.SandboxRuntimeUnavailable("Docker CLI not found")
+
+        sandbox.run_in_sandbox = no_docker
+        try:
+            ok, rows = selftest.run_all_checks()
+        finally:
+            sandbox.run_in_sandbox = real_run
+        assert not ok  # strict gate preserved for CI/benchmark runs
+        by_name = {n: (p, d) for n, p, d in rows}
+        passed, _ = by_name["python-executor"]
+        assert not passed
+
+    def test_no_docker_demo_mode_degrades_to_skip(self):
+        real_run = sandbox.run_in_sandbox
+
+        def no_docker(*args, **kwargs):
+            raise sandbox.SandboxRuntimeUnavailable("Docker CLI not found")
+
+        sandbox.run_in_sandbox = no_docker
+        try:
+            ok, rows = selftest.run_all_checks(allow_no_docker=True)
+        finally:
+            sandbox.run_in_sandbox = real_run
+        assert ok  # Colab try-out path stays green and honest
+        by_name = {n: (p, d) for n, p, d in rows}
+        for name in (
+            "python-executor",
+            "node-executor",
+            "rust-compiler",
+            "typescript-compiler",
+            "patch-engine",
+            "timeout-enforcement",
+        ):
+            passed, detail = by_name[name]
+            assert passed
+            assert detail.startswith("SKIP: no Docker (demo mode)")
 
     def test_tampered_checksum_copy_fails_closed(self):
         tmp = tempfile.mkdtemp(prefix="selftest_tamper_")

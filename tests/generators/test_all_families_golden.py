@@ -903,6 +903,27 @@ class AllFamiliesGoldenTests(unittest.TestCase):
         passed, log = executor.check_family("R13", dockerfile)
         self.assertTrue(passed, log)
 
+    def test_h1_trailing_negation_does_not_pass(self):
+        executor = _load_executor()
+        valid_replies = (
+            "The answer is 126.",
+            "It's 126, not 127.",
+            "Not 127, it is 126.",
+        )
+        for reply in valid_replies:
+            with self.subTest(reply=reply):
+                passed, log = executor.check_family("H1", reply)
+                self.assertTrue(passed, log)
+        invalid_replies = (
+            "126 is a tempting guess, but the answer is 127.",
+            "The answer is 127, not 126.",
+            "The result isn't 126, it's 125.",
+        )
+        for reply in invalid_replies:
+            with self.subTest(reply=reply):
+                passed, _ = executor.check_family("H1", reply)
+                self.assertFalse(passed)
+
     def test_h2_accepts_bracket_brace_and_bare_pair_layouts(self):
         executor = _load_executor()
         valid_layouts = (

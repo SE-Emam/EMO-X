@@ -10,6 +10,10 @@ Row contract (binding, mirrors runner.run_self_test):
   Missing optional binaries (node/rustc/tsc/psql/patch) produce
   (name, True, "SKIP: <reason>") -- SKIP is not FAIL.
   Overall ok is True iff zero FAILs.
+  Demo mode (allow_no_docker=True, --demo): Docker absence degrades
+  sandbox-backed checks to SKIP rows instead of FAIL, so the free
+  no-install try-out path reports honestly without weakening the
+  default fail-closed gate used by CI and benchmark runs.
 
 Check-to-SPEC-35 mapping (14 checks):
   code-extraction      SPEC 35 executor chain (bench_lib.extract_code)
@@ -305,13 +309,19 @@ _CHECKS = (
 assert tuple(n for n, _ in _CHECKS) == CHECK_NAMES  # binding: names in order
 
 
-def run_all_checks():
+def run_all_checks(allow_no_docker=False):
     """Fail-closed harness verification. SPEC 35.
 
     Returns (ok, rows) where rows are (name, bool, detail) tuples exactly
     like runner.run_self_test. Y-INT swaps the runner call to this function.
     ok is True iff zero checks FAIL (SKIP rows carry True + "SKIP: ...").
     Callers must refuse benchmark execution when ok is False (fail closed).
+
+    allow_no_docker (CLI --demo): when Docker is absent, sandbox-backed
+    checks degrade to SKIP rows instead of FAIL so the free try-out path
+    (Colab, no install) stays truthful. Default False: CI and benchmark
+    runs keep the strict fail-closed gate; a degraded PASS must never be
+    presented as benchmark eligibility.
     """
     rows = []
     for name, func in _CHECKS:
@@ -320,6 +330,12 @@ def run_all_checks():
         except _SkipCheck as e:
             detail = " ".join(str(e).split())[:200]  # single-line detail
             rows.append((name, True, f"SKIP: {detail}"))
+        except sandbox.SandboxRuntimeUnavailable as e:
+            if allow_no_docker:
+                detail = " ".join(str(e).split())[:160]
+                rows.append((name, True, f"SKIP: no Docker (demo mode) — {detail}"))
+            else:
+                rows.append((name, False, str(e)[:200]))
         except Exception as e:  # fail-closed: any error fails the check
             rows.append((name, False, str(e)[:200]))
         else:

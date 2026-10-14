@@ -1250,6 +1250,14 @@ def main(argv=None):
         help="fail-closed harness check (SPEC 35) and exit",
     )
     ap.add_argument(
+        "--demo",
+        action="store_true",
+        help="try-out mode for --self-test without Docker (Colab, no "
+        "install): sandbox-backed checks SKIP instead of FAIL and the "
+        "result is labeled DEGRADED. Never use for benchmark claims; "
+        "CI and real runs keep the strict fail-closed gate.",
+    )
+    ap.add_argument(
         "--health",
         action="store_true",
         help="benchmark-health snapshot over raw runs and exit",
@@ -1329,11 +1337,19 @@ def main(argv=None):
     if args.self_test:
         import runner as _runner
 
-        ok, rows = _runner.run_self_test()
+        demo = bool(args.demo)
+        ok, rows = _runner.run_self_test(allow_no_docker=demo)
+        degraded = demo and any(
+            passed and detail.startswith("SKIP: no Docker") for _, passed, detail in rows
+        )
         log.info("EMO-X harness self-test (SPEC 35, fail-closed):")
+        if degraded:
+            log.info("DEGRADED try-out mode (--demo, no Docker): sandbox-backed")
+            log.info("checks SKIP below. Demo only — not benchmark eligibility.")
         for name, passed, detail in rows:
             log.info("  %-16s %s  %s" % (name, "PASS" if passed else "FAIL", detail))
-        log.info("RESULT: %s" % ("PASS" if ok else "FAIL"))
+        tail = "PASS (DEGRADED — no Docker; demo only)" if (ok and degraded) else ("PASS" if ok else "FAIL")
+        log.info("RESULT: %s" % tail)
         return 0 if ok else 1
 
     if args.health:
@@ -1422,6 +1438,7 @@ def main(argv=None):
                 max(args.trials, 1),
                 args.fault_rate,
                 _raw_root(args.out),
+                families=_parse_only(args.only) or None,
                 provider_profile=args.provider_profile,
                 scope=_scope,
                 sampling=_sampling,

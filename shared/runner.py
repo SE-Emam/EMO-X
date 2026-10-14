@@ -747,18 +747,22 @@ def run_profile(
 # ---------------------------------------------------------------------------
 
 
-def run_self_test():
+def run_self_test(allow_no_docker=False):
     """Fail-closed harness verification. SPEC 35.
 
     Delegated to shared/selftest.py (Y-2, 14 checks + SKIP semantics).
     Returns (ok_bool, rows). ok is True iff every check passes; callers
     must refuse benchmark execution otherwise (fail closed).
+
+    allow_no_docker (CLI --demo): Docker absence degrades sandbox-backed
+    checks to SKIP instead of FAIL for the free try-out path. Default
+    False keeps the strict gate for CI and benchmark runs.
     """
     try:
         from selftest import run_all_checks
     except ImportError:  # pragma: no cover - path fallback (X-2 pattern)
         from shared.selftest import run_all_checks
-    return run_all_checks()
+    return run_all_checks(allow_no_docker=allow_no_docker)
 
 
 # ---------------------------------------------------------------------------

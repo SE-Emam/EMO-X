@@ -1176,9 +1176,23 @@ def check_family(family, reply):
     if family == "H1":
         # Use the final numeric token rather than substring presence: an
         # incorrect explanation may mention 126 while giving another answer.
-        numbers = re.findall(r"(?<![\w.])-?\d+\b", reply or "")
-        ok = bool(numbers and numbers[-1] == "126")
-        detail = f"increasing-digits-final={numbers[-1] if numbers else 'missing'}"
+        # A trailing disavowed number ("..., not 126") must not pass: walk
+        # back past numbers directly preceded by a negation marker, so the
+        # verdict rests on the last number the reply actually asserts.
+        found = [
+            (m.group(0), m.start())
+            for m in re.finditer(r"(?<![\w.])-?\d+\b", reply or "")
+        ]
+        idx = len(found) - 1
+        while idx > 0 and re.search(
+            r"(?:\bnot\b|n't\b|\bnever\b|\bneither\b|\bnor\b|\bexcept\b|\bwithout\b|≠|!=)$",
+            (reply or "")[: found[idx][1]].rstrip()[-16:],
+            re.I,
+        ):
+            idx -= 1
+        final = found[idx][0] if found else None
+        ok = bool(final == "126")
+        detail = f"increasing-digits-final={final if final else 'missing'}"
         return ok, detail
     if family == "H2":
         # Verify the actual solution pairs, not just the four numbers in

@@ -58,6 +58,13 @@ python3 tests/run_all.py            # unit-test groups, must end: RESULT: PASS (
 If either fails, stop — a broken harness invalidates every later number
 (Comparison rule §B58). Open an issue with the failing lines.
 
+> **No Docker? (Colab / try-out):** use the degraded try-out path instead —
+> `python3 shared/run.py --self-test --demo` (sandbox checks SKIP, result is
+> labeled `DEGRADED`, demo only) and run the 15 Docker-free text-oracle
+> families (`--only T5,T7,T9,T10,T37,R2,R3,R4,R7,R8,R9,R10,H1,H2,H3`).
+> `--demo` must never back a benchmark claim; CI and real runs keep the
+> strict fail-closed gate.
+
 ## 4. Run: benchmark a model
 
 API keys are passed via **environment**, not flags:

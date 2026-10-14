@@ -166,5 +166,44 @@ class UnsupportedVariantSignalTests(unittest.TestCase):
                 self.assertIsNone(runner._UNSUPPORTED_VARIANT_RE.match(msg))
 
 
+class OnlyFilterWiringTests(unittest.TestCase):
+    def test_cli_only_reaches_runner_suite(self):
+        # Regression: --only was silently ignored on the runner path
+        # (run_suite never received families). Stub T5+H2 are text-only,
+        # so this needs no Docker and finishes in seconds.
+        import run as cli_run
+
+        out = "/tmp/emox_only_wiring"
+        shutil.rmtree(out, ignore_errors=True)
+        try:
+            rc = cli_run.main(
+                [
+                    "--backend",
+                    "stub",
+                    "--suite",
+                    "code25",
+                    "--only",
+                    "T5,H2",
+                    "--trials",
+                    "1",
+                    "--out",
+                    out,
+                    "--no-progress",
+                    "--quiet",
+                ]
+            )
+            self.assertEqual(rc, 0)
+            rundirs = [d for d in os.listdir(os.path.join(out, "raw")) if d.startswith("RUN-code25")]
+            self.assertEqual(len(rundirs), 1)
+            fams = set()
+            with open(os.path.join(out, "raw", rundirs[0], "events.jsonl")) as f:
+                for line in f:
+                    if line.strip():
+                        fams.add(json.loads(line)["task_family_id"])
+            self.assertEqual(fams, {"T5", "H2"})
+        finally:
+            shutil.rmtree(out, ignore_errors=True)
+
+
 if __name__ == "__main__":
     unittest.main()

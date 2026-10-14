@@ -11,7 +11,7 @@ EMO-X runs AI coding agents on frozen tasks — code, Arabic, vision, security, 
 
 > Evaluate what an agent accomplishes, how it fails, and whether the result is reproducible.
 
-### Try it in 3 minutes — free, no install, no API key
+### Try it in 3 minutes — free, no install, no API key, no Docker
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/SE-Emam/EMO-X/blob/main/notebooks/emo_x_quickstart.ipynb)
 
@@ -22,7 +22,7 @@ EMO-X runs AI coding agents on frozen tasks — code, Arabic, vision, security, 
 Then: [run your first real model](#run-your-first-model) · [what it measures](#what-it-measures) · [how it works](#worked-example-end-to-end)
 
 [![CI](https://github.com/SE-Emam/EMO-X/actions/workflows/ci.yml/badge.svg)](https://github.com/SE-Emam/EMO-X/actions/workflows/ci.yml) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/SE-Emam/EMO-X/blob/main/notebooks/emo_x_quickstart.ipynb) [![GitHub stars](https://img.shields.io/github/stars/SE-Emam/EMO-X)](https://github.com/SE-Emam/EMO-X/stargazers) [![pip install](https://img.shields.io/badge/pip_install-emo--x--eval-blue)](https://pypi.org/project/emo-x-eval/) [![Dataset on HF](https://img.shields.io/badge/🤗_Dataset-EMO--X--Core-yellow)](https://huggingface.co/datasets/SE-Emam/EMO-X-Core) [![PyPI](https://img.shields.io/pypi/v/emo-x-eval)](https://pypi.org/project/emo-x-eval/) [![License](https://img.shields.io/badge/License-Apache_2.0-blue)](LICENSE)
-[![Suites](https://img.shields.io/badge/suites-13-blue)](suites/) [![Tests](https://img.shields.io/badge/tests-884-green)](tests/run_all.py) [![Ollama](https://img.shields.io/badge/Ollama-supported-orange)](INSTALL.md)
+[![Suites](https://img.shields.io/badge/suites-13-blue)](suites/) [![Tests](https://img.shields.io/badge/tests-888-green)](tests/run_all.py) [![Ollama](https://img.shields.io/badge/Ollama-supported-orange)](INSTALL.md)
 
 > Suites badge = 13 executable suites in `shared/runner.py:SUITE_DIRS`; `suites/` holds a 14th PILOT (`computer-use/`, excluded from scoring by design).
 
@@ -32,7 +32,7 @@ Then: [run your first real model](#run-your-first-model) · [what it measures](#
 
 ## Quickstart
 
-**New here? Start with Colab — nothing to install** (see [Try it in 3 minutes](#try-it-in-3-minutes--free-no-install-no-api-key) above). The paths below are for running real models on your own machine; they need Docker Desktop **running** (code runs in the `emox-sandbox:latest` image; without it runs fail closed, never silently).
+**New here? Start with Colab — nothing to install** (see [Try it in 3 minutes](#try-it-in-3-minutes--free-no-install-no-api-key-no-docker) above). The paths below are for running real models on your own machine; they need Docker Desktop **running** (code runs in the `emox-sandbox:latest` image; without it runs fail closed, never silently).
 
 <details>
 <summary><b>pip (benchmark users)</b> — install the package, build the sandbox image once, verify</summary>
@@ -195,7 +195,7 @@ print(render_comparison(comp))"
 |---|---|---|
 | Test suites | 13 executable (+1 PILOT `computer-use`) | `shared/runner.py:SUITE_DIRS` (badge source); `suites/*/` has 14 dirs incl. PILOT |
 | Task manifests | 98 | `suites/*/manifests/*.json` |
-|  Harness + unit tests | 884 (harness 334, generators 88, scoring 210, golden 30, backends 222) | `tests/run_all.py --count` (current); 868/869/874 are historical counts kept as history, not current |
+|  Harness + unit tests | 888 (harness 337, generators 89, scoring 210, golden 30, backends 222) | `tests/run_all.py --count` (current); 868/869/874/884 are historical counts kept as history, not current |
 | Self-test checks | 14 | `--self-test`, fail-closed |
 | Issue-style families | 15 (IS1–IS15) | vs SWE-bench Lite (300) = **5.0%** |
 

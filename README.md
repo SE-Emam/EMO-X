@@ -2,7 +2,7 @@
 
 **Execution · Measurement · Observability**
 
-EMO-X is an open-source, execution-based evaluation harness for AI models and agents. It records reproducible task outcomes, failure causes, recovery behavior, and measurement uncertainty. It complements other benchmarks; it does not replace real-world evaluation.
+EMO-X runs AI coding agents on frozen tasks — code, Arabic, vision, security, repair — executes what they produce in a sandbox, and reports scores with uncertainty instead of bare pass/fail. It complements other benchmarks; it does not replace real-world evaluation.
 
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="src/emo-x-banner-light.png" />
@@ -10,6 +10,16 @@ EMO-X is an open-source, execution-based evaluation harness for AI models and ag
 </picture>
 
 > Evaluate what an agent accomplishes, how it fails, and whether the result is reproducible.
+
+### Try it in 3 minutes — free, no install, no API key
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/SE-Emam/EMO-X/blob/main/notebooks/emo_x_quickstart.ipynb)
+
+1. Open the notebook above.
+2. Run all cells — it clones the repo, checks the harness, runs a demo evaluation, and draws a per-family chart.
+3. You get the same sealed, tamper-evident artifacts a real model run produces (demo data only — not a model score).
+
+Then: [run your first real model](#run-your-first-model) · [what it measures](#what-it-measures) · [how it works](#worked-example-end-to-end)
 
 [![CI](https://github.com/SE-Emam/EMO-X/actions/workflows/ci.yml/badge.svg)](https://github.com/SE-Emam/EMO-X/actions/workflows/ci.yml) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/SE-Emam/EMO-X/blob/main/notebooks/emo_x_quickstart.ipynb) [![GitHub stars](https://img.shields.io/github/stars/SE-Emam/EMO-X)](https://github.com/SE-Emam/EMO-X/stargazers) [![pip install](https://img.shields.io/badge/pip_install-emo--x--eval-blue)](https://pypi.org/project/emo-x-eval/) [![Dataset on HF](https://img.shields.io/badge/🤗_Dataset-EMO--X--Core-yellow)](https://huggingface.co/datasets/SE-Emam/EMO-X-Core) [![PyPI](https://img.shields.io/pypi/v/emo-x-eval)](https://pypi.org/project/emo-x-eval/) [![License](https://img.shields.io/badge/License-Apache_2.0-blue)](LICENSE)
 [![Suites](https://img.shields.io/badge/suites-13-blue)](suites/) [![Tests](https://img.shields.io/badge/tests-884-green)](tests/run_all.py) [![Ollama](https://img.shields.io/badge/Ollama-supported-orange)](INSTALL.md)
@@ -20,27 +30,12 @@ EMO-X is an open-source, execution-based evaluation harness for AI models and ag
 
 ![EMO-X self-test demo](src/demo.gif)
 
-## Archived exploratory model run (not the official baseline)
-
-Historical live run on a DC1 subset (2026-09-28 UTC), shown as a workflow example only. It does not cover all 36 current Code25 families and is not eligible as the official baseline:
-
-![muse-spark-1.3 across two providers](src/demo-run.gif)
-
 ## Quickstart
 
-> Requires Docker Desktop **running**. First time only, build the sandbox
-> image once: `make sandbox-image` on a clone (provides `emox-sandbox:latest` for
-> all code execution; without it runs fail closed, never silently).
-> `pip` installs have no Makefile — the `docker build ... -t emox-sandbox:latest`
-> command under Option 2 below is the exact equivalent (same tag, same image).
+**New here? Start with Colab — nothing to install** (see [Try it in 3 minutes](#try-it-in-3-minutes--free-no-install-no-api-key) above). The paths below are for running real models on your own machine; they need Docker Desktop **running** (code runs in the `emox-sandbox:latest` image; without it runs fail closed, never silently).
 
-**Option 1 — Try in Colab (no install):**
-
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/SE-Emam/EMO-X/blob/main/notebooks/emo_x_quickstart.ipynb)
-
-**Demo mode only:** runs the frozen `code25` stub suite and chart in about 3 minutes, free, without an API key. This demonstrates the workflow; it is not a live model evaluation and must not be interpreted as a model score.
-
-**Option 2 — pip (benchmark users):**
+<details>
+<summary><b>pip (benchmark users)</b> — install the package, build the sandbox image once, verify</summary>
 
 ```bash
 pip install emo-x-eval
@@ -50,7 +45,10 @@ docker build -f "$(python3 -c 'import emox; print(emox.tree_root() + "/Dockerfil
 emo --self-test   # must end: RESULT: PASS
 ```
 
-**Option 3 — clone (harness developers):**
+</details>
+
+<details>
+<summary><b>clone (harness developers)</b> — full checkout for contributing or hacking on suites</summary>
 
 ```bash
 git clone https://github.com/SE-Emam/EMO-X.git emo-x
@@ -59,6 +57,8 @@ make sandbox-image                   # required once per checkout/image version
 python3 shared/run.py --self-test   # harness check, must end: RESULT: PASS
 python3 tests/run_all.py            # unit-test groups, must end: RESULT: PASS (all 5 test groups green: harness/generators/scoring/golden/backends; 13 benchmark suites live in shared/runner.py:SUITE_DIRS)
 ```
+
+</details>
 
 Expected tail (live `main`, `v2.0.0-rc1`):
 
@@ -83,6 +83,8 @@ Docker missing = fail-closed (`SandboxRuntimeUnavailable`), never silent.
 
 - **Arabic-first**: `T5` Arabic explanation + `V3` Arabic OCR (`arabic_card.png`, 6 keywords, order-free) — rare in code benchmarks.
 - **Vision-grounded**: `V1–V12` UI grounding (IoU ≥ 0.5), counting, diff-pair, charts, tables — deterministic oracles, no LLM-judge.
+
+> **للزائر العربي:** EMO-X من القلائل الذين يقيّمون العربية تنفيذياً — شرحٌ عربي لمفهوم الـ closures (`T5`) وقراءة بطاقة عربية من صورة (`V3`) ضمن 13 جناحاً. جرّب الديمو المجاني في 3 دقائق من زر Colab أعلاه، دون تثبيت أو مفتاح.
 
 ## What it measures
 
@@ -127,6 +129,12 @@ EMOX_ALLOW_LOCAL=1 python3 shared/run.py --backend openai-generic \
 
 Any OpenAI-compatible endpoint works the same way (`--base-url` +
 `--model` + key). No install path: open the Colab badge above.
+
+## Archived exploratory model run (not the official baseline)
+
+Historical live run on a DC1 subset (2026-09-28 UTC), shown as a workflow example only. It does not cover all 36 current Code25 families and is not eligible as the official baseline:
+
+![muse-spark-1.3 across two providers](src/demo-run.gif)
 
 ## Community results — official baseline pending
 

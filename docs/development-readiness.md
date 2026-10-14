@@ -30,7 +30,7 @@ This plan covers engineering quality and contributor experience before real mode
 | Code25 36-family audit | UNIT-VERIFIED | Issue #21 closed; family map, manifest truth checks, and targeted family regressions merged. This does not establish live model quality. |
 | Vision V1–V12 | PARTIAL / UNIT-VERIFIED | Frozen fixture hashes and structural ground-truth contracts are checked programmatically, with boundary and infrastructure-status tests. **Independent visual review of every frozen fixture against its annotations is still pending in issue #47**; code consistency cannot prove pixel-level ground-truth correctness. |
 | README / contributor experience | COMPLETE / UNIT-VERIFIED | Demo/live-run distinction and historical partial-baseline caveat are documented. PR #46 is merged; at that time the README badge/table reported 868 (326/87/210/30/215), confirmed by combined-main CI run 38134169151 (historical; current main = 888: 337/89/210/30/222). Docs-only main CI run 38134477848 passed after the README merge; the final combined-main run after the remaining documentation merges is tracked separately. |
-| Main branch protection | BLOCKED / UNVERIFIED | The connected GitHub integration could not read or configure branch protection (403). Repository owner must configure and verify required PR and Python 3.10/3.11/3.12 checks in GitHub Settings. |
+| Main branch protection | VERIFIED | Branch protection active on `main` (API-verified 2026-10-14): PR required, strict `harness (3.10/3.11/3.12)` status checks, dismiss-stale-reviews, conversation resolution, enforce-admins, force-push/deletion blocked. Solo repo: 0 required approvals (1 would deadlock self-merge; raise when collaborators join). |
 | Official model baseline | DEFERRED by design | No live-model accuracy or official ranking claim is authorized in this development phase. Historical bundles remain unchanged. |
 
 ## Post-matrix verification (2026-10-11)
@@ -38,7 +38,7 @@ This plan covers engineering quality and contributor experience before real mode
 - PR #52 merged the independent Vision fixture review matrix in commit `eff2de151138932df7d6fa57aa0fde87ae634a6e`.
 - Main CI run [38144325017](https://github.com/SE-Emam/EMO-X/actions/runs/38144325017) passed on Python 3.10, 3.11, and 3.12 for that exact SHA.
 - The matrix is a checklist only: all 12 fixture entries remain PENDING until a reviewer records pixel-level evidence. Issue #47 remains open; no visual ground-truth pass is claimed.
-- Main branch protection remains BLOCKED/UNVERIFIED pending repository-owner configuration and verification in issue #17.
+- Main branch protection is VERIFIED (configured 2026-10-14, issue #17 closable): PR + strict harness checks on `main`, enforce-admins, no force-push/deletion.
 - Official live-model trials and baseline creation remain deferred pending explicit maintainer authorization.
 
 ## Ordered work plan
@@ -46,7 +46,7 @@ This plan covers engineering quality and contributor experience before real mode
 ### 00 — Governance and contribution workflow
 - [x] Link the focused audit work through the T37, security, Code25, and Vision audit docs/issues (#19–#22).
 - [x] Focused implementation PRs document scope, acceptance criteria, tests, contract changes, evidence, and known limits.
-- [ ] Verify main protection and required Python 3.10/3.11/3.12 harness checks. If automation cannot configure repository rules, leave this gate open and record the owner action.
+- [x] Verify main protection and required Python 3.10/3.11/3.12 harness checks. Configured and API-verified 2026-10-14.
 - [x] Keep development readiness separate from baseline eligibility; official baseline eligibility is a separate, explicitly deferred phase.
 
 ### 01 — Spanish T37 oracle
